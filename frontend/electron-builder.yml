@@ -1,5 +1,5 @@
-appId: com.electron.app
-productName: frontend
+appId: com.ailearningworkspace.app
+productName: AI Learning Workspace
 directories:
   buildResources: build
 files:
@@ -12,7 +12,7 @@ files:
 asarUnpack:
   - resources/**
 win:
-  executableName: frontend
+  executableName: ai-learning-workspace
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
@@ -21,10 +21,8 @@ nsis:
 mac:
   entitlementsInherit: build/entitlements.mac.plist
   extendInfo:
-    - NSCameraUsageDescription: Application requests access to the device's camera.
-    - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
-    - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
-    - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
+    - NSDocumentsFolderUsageDescription: Used to open and save notes and resources you choose to import.
+    - NSDownloadsFolderUsageDescription: Used to open resources (PDFs, files) you choose to import from Downloads.
   notarize: false
 dmg:
   artifactName: ${name}-${version}.${ext}
@@ -33,11 +31,7 @@ linux:
     - AppImage
     - snap
     - deb
-  maintainer: electronjs.org
   category: Utility
 appImage:
   artifactName: ${name}-${version}.${ext}
 npmRebuild: false
-publish:
-  provider: generic
-  url: https://example.com/auto-updates
