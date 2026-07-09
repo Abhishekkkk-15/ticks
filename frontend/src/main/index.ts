@@ -1,7 +1,8 @@
-import { app, shell, BrowserWindow } from 'electron'
+import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import { getApiBaseUrl, startBackend, stopBackend } from './backend'
 
 function createWindow(): void {
   // Create the browser window.
@@ -66,6 +67,9 @@ if (!gotSingleInstanceLock) {
       optimizer.watchWindowShortcuts(window)
     })
 
+    ipcMain.handle('api:get-base-url', () => getApiBaseUrl())
+
+    startBackend()
     createWindow()
 
     app.on('activate', function () {
@@ -82,5 +86,9 @@ if (!gotSingleInstanceLock) {
     if (process.platform !== 'darwin') {
       app.quit()
     }
+  })
+
+  app.on('before-quit', () => {
+    stopBackend()
   })
 }
