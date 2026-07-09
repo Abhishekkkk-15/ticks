@@ -10,8 +10,9 @@ articles — capture fast, let AI turn it into notes, edit, and organize.
 
 ## Status
 
-Milestone 1 (project initialization) complete: both apps scaffold, typecheck,
-build, and run. No features implemented yet.
+Milestones 1–8 complete (project init through Excalidraw integration). See
+[MILESTONES.md](MILESTONES.md) for what's done, known follow-ups, and the
+remaining milestones.
 
 ## Running the frontend
 
