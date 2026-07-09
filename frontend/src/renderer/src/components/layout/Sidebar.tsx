@@ -1,3 +1,4 @@
+import WorkspaceList from '../../features/workspaces/WorkspaceList'
 import { useBackendStatus } from '../../lib/useBackendStatus'
 
 const statusStyles: Record<string, string> = {
@@ -18,9 +19,7 @@ function Sidebar(): React.JSX.Element {
   return (
     <aside className="flex w-64 shrink-0 flex-col border-r border-neutral-800 bg-neutral-900">
       <div className="px-4 py-4 text-sm font-medium text-neutral-200">AI Learning Workspace</div>
-      <div className="flex flex-1 items-center justify-center px-4 text-center text-sm text-neutral-500">
-        No workspaces yet
-      </div>
+      <WorkspaceList />
       <div className="flex items-center gap-2 border-t border-neutral-800 px-4 py-3 text-xs text-neutral-400">
         <span className={`h-2 w-2 rounded-full ${statusStyles[status]}`} />
         {statusLabels[status]}

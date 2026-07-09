@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -16,5 +18,10 @@ class Settings(BaseSettings):
     # "null" Origin that an explicit allowlist can't match anyway.
     cors_origins: list[str] = ["*"]
 
+    # Everything the app stores lives under here as plain files — no SQL,
+    # no vector DB, per the storage philosophy.
+    workspaces_root: Path = Path.home() / "AILearningWorkspace" / "workspaces"
+
 
 settings = Settings()
+settings.workspaces_root.mkdir(parents=True, exist_ok=True)
