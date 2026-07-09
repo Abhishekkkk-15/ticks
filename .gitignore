@@ -14,3 +14,6 @@ Thumbs.db
 
 # Local-first user data — never committed to the source repo
 workspace/
+
+# Local tool config
+.claude/

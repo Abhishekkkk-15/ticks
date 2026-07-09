@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import AppShell from './components/layout/AppShell'
 import EditorView from './features/editor/EditorView'
+import DrawingView from './features/drawings/DrawingView'
 
 // Standalone demo doc for the editor milestone — not yet backed by a real
 // note file. Wiring this to actual per-workspace notes lands with file storage.
@@ -35,12 +36,49 @@ function greet(name: string): string {
 ![A tiny dot](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=)
 `
 
+type MainView = 'notes' | 'whiteboard'
+
+// Temporary top-level switcher for demoing the editor and whiteboard in
+// isolation. Replaced by the real per-note tab system once notes exist.
 function App(): React.JSX.Element {
   const [content, setContent] = useState(DEMO_DOCUMENT)
+  const [view, setView] = useState<MainView>('notes')
 
   return (
     <AppShell>
-      <EditorView value={content} onChange={setContent} />
+      <div className="flex h-full flex-col">
+        <div className="flex shrink-0 items-center gap-1 border-b border-neutral-800 px-3 py-2">
+          <button
+            type="button"
+            onClick={() => setView('notes')}
+            className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+              view === 'notes'
+                ? 'bg-neutral-800 text-neutral-100'
+                : 'text-neutral-500 hover:text-neutral-300'
+            }`}
+          >
+            Notes
+          </button>
+          <button
+            type="button"
+            onClick={() => setView('whiteboard')}
+            className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+              view === 'whiteboard'
+                ? 'bg-neutral-800 text-neutral-100'
+                : 'text-neutral-500 hover:text-neutral-300'
+            }`}
+          >
+            Whiteboard
+          </button>
+        </div>
+        <div className="min-h-0 flex-1">
+          {view === 'notes' ? (
+            <EditorView value={content} onChange={setContent} />
+          ) : (
+            <DrawingView />
+          )}
+        </div>
+      </div>
     </AppShell>
   )
 }
