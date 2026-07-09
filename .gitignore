@@ -1,0 +1,14 @@
+# Python (backend)
+backend/.venv/
+**/__pycache__/
+*.pyc
+
+# Node (frontend, safety net beyond frontend/.gitignore)
+**/node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local-first user data — never committed to the source repo
+workspace/
