@@ -14,6 +14,7 @@ DEFAULT_DATA: dict[str, Any] = {
     "default_editor_mode": "split",
     "keyboard_shortcuts": {
         "command_palette": "Ctrl+Shift+P",
+        "global_capture": "Ctrl+Alt+Shift+C",
     },
 }
 

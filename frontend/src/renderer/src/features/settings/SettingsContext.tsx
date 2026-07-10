@@ -52,6 +52,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }): R
     try {
       const updated = await updateSettingsApi(update)
       setSettings(updated)
+      window.api.notifySettingsUpdated()
     } catch (err) {
       throw err instanceof Error ? err : new Error('Failed to update settings')
     }

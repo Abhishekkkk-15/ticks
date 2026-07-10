@@ -72,6 +72,22 @@ function NoteEditor({
     setRenaming(false)
   }
 
+  useEffect(() => {
+    function handleOpenAi(event: Event): void {
+      const customEvent = event as CustomEvent<{ text: string }>
+      setActivePanel('ai')
+      setSelection({
+        text: customEvent.detail.text,
+        from: content.length,
+        to: content.length
+      })
+    }
+    window.addEventListener('editor:open-ai', handleOpenAi)
+    return () => {
+      window.removeEventListener('editor:open-ai', handleOpenAi)
+    }
+  }, [content])
+
   async function commitRename(): Promise<void> {
     setRenaming(false)
     const title = titleDraft.trim()

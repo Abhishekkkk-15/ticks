@@ -1,9 +1,100 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, globalShortcut, clipboard } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { getApiBaseUrl, startBackend, stopBackend } from './backend'
 import { exportNoteFile, importNoteFile, pickResourceFile } from './files'
+import fs from 'fs'
+import os from 'os'
+import { exec } from 'child_process'
+
+function getGlobalCaptureShortcut(): string {
+  const settingsPath = join(os.homedir(), 'AILearningWorkspace', 'settings.json')
+  try {
+    if (fs.existsSync(settingsPath)) {
+      const data = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'))
+      if (data.keyboard_shortcuts && data.keyboard_shortcuts.global_capture) {
+        return data.keyboard_shortcuts.global_capture
+      }
+    }
+  } catch (err) {
+    console.error('Failed to read settings for global capture shortcut:', err)
+  }
+  return 'Ctrl+Alt+Shift+C'
+}
+
+function mapShortcutToAccelerator(shortcut: string): string {
+  return shortcut
+    .split('+')
+    .map((part) => {
+      if (part === 'Ctrl') return 'CmdOrCtrl'
+      if (part === 'Cmd') return 'Cmd'
+      return part
+    })
+    .join('+')
+}
+
+function triggerSystemCopy(): Promise<void> {
+  return new Promise((resolve) => {
+    // Wait for the user's keystrokes release to not conflict with simulated ones
+    setTimeout(() => {
+      if (process.platform === 'darwin') {
+        exec(
+          `osascript -e 'tell application "System Events" to keystroke "c" using {command down}'`,
+          () => resolve()
+        )
+      } else if (process.platform === 'win32') {
+        const psCommand = `powershell -Command "[void][System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms'); [System.Windows.Forms].SendKeys::SendWait('^c')"`
+        exec(psCommand, () => resolve())
+      } else if (process.platform === 'linux') {
+        exec(`xdotool key ctrl+c`, () => resolve())
+      } else {
+        resolve()
+      }
+    }, 150)
+  })
+}
+
+let activeCaptureShortcut = ''
+
+function registerGlobalCapture(): void {
+  // Unregister old shortcut
+  if (activeCaptureShortcut) {
+    globalShortcut.unregister(activeCaptureShortcut)
+  }
+
+  const rawShortcut = getGlobalCaptureShortcut()
+  const accelerator = mapShortcutToAccelerator(rawShortcut)
+  activeCaptureShortcut = accelerator
+
+  try {
+    const success = globalShortcut.register(accelerator, async () => {
+      // 1. Trigger OS-level copy on selected text
+      await triggerSystemCopy()
+      // 2. Wait a brief moment for clipboard to update
+      setTimeout(() => {
+        const capturedText = clipboard.readText().trim()
+        if (!capturedText) return
+
+        // 3. Send text to renderer
+        const [mainWindow] = BrowserWindow.getAllWindows()
+        if (mainWindow) {
+          mainWindow.webContents.send('shortcut:capture-text', capturedText)
+
+          // 4. Focus application window
+          if (mainWindow.isMinimized()) mainWindow.restore()
+          mainWindow.focus()
+        }
+      }, 100)
+    })
+
+    if (!success) {
+      console.error(`Failed to register global capture hotkey: ${accelerator}`)
+    }
+  } catch (err) {
+    console.error('Error during global shortcut registration:', err)
+  }
+}
 
 function createWindow(): void {
   // Create the browser window.
@@ -75,8 +166,13 @@ if (!gotSingleInstanceLock) {
     ipcMain.handle('file:import-note', () => importNoteFile())
     ipcMain.handle('file:pick-resource', () => pickResourceFile())
 
+    ipcMain.on('settings:updated', () => {
+      registerGlobalCapture()
+    })
+
     startBackend()
     createWindow()
+    registerGlobalCapture()
 
     app.on('activate', function () {
       // On macOS it's common to re-create a window in the app when the
@@ -95,6 +191,7 @@ if (!gotSingleInstanceLock) {
   })
 
   app.on('before-quit', () => {
+    globalShortcut.unregisterAll()
     stopBackend()
   })
 }

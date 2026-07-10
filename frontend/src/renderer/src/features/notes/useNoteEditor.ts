@@ -90,5 +90,20 @@ export function useNoteEditor(workspaceId: string, noteId: string): UseNoteEdito
     [workspaceId, noteId, autosaveDelay]
   )
 
+  useEffect(() => {
+    function handleCapture(event: Event): void {
+      const customEvent = event as CustomEvent<{ text: string }>
+      const capturedText = customEvent.detail.text
+      const separator = content.endsWith('\n') || content === '' ? '' : '\n\n'
+      const newContent = content + separator + `> ${capturedText}\n`
+      onChange(newContent)
+    }
+
+    window.addEventListener('shortcut:captured', handleCapture)
+    return () => {
+      window.removeEventListener('shortcut:captured', handleCapture)
+    }
+  }, [content, onChange])
+
   return { note, content, onChange, loading, error, saveStatus }
 }

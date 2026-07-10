@@ -578,7 +578,8 @@ function SettingsView(): React.JSX.Element {
             {/* Custom Shortcut Recorder */}
             <section className="space-y-3">
               <h3 className="text-sm font-medium text-neutral-200">Custom Shortcuts</h3>
-              <div className="max-w-md rounded-md border border-neutral-800 bg-neutral-900/30 p-4">
+              <div className="max-w-md rounded-md border border-neutral-800 bg-neutral-900/30 p-4 space-y-4">
+                {/* Command Palette */}
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="text-xs font-semibold text-neutral-200">Command Palette</h4>
@@ -601,6 +602,37 @@ function SettingsView(): React.JSX.Element {
                       <button
                         type="button"
                         onClick={() => setRecordingShortcut('command_palette')}
+                        className="rounded border border-neutral-800 bg-neutral-900 px-2.5 py-1 text-[10px] font-medium text-neutral-400 hover:text-neutral-200"
+                      >
+                        Edit
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Global Capture */}
+                <div className="flex items-center justify-between border-t border-neutral-800/40 pt-4">
+                  <div>
+                    <h4 className="text-xs font-semibold text-neutral-200">Global Text Capture</h4>
+                    <p className="text-[10px] text-neutral-500">
+                      System-wide shortcut to grab selected text.
+                    </p>
+                  </div>
+                  {recordingShortcut === 'global_capture' ? (
+                    <input
+                      autoFocus
+                      placeholder="Press shortcut keys…"
+                      onKeyDown={handleRecordShortcutKeyDown}
+                      className="w-36 rounded-md border border-amber-500 bg-neutral-950 px-2.5 py-1 text-center text-xs text-amber-400 placeholder:text-amber-500/70 focus:outline-none"
+                    />
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <kbd className="rounded bg-neutral-800 px-2 py-1 text-xs font-mono text-neutral-300 border border-neutral-700">
+                        {settings.keyboard_shortcuts.global_capture || 'Ctrl+Alt+Shift+C'}
+                      </kbd>
+                      <button
+                        type="button"
+                        onClick={() => setRecordingShortcut('global_capture')}
                         className="rounded border border-neutral-800 bg-neutral-900 px-2.5 py-1 text-[10px] font-medium text-neutral-400 hover:text-neutral-200"
                       >
                         Edit
@@ -652,6 +684,14 @@ function SettingsView(): React.JSX.Element {
                       <td className="px-4 py-2.5">
                         <kbd className="rounded bg-neutral-900 border border-neutral-800 px-1.5 py-0.5 font-mono text-[10px]">
                           {settings.keyboard_shortcuts.command_palette || 'Ctrl+Shift+P'}
+                        </kbd>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-2.5 text-neutral-300">Global Text Capture</td>
+                      <td className="px-4 py-2.5">
+                        <kbd className="rounded bg-neutral-900 border border-neutral-800 px-1.5 py-0.5 font-mono text-[10px]">
+                          {settings.keyboard_shortcuts.global_capture || 'Ctrl+Alt+Shift+C'}
                         </kbd>
                       </td>
                     </tr>

@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Settings as SettingsIcon } from 'lucide-react'
+import { Settings as SettingsIcon, X } from 'lucide-react'
 import AppShell from './components/layout/AppShell'
 import DrawingView from './features/drawings/DrawingView'
 import NoteEditor from './features/notes/NoteEditor'
 import TabBar from './features/notes/TabBar'
 import type { OpenTab } from './features/notes/TabBar'
-import type { Note } from './features/notes/types'
+import type { Note, NoteDetail } from './features/notes/types'
 import type { SaveStatus } from './features/notes/useNoteEditor'
 import { useWorkspaces } from './features/workspaces/useWorkspaces'
 import type { Workspace } from './features/workspaces/types'
@@ -16,7 +16,7 @@ import { useSettings } from './features/settings/SettingsContext'
 import { matchShortcut } from './lib/shortcuts'
 import { createNote } from './features/notes/api'
 import { EmptyState } from './components/layout/EmptyState'
-import { AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 
 type MainView = 'notes' | 'whiteboard' | 'settings'
 
@@ -28,6 +28,7 @@ function App(): React.JSX.Element {
   const [activeDirty, setActiveDirty] = useState(false)
   const [view, setView] = useState<MainView>('notes')
   const [paletteOpen, setPaletteOpen] = useState(false)
+  const [captureNotification, setCaptureNotification] = useState<string | null>(null)
 
   const { settings } = useSettings()
 
@@ -53,6 +54,64 @@ function App(): React.JSX.Element {
     setActiveTabId(note.id)
     setView('notes')
   }, [])
+
+  useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout> | undefined
+
+    const unsubscribe = window.api.onCaptureText(async (text) => {
+      setCaptureNotification(text)
+      clearTimeout(timeoutId)
+      timeoutId = setTimeout(() => {
+        setCaptureNotification(null)
+      }, 7000)
+
+      if (activeTabId) {
+        window.dispatchEvent(new CustomEvent('shortcut:captured', { detail: { text } }))
+        return
+      }
+
+      const activeWorkspace = selectedWorkspace ?? workspacesApi.workspaces[0]
+      if (!activeWorkspace) return
+
+      try {
+        const { listRecentNotes, updateNoteContent, getNote } = await import('./features/notes/api')
+        const recents = await listRecentNotes(activeWorkspace.id)
+
+        let targetNoteId = ''
+        let noteDetail: NoteDetail | null = null
+
+        if (recents.length > 0) {
+          targetNoteId = recents[0].id
+          noteDetail = await getNote(activeWorkspace.id, targetNoteId)
+        } else {
+          const { createNote: apiCreateNote } = await import('./features/notes/api')
+          const newNote = await apiCreateNote(activeWorkspace.id, 'Captured Notes')
+          targetNoteId = newNote.id
+          noteDetail = newNote
+        }
+
+        if (!noteDetail) return
+
+        const separator =
+          noteDetail.content.endsWith('\n') || noteDetail.content === '' ? '' : '\n\n'
+        const updatedContent = noteDetail.content + separator + `> ${text}\n`
+
+        await updateNoteContent(activeWorkspace.id, targetNoteId, updatedContent)
+
+        // Propagate content update inside detail
+        noteDetail.content = updatedContent
+
+        openNote(activeWorkspace.id, noteDetail)
+      } catch (err) {
+        console.error('Failed to append global capture to recent note:', err)
+      }
+    })
+
+    return () => {
+      unsubscribe()
+      clearTimeout(timeoutId)
+    }
+  }, [selectedWorkspace, activeTabId, workspacesApi.workspaces, openNote])
 
   const handleCreateNote = useCallback(async () => {
     if (!selectedWorkspace) return
@@ -202,6 +261,38 @@ function App(): React.JSX.Element {
             onOpenNote={openNote}
             onClose={() => setPaletteOpen(false)}
           />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {captureNotification && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 15, scale: 0.95 }}
+            className="fixed bottom-4 right-4 z-50 flex items-center gap-3 rounded-lg border border-neutral-800 bg-neutral-900/95 px-4 py-3 shadow-2xl backdrop-blur-md"
+          >
+            <span className="text-xs text-neutral-300">Text captured to note!</span>
+            <button
+              type="button"
+              onClick={() => {
+                const text = captureNotification
+                setCaptureNotification(null)
+                setView('notes')
+                window.dispatchEvent(new CustomEvent('editor:open-ai', { detail: { text } }))
+              }}
+              className="rounded bg-amber-500 hover:bg-amber-600 px-2 py-1 text-[10px] font-medium text-neutral-950 transition-colors"
+            >
+              Enhance with AI
+            </button>
+            <button
+              type="button"
+              onClick={() => setCaptureNotification(null)}
+              className="text-neutral-500 hover:text-neutral-300 transition-colors p-0.5 rounded hover:bg-neutral-800"
+            >
+              <X size={12} />
+            </button>
+          </motion.div>
         )}
       </AnimatePresence>
     </AppShell>

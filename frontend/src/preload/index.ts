@@ -9,7 +9,15 @@ const api = {
   importNote: (): Promise<{ title: string; content: string } | null> =>
     ipcRenderer.invoke('file:import-note'),
   pickResourceFile: (): Promise<{ name: string; data: Uint8Array } | null> =>
-    ipcRenderer.invoke('file:pick-resource')
+    ipcRenderer.invoke('file:pick-resource'),
+  notifySettingsUpdated: (): void => ipcRenderer.send('settings:updated'),
+  onCaptureText: (callback: (text: string) => void): (() => void) => {
+    const listener = (_event: unknown, text: string): void => callback(text)
+    ipcRenderer.on('shortcut:capture-text', listener)
+    return (): void => {
+      ipcRenderer.off('shortcut:capture-text', listener)
+    }
+  }
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to
