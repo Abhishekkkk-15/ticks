@@ -7,6 +7,8 @@ type EditorMode = 'edit' | 'preview' | 'split'
 interface EditorViewProps {
   value: string
   onChange: (value: string) => void
+  workspaceId: string
+  noteId: string
 }
 
 const modes: { id: EditorMode; label: string }[] = [
@@ -15,7 +17,7 @@ const modes: { id: EditorMode; label: string }[] = [
   { id: 'preview', label: 'Preview' }
 ]
 
-function EditorView({ value, onChange }: EditorViewProps): React.JSX.Element {
+function EditorView({ value, onChange, workspaceId, noteId }: EditorViewProps): React.JSX.Element {
   const [mode, setMode] = useState<EditorMode>('split')
 
   return (
@@ -49,7 +51,7 @@ function EditorView({ value, onChange }: EditorViewProps): React.JSX.Element {
         )}
         {mode !== 'edit' && (
           <div className={mode === 'split' ? 'h-full w-1/2' : 'h-full w-full'}>
-            <MarkdownPreview content={value} />
+            <MarkdownPreview content={value} workspaceId={workspaceId} noteId={noteId} />
           </div>
         )}
       </div>

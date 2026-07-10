@@ -47,9 +47,46 @@ the real app (not just unit-level checks) before moving on.
    favorited/pinned/duplicated/deleted a note and a workspace end-to-end,
    confirmed autosave's "Saving…" → "Saved" transition and live preview
    update, all through actual UI interaction (not just curl/typecheck).
-   Resources (attaching learning resources with a processing pipeline) and
-   saving/embedding `.excalidraw` drawings inside a note — both part of the
-   original Milestone 9 scope — were deliberately deferred; see below.
+
+   **Resources & note-linked drawings** (rest of Milestone 9's original
+   scope) landed in a follow-up pass:
+   - **Resources**: attach a website/blog/doc/pdf/markdown/file to a note.
+     Metadata (`resources.jsonl`, keyed by `note_id`) and content
+     (`resources/{id}/`) live per-workspace. URL-based resources go through
+     a real `queued` → `reading` → `processing` → `completed`/`failed`
+     pipeline: `asyncio.to_thread` + stdlib `urllib` fetches the page,
+     strips HTML tags/scripts/styles down to plain text (no new
+     dependency), and writes `content.txt` — no AI call yet, since that's
+     Milestone 12; this pipeline just prepares raw material for it. Local
+     files upload via `multipart/form-data` (added `python-multipart`) and
+     are copied in synchronously (`completed` immediately, no fetch
+     needed). Frontend: a `ResourcesPanel` toggled from the note header
+     polls while any resource is non-terminal, shows status/type/an
+     external-open link, and supports delete.
+   - **Note-linked drawings**: full CRUD on Excalidraw scenes
+     (`drawings.jsonl` metadata + `{id}.excalidraw` scene JSON per
+     workspace, mirroring the notes pattern). `NoteDrawingsPanel` creates/
+     renames/deletes and opens a `NoteDrawingEditor` (the existing
+     `DrawingCanvas` wrapped with load/save wired to the new endpoints
+     instead of only file export). "Insert" appends
+     `![title](drawing://id)` into the note's Markdown; `MarkdownPreview`
+     renders that through a new `DrawingEmbed` component that fetches the
+     scene and renders a PNG client-side via Excalidraw's own
+     `exportToBlob` — no server-side thumbnail generation needed.
+   - Bug caught and fixed during verification: react-markdown's default
+     `urlTransform` strips unrecognized URI schemes (XSS hardening), which
+     silently blanked `drawing://` src values and rendered as a broken
+     image. Fixed with a custom `urlTransform` that passes `drawing://`
+     through untouched and defers to `defaultUrlTransform` otherwise.
+   - Verified against the real app: attached a URL resource and watched it
+     reach `completed` with a real fetched-and-stripped page, created a
+     drawing, saved and reopened it, inserted an embed and confirmed it
+     renders (as an empty-scene placeholder, since the test couldn't
+     reliably script real Excalidraw canvas strokes — see follow-up
+     below), then deleted everything back to a clean state.
+
+   Milestone 9 is now fully done — all of the original plan's scope for
+   this milestone has landed.
 
 ### Known follow-ups from completed milestones (not yet fixed)
 
@@ -72,23 +109,29 @@ the real app (not just unit-level checks) before moving on.
 - Moving a note between workspaces is implemented and tested on the backend
   (`POST /workspaces/{id}/notes/{note_id}/move`) but has no frontend UI yet
   — it needs a workspace-picker component that doesn't exist.
+- Resource processing for `doc`/`pdf` local uploads doesn't extract text —
+  the file is copied in and marked `completed` immediately with no content
+  to search/summarize yet. Adding real extraction (e.g. `pypdf`) was
+  deferred rather than adding a dependency ahead of Milestone 12 actually
+  needing the extracted text for AI calls.
+- `ResourcesPanel`'s status polling runs on a plain `setInterval` while any
+  resource is non-terminal — fine at today's scale (one note's resources,
+  a handful of items) but not designed to survive many notes polling at
+  once; revisit if Milestone 15 (performance) finds it relevant.
+- Drawing embeds show a static PNG snapshot (regenerated client-side from
+  the saved scene on each preview render), not a live-editable canvas
+  inline — clicking the embed's edit button opens the full `NoteDrawingEditor`
+  instead. This mirrors how Obsidian's Excalidraw plugin embeds work and
+  was a deliberate scope choice, not a shortcut forced by a blocker.
+- The Milestone 9 UI verification couldn't script real Excalidraw canvas
+  strokes (dispatching synthetic `keydown`/`PointerEvent`s didn't select
+  the rectangle tool or register a drag), so the embed was only verified
+  rendering an empty-scene placeholder, not an actual drawn shape. The
+  underlying `exportToBlob` path is the same one Milestone 8 already
+  verified visually, so this is a test-automation gap, not an unverified
+  code path — but a real non-empty drawing embed hasn't been eyeballed.
 
 ## Remaining
-
-### 9 (continued). Resources & drawing-linking
-
-Deferred from Milestone 9's original scope (notes CRUD + autosave landed;
-see Done above):
-
-- Resources: attach learning resources (website, blog, doc, PDF, markdown,
-  local file) to a note, with source/title/URL-or-file/date-added metadata
-  and a processing status (`queued` → `reading` → `processing` →
-  `completed`/`failed`). Backend does the processing; frontend only
-  uploads and displays status. Overlaps with Milestone 12 (AI integration)
-  since "processing" is really an AI call — may make more sense to build
-  alongside that milestone rather than before it.
-- Save/load `.excalidraw` files linked to a note, and embed a drawing
-  inside a note.
 
 ### 10. Search
 

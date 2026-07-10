@@ -7,7 +7,9 @@ const api = {
   exportNote: (defaultName: string, content: string): Promise<boolean> =>
     ipcRenderer.invoke('file:export-note', defaultName, content),
   importNote: (): Promise<{ title: string; content: string } | null> =>
-    ipcRenderer.invoke('file:import-note')
+    ipcRenderer.invoke('file:import-note'),
+  pickResourceFile: (): Promise<{ name: string; data: Uint8Array } | null> =>
+    ipcRenderer.invoke('file:pick-resource')
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

@@ -53,6 +53,11 @@ def _to_note(entry: dict) -> Note:
     return Note(**entry)
 
 
+def note_exists(workspace_id: str, note_id: str) -> bool:
+    workspace_dir = get_workspace_dir(workspace_id)
+    return any(e["id"] == note_id for e in _read_all(workspace_dir))
+
+
 def list_notes(workspace_id: str) -> list[Note]:
     workspace_dir = get_workspace_dir(workspace_id)
     return [_to_note(e) for e in _sort(_read_all(workspace_dir))]

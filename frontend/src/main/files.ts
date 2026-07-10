@@ -36,3 +36,25 @@ export async function importNoteFile(): Promise<ImportedNoteFile | null> {
   const content = await readFile(filePath, 'utf-8')
   return { title: basename(filePath, extname(filePath)), content }
 }
+
+const RESOURCE_FILE_FILTERS = [
+  { name: 'Documents', extensions: ['pdf', 'doc', 'docx', 'md', 'markdown', 'txt'] }
+]
+
+export interface PickedResourceFile {
+  name: string
+  data: Uint8Array
+}
+
+export async function pickResourceFile(): Promise<PickedResourceFile | null> {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    properties: ['openFile'],
+    filters: RESOURCE_FILE_FILTERS
+  })
+
+  if (canceled || filePaths.length === 0) return null
+
+  const filePath = filePaths[0]
+  const buffer = await readFile(filePath)
+  return { name: basename(filePath), data: new Uint8Array(buffer) }
+}

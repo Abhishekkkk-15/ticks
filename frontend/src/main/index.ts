@@ -3,7 +3,7 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { getApiBaseUrl, startBackend, stopBackend } from './backend'
-import { exportNoteFile, importNoteFile } from './files'
+import { exportNoteFile, importNoteFile, pickResourceFile } from './files'
 
 function createWindow(): void {
   // Create the browser window.
@@ -73,6 +73,7 @@ if (!gotSingleInstanceLock) {
       exportNoteFile(defaultName, content)
     )
     ipcMain.handle('file:import-note', () => importNoteFile())
+    ipcMain.handle('file:pick-resource', () => pickResourceFile())
 
     startBackend()
     createWindow()

@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import settings
-from app.routers import health, notes, workspaces
+from app.routers import drawings, health, notes, resources, workspaces
 from app.schemas.common import ErrorResponse
 
 logging.basicConfig(
@@ -36,3 +36,5 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 app.include_router(health.router)
 app.include_router(workspaces.router)
 app.include_router(notes.router)
+app.include_router(resources.router)
+app.include_router(drawings.router)

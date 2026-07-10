@@ -1,8 +1,11 @@
 import { useState } from 'react'
-import { Copy, Download, Pencil, Pin, PinOff, Star, Trash2 } from 'lucide-react'
+import { Copy, Download, Image, Paperclip, Pencil, Pin, PinOff, Star, Trash2 } from 'lucide-react'
 import EditorView from '../editor/EditorView'
 import { useNoteEditor } from './useNoteEditor'
 import { deleteNote, duplicateNote, renameNote, setNoteFlags } from './api'
+import ResourcesPanel from '../resources/ResourcesPanel'
+import NoteDrawingsPanel from '../drawings/NoteDrawingsPanel'
+import type { Drawing } from '../drawings/types'
 import type { Note } from './types'
 
 interface NoteEditorProps {
@@ -30,6 +33,7 @@ function NoteEditor({
   const [renaming, setRenaming] = useState(false)
   const [titleDraft, setTitleDraft] = useState('')
   const [loadedNoteId, setLoadedNoteId] = useState<string | null>(null)
+  const [activePanel, setActivePanel] = useState<'resources' | 'drawings' | null>(null)
 
   // Reset local draft state when a different note finishes loading, without
   // the extra render + flicker an effect-based sync would cause.
@@ -72,6 +76,11 @@ function NoteEditor({
   async function handleExport(): Promise<void> {
     if (!meta) return
     await window.api.exportNote(`${meta.title}.md`, content)
+  }
+
+  function handleInsertDrawingEmbed(drawing: Drawing): void {
+    const separator = content.endsWith('\n') || content === '' ? '' : '\n\n'
+    onChange(`${content}${separator}![${drawing.title}](drawing://${drawing.id})\n`)
   }
 
   if (loading) {
@@ -159,6 +168,22 @@ function NoteEditor({
           </button>
           <button
             type="button"
+            onClick={() => setActivePanel(activePanel === 'resources' ? null : 'resources')}
+            title="Resources"
+            className={activePanel === 'resources' ? 'text-neutral-200' : 'hover:text-neutral-300'}
+          >
+            <Paperclip size={16} />
+          </button>
+          <button
+            type="button"
+            onClick={() => setActivePanel(activePanel === 'drawings' ? null : 'drawings')}
+            title="Drawings"
+            className={activePanel === 'drawings' ? 'text-neutral-200' : 'hover:text-neutral-300'}
+          >
+            <Image size={16} />
+          </button>
+          <button
+            type="button"
             onClick={handleDelete}
             title="Delete"
             className="hover:text-red-400"
@@ -168,8 +193,22 @@ function NoteEditor({
         </div>
       </div>
 
+      {activePanel === 'resources' && <ResourcesPanel workspaceId={workspaceId} noteId={meta.id} />}
+      {activePanel === 'drawings' && (
+        <NoteDrawingsPanel
+          workspaceId={workspaceId}
+          noteId={meta.id}
+          onInsertEmbed={handleInsertDrawingEmbed}
+        />
+      )}
+
       <div className="min-h-0 flex-1">
-        <EditorView value={content} onChange={onChange} />
+        <EditorView
+          value={content}
+          onChange={onChange}
+          workspaceId={workspaceId}
+          noteId={meta.id}
+        />
       </div>
     </div>
   )
