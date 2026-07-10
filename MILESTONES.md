@@ -267,10 +267,16 @@ the real app (not just unit-level checks) before moving on.
 - The Milestone 9 UI verification couldn't script real Excalidraw canvas
   strokes (dispatching synthetic `keydown`/`PointerEvent`s didn't select
   the rectangle tool or register a drag), so the embed was only verified
-  rendering an empty-scene placeholder, not an actual drawn shape. The
-  underlying `exportToBlob` path is the same one Milestone 8 already
-  verified visually, so this is a test-automation gap, not an unverified
-  code path — but a real non-empty drawing embed hasn't been eyeballed.
+  rendering an empty-scene placeholder, not an actual drawn shape.
+  Follow-up bugfix: with a real non-empty drawing, the embed rendered a
+  broken image icon in Preview — the CSP's `img-src` directive allowed
+  `data:` but not `blob:`, and `DrawingEmbed` sets `<img src>` to a
+  `URL.createObjectURL()` blob from `exportToBlob()`. Fixed by adding
+  `blob:` to `img-src` in `frontend/src/renderer/index.html`; verified by
+  drawing a real rectangle via canvas pointer events (selecting the
+  rectangle tool through its `data-testid`, since Excalidraw's tools are
+  radio inputs, not buttons), saving it, embedding it in a note, and
+  confirming Preview now renders the shape instead of a broken icon.
 - The Organize panel (folder/tags) and the sidebar's `NoteList` are
   separate component trees with independent `useNotes` state, same as the
   pre-existing title/favorite/pin sync gap above — setting a note's folder
