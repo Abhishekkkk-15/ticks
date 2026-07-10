@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { motion } from 'framer-motion'
 import { createNote, listNotes } from '../notes/api'
 import type { Note, NoteListItem } from '../notes/types'
 import type { UseWorkspacesResult } from '../workspaces/useWorkspaces'
@@ -120,12 +121,20 @@ function CommandPalette({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 pt-[15vh]"
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.15 }}
+      className="fixed inset-0 z-50 flex items-start justify-center bg-black/55 backdrop-blur-sm pt-[15vh]"
       onClick={onClose}
     >
-      <div
-        className="w-full max-w-lg overflow-hidden rounded-lg border border-neutral-700 bg-neutral-900 shadow-2xl"
+      <motion.div
+        initial={{ opacity: 0, y: -20, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: -10, scale: 0.97 }}
+        transition={{ type: 'spring', duration: 0.3, bounce: 0 }}
+        className="w-full max-w-lg overflow-hidden rounded-xl border border-neutral-800 bg-neutral-900/90 shadow-2xl shadow-black/80 backdrop-blur-md"
         onClick={(event) => event.stopPropagation()}
       >
         <input
@@ -137,7 +146,7 @@ function CommandPalette({
           }}
           onKeyDown={handleKeyDown}
           placeholder="Type a command or search notes/workspaces…"
-          className="w-full border-b border-neutral-800 bg-transparent px-4 py-3 text-sm text-neutral-100 placeholder:text-neutral-500 focus:outline-none"
+          className="w-full border-b border-neutral-800 bg-transparent px-4 py-3.5 text-sm text-neutral-100 placeholder:text-neutral-500 focus:outline-none"
         />
         <div className="max-h-80 overflow-y-auto py-1">
           {filtered.length === 0 ? (
@@ -149,8 +158,8 @@ function CommandPalette({
                 type="button"
                 onClick={() => command.run()}
                 onMouseEnter={() => setSelectedIndex(index)}
-                className={`flex w-full flex-col items-start gap-0.5 px-4 py-2 text-left text-sm ${
-                  index === clampedIndex ? 'bg-neutral-800 text-neutral-100' : 'text-neutral-300'
+                className={`flex w-full flex-col items-start gap-0.5 px-4 py-2.5 text-left text-sm transition-colors ${
+                  index === clampedIndex ? 'bg-neutral-800/80 text-neutral-100' : 'text-neutral-300'
                 }`}
               >
                 <span className="truncate">{command.label}</span>
@@ -161,8 +170,8 @@ function CommandPalette({
             ))
           )}
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }
 

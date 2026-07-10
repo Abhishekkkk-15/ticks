@@ -224,6 +224,10 @@ the real app (not just unit-level checks) before moving on.
     - Redesigned Settings UI: premium tabbed layout with visual theme card
       previews, ranges/sliders for size/delay configuration, AI Tone samples
       editor, and keyboard shortcut settings.
+14. **UI polish** — premium cozy aesthetic improvements with rich micro-animations, glassmorphic styles, and rounded interfaces.
+    - Empty states: created a beautiful, animated `EmptyState` component with warm glowing ambient backdrops, action cards (New Note/Workspace, Open Whiteboard), and shortcut references.
+    - Transitions & Animations: integrated `framer-motion` for horizontal sliding sidebar lists, vertical panel expansion inside note editors, and smooth slide-down/fade-in transitions for the Command Palette overlay.
+    - Layout: styled items with consistent rounded corners, modern HSL color highlights, and glassmorphic blur designs.
 
 ### Known follow-ups from completed milestones (not yet fixed)
 
@@ -320,18 +324,6 @@ the real app (not just unit-level checks) before moving on.
   how long style examples can be — a very large example set would inflate
   every `/ai/style` request's prompt size. Fine at the scale of "a few
   paragraphs," not stress-tested beyond that.
-
-### 14. UI polish
-
-- The "premium cozy" aesthetic described in the plan: warm dark theme,
-  rounded corners, soft shadows, smooth (Framer Motion) animations, glass
-  effects where appropriate, readable typography, excellent spacing,
-  beautiful empty states, modern icons.
-- Inspiration only, not imitation: Obsidian, Linear, Raycast, Arc Browser,
-  Notion Calendar, Zed Editor — needs its own identity.
-- Likely the right time to properly initialize shadcn/ui (component
-  primitives + CSS variable theme) rather than continuing with hand-rolled
-  Tailwind utility classes.
 
 ### 15. Performance optimization
 

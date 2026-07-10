@@ -21,6 +21,7 @@ import ResourcesPanel from '../resources/ResourcesPanel'
 import NoteDrawingsPanel from '../drawings/NoteDrawingsPanel'
 import NoteOrganizePanel from './NoteOrganizePanel'
 import AiPanel from '../ai/AiPanel'
+import { motion, AnimatePresence } from 'framer-motion'
 import type { Drawing } from '../drawings/types'
 import type { Note } from './types'
 
@@ -249,25 +250,57 @@ function NoteEditor({
         </div>
       </div>
 
-      {activePanel === 'ai' && (
-        <AiPanel
-          selectedText={selection?.text ?? ''}
-          fullContent={content}
-          onReplaceSelection={handleReplaceSelection}
-          onInsert={handleInsertResult}
-        />
-      )}
-      {activePanel === 'organize' && (
-        <NoteOrganizePanel workspaceId={workspaceId} note={meta} onUpdated={setMeta} />
-      )}
-      {activePanel === 'resources' && <ResourcesPanel workspaceId={workspaceId} noteId={meta.id} />}
-      {activePanel === 'drawings' && (
-        <NoteDrawingsPanel
-          workspaceId={workspaceId}
-          noteId={meta.id}
-          onInsertEmbed={handleInsertDrawingEmbed}
-        />
-      )}
+      <AnimatePresence>
+        {activePanel === 'ai' && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden border-b border-neutral-800"
+          >
+            <AiPanel
+              selectedText={selection?.text ?? ''}
+              fullContent={content}
+              onReplaceSelection={handleReplaceSelection}
+              onInsert={handleInsertResult}
+            />
+          </motion.div>
+        )}
+        {activePanel === 'organize' && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden border-b border-neutral-800"
+          >
+            <NoteOrganizePanel workspaceId={workspaceId} note={meta} onUpdated={setMeta} />
+          </motion.div>
+        )}
+        {activePanel === 'resources' && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden border-b border-neutral-800"
+          >
+            <ResourcesPanel workspaceId={workspaceId} noteId={meta.id} />
+          </motion.div>
+        )}
+        {activePanel === 'drawings' && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden border-b border-neutral-800"
+          >
+            <NoteDrawingsPanel
+              workspaceId={workspaceId}
+              noteId={meta.id}
+              onInsertEmbed={handleInsertDrawingEmbed}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="min-h-0 flex-1">
         <EditorView

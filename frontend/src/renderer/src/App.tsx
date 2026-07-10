@@ -14,6 +14,9 @@ import SettingsView from './features/settings/SettingsView'
 
 import { useSettings } from './features/settings/SettingsContext'
 import { matchShortcut } from './lib/shortcuts'
+import { createNote } from './features/notes/api'
+import { EmptyState } from './components/layout/EmptyState'
+import { AnimatePresence } from 'framer-motion'
 
 type MainView = 'notes' | 'whiteboard' | 'settings'
 
@@ -50,6 +53,19 @@ function App(): React.JSX.Element {
     setActiveTabId(note.id)
     setView('notes')
   }, [])
+
+  const handleCreateNote = useCallback(async () => {
+    if (!selectedWorkspace) return
+    const note = await createNote(selectedWorkspace.id, 'Untitled')
+    openNote(selectedWorkspace.id, note)
+  }, [selectedWorkspace, openNote])
+
+  const handleCreateWorkspace = useCallback(async () => {
+    const name = window.prompt('Enter workspace name:')
+    if (name?.trim()) {
+      await workspacesApi.create(name.trim())
+    }
+  }, [workspacesApi])
 
   const closeTab = useCallback(
     (noteId: string) => {
@@ -166,22 +182,28 @@ function App(): React.JSX.Element {
               onSaveStatusChange={(status: SaveStatus) => setActiveDirty(status === 'saving')}
             />
           ) : (
-            <div className="flex h-full items-center justify-center text-sm text-neutral-500">
-              Select or create a note to get started
-            </div>
+            <EmptyState
+              selectedWorkspaceName={selectedWorkspace?.name ?? null}
+              onOpenCommandPalette={() => setPaletteOpen(true)}
+              onNewNote={handleCreateNote}
+              onNewWorkspace={handleCreateWorkspace}
+              onOpenWhiteboard={() => setView('whiteboard')}
+            />
           )}
         </div>
       </div>
 
-      {paletteOpen && (
-        <CommandPalette
-          workspacesApi={workspacesApi}
-          activeWorkspaceId={selectedWorkspace?.id ?? activeTab?.workspaceId ?? null}
-          onSelectWorkspace={setSelectedWorkspace}
-          onOpenNote={openNote}
-          onClose={() => setPaletteOpen(false)}
-        />
-      )}
+      <AnimatePresence>
+        {paletteOpen && (
+          <CommandPalette
+            workspacesApi={workspacesApi}
+            activeWorkspaceId={selectedWorkspace?.id ?? activeTab?.workspaceId ?? null}
+            onSelectWorkspace={setSelectedWorkspace}
+            onOpenNote={openNote}
+            onClose={() => setPaletteOpen(false)}
+          />
+        )}
+      </AnimatePresence>
     </AppShell>
   )
 }
