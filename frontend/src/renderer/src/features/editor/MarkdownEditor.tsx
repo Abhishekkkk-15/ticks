@@ -1,5 +1,7 @@
 import { useMemo } from 'react'
+import type { Ref } from 'react'
 import CodeMirror, { EditorView } from '@uiw/react-codemirror'
+import type { ReactCodeMirrorRef } from '@uiw/react-codemirror'
 import { markdown } from '@codemirror/lang-markdown'
 import { languages } from '@codemirror/language-data'
 import { markdownKeymapExtension } from './markdownShortcuts'
@@ -23,6 +25,7 @@ interface MarkdownEditorProps {
   value: string
   onChange: (value: string) => void
   onSelectionChange?: (selection: EditorSelection) => void
+  editorRef?: Ref<ReactCodeMirrorRef>
 }
 
 const baseExtensions = [markdown({ codeLanguages: languages }), markdownKeymapExtension]
@@ -30,7 +33,8 @@ const baseExtensions = [markdown({ codeLanguages: languages }), markdownKeymapEx
 function MarkdownEditor({
   value,
   onChange,
-  onSelectionChange
+  onSelectionChange,
+  editorRef
 }: MarkdownEditorProps): React.JSX.Element {
   const { settings } = useSettings()
 
@@ -66,6 +70,7 @@ function MarkdownEditor({
 
   return (
     <CodeMirror
+      ref={editorRef}
       value={value}
       onChange={onChange}
       onUpdate={handleUpdate}

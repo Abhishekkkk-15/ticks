@@ -1,5 +1,10 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
 
+export interface ActiveNote {
+  workspaceId: string
+  noteId: string
+}
+
 interface Api {
   getApiBaseUrl: () => Promise<string>
   exportNote: (defaultName: string, content: string) => Promise<boolean>
@@ -15,6 +20,11 @@ interface Api {
     isMaximized: () => Promise<boolean>
     onMaximizedChange: (callback: (maximized: boolean) => void) => () => void
   }
+  notifyActiveNote: (note: ActiveNote | null) => void
+  getActiveNote: () => Promise<ActiveNote | null>
+  onActiveNoteChanged: (callback: (note: ActiveNote | null) => void) => () => void
+  onMiniFocusRequested: (callback: () => void) => () => void
+  hideMiniTray: () => void
 }
 
 declare global {

@@ -15,6 +15,7 @@ DEFAULT_DATA: dict[str, Any] = {
     "keyboard_shortcuts": {
         "command_palette": "Ctrl+Shift+P",
         "global_capture": "Ctrl+Alt+Shift+C",
+        "mini_tray_toggle": "Ctrl+Alt+Shift+M",
     },
 }
 

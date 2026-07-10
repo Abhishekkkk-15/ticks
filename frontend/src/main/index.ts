@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, globalShortcut, clipboard } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, globalShortcut, clipboard, screen } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -8,19 +8,27 @@ import fs from 'fs'
 import os from 'os'
 import { exec } from 'child_process'
 
-function getGlobalCaptureShortcut(): string {
+function readKeyboardShortcut(key: string, fallback: string): string {
   const settingsPath = join(os.homedir(), 'AILearningWorkspace', 'settings.json')
   try {
     if (fs.existsSync(settingsPath)) {
       const data = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'))
-      if (data.keyboard_shortcuts && data.keyboard_shortcuts.global_capture) {
-        return data.keyboard_shortcuts.global_capture
+      if (data.keyboard_shortcuts && data.keyboard_shortcuts[key]) {
+        return data.keyboard_shortcuts[key]
       }
     }
   } catch (err) {
-    console.error('Failed to read settings for global capture shortcut:', err)
+    console.error(`Failed to read settings for ${key} shortcut:`, err)
   }
-  return 'Ctrl+Alt+Shift+C'
+  return fallback
+}
+
+function getGlobalCaptureShortcut(): string {
+  return readKeyboardShortcut('global_capture', 'Ctrl+Alt+Shift+C')
+}
+
+function getMiniTrayShortcut(): string {
+  return readKeyboardShortcut('mini_tray_toggle', 'Ctrl+Alt+Shift+M')
 }
 
 function mapShortcutToAccelerator(shortcut: string): string {
@@ -138,6 +146,89 @@ function registerGlobalCapture(): void {
   }
 }
 
+const MINI_TRAY_WIDTH = 353
+const MINI_TRAY_HEIGHT = 743
+const MINI_TRAY_MARGIN = 24
+
+let miniWindow: BrowserWindow | null = null
+let lastActiveNote: { workspaceId: string; noteId: string } | null = null
+let isQuitting = false
+
+function createMiniWindow(): BrowserWindow {
+  const { width: displayWidth, height: displayHeight } = screen.getPrimaryDisplay().workAreaSize
+
+  const win = new BrowserWindow({
+    width: MINI_TRAY_WIDTH,
+    height: MINI_TRAY_HEIGHT,
+    x: displayWidth - MINI_TRAY_WIDTH - MINI_TRAY_MARGIN,
+    y: displayHeight - MINI_TRAY_HEIGHT - MINI_TRAY_MARGIN,
+    resizable: false,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    show: false,
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      sandbox: true
+    }
+  })
+
+  win.on('close', (event) => {
+    // This window is meant to be hidden and reused, not destroyed — toggling
+    // it back open should not need to recreate/reload it. Only let it
+    // actually close during a real app quit, otherwise preventDefault here
+    // would block app.quit() from ever completing.
+    if (isQuitting) return
+    event.preventDefault()
+    win.hide()
+  })
+
+  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+    win.loadURL(`${process.env['ELECTRON_RENDERER_URL']}?mode=mini`)
+  } else {
+    win.loadFile(join(__dirname, '../renderer/index.html'), { query: { mode: 'mini' } })
+  }
+
+  return win
+}
+
+function toggleMiniTray(): void {
+  if (!miniWindow || miniWindow.isDestroyed()) {
+    miniWindow = createMiniWindow()
+  }
+
+  if (miniWindow.isVisible()) {
+    miniWindow.hide()
+    return
+  }
+
+  miniWindow.webContents.send('mini:active-note-changed', lastActiveNote)
+  miniWindow.show()
+  miniWindow.focus()
+  miniWindow.webContents.send('mini:focus-requested')
+}
+
+let activeMiniTrayShortcut = ''
+
+function registerMiniTrayShortcut(): void {
+  if (activeMiniTrayShortcut) {
+    globalShortcut.unregister(activeMiniTrayShortcut)
+  }
+
+  const accelerator = mapShortcutToAccelerator(getMiniTrayShortcut())
+  activeMiniTrayShortcut = accelerator
+
+  try {
+    const success = globalShortcut.register(accelerator, toggleMiniTray)
+    if (!success) {
+      console.error(`Failed to register mini-tray hotkey: ${accelerator}`)
+    }
+  } catch (err) {
+    console.error('Error during mini-tray shortcut registration:', err)
+  }
+}
+
 // macOS keeps its native traffic-light frame (hiddenInset); Windows/Linux
 // get a frameless window so the renderer can draw its own title bar.
 const ZOOM_STEP = 0.5
@@ -166,6 +257,12 @@ function createWindow(): void {
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
+  })
+
+  mainWindow.on('closed', () => {
+    // The hidden mini-tray window would otherwise keep 'window-all-closed'
+    // from ever firing, silently leaving the app running in the background.
+    if (process.platform !== 'darwin') app.quit()
   })
 
   mainWindow.on('maximize', () => mainWindow.webContents.send('window:maximized-changed', true))
@@ -237,6 +334,7 @@ if (!gotSingleInstanceLock) {
 
     ipcMain.on('settings:updated', () => {
       registerGlobalCapture()
+      registerMiniTrayShortcut()
     })
 
     ipcMain.on('window:minimize', (event) => {
@@ -255,9 +353,22 @@ if (!gotSingleInstanceLock) {
       return BrowserWindow.fromWebContents(event.sender)?.isMaximized() ?? false
     })
 
+    ipcMain.on(
+      'active-note:changed',
+      (_event, payload: { workspaceId: string; noteId: string } | null) => {
+        lastActiveNote = payload
+        miniWindow?.webContents.send('mini:active-note-changed', payload)
+      }
+    )
+    ipcMain.handle('active-note:get', () => lastActiveNote)
+    ipcMain.on('mini-tray:hide', () => {
+      miniWindow?.hide()
+    })
+
     startBackend()
     createWindow()
     registerGlobalCapture()
+    registerMiniTrayShortcut()
 
     app.on('activate', function () {
       // On macOS it's common to re-create a window in the app when the
@@ -276,6 +387,7 @@ if (!gotSingleInstanceLock) {
   })
 
   app.on('before-quit', () => {
+    isQuitting = true
     globalShortcut.unregisterAll()
     stopBackend()
   })

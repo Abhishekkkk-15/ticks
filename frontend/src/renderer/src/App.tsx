@@ -178,6 +178,15 @@ function App(): React.JSX.Element {
 
   const activeTab = tabs.find((t) => t.note.id === activeTabId) ?? null
 
+  // Mirrors the active note's identity into the main process so the
+  // mini-tray window (a separate renderer/BrowserWindow) knows which note
+  // to load without needing its own copy of this app's full tab state.
+  useEffect(() => {
+    window.api.notifyActiveNote(
+      activeTab ? { workspaceId: activeTab.workspaceId, noteId: activeTab.note.id } : null
+    )
+  }, [activeTab])
+
   // Frameless windows (Windows/Linux) are rendered with a transparent
   // BrowserWindow so these CSS corners actually show through to the desktop;
   // squared off again once maximized, since a rounded shape flush against

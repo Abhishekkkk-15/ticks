@@ -31,7 +31,31 @@ const api = {
         ipcRenderer.off('window:maximized-changed', listener)
       }
     }
-  }
+  },
+  notifyActiveNote: (note: { workspaceId: string; noteId: string } | null): void =>
+    ipcRenderer.send('active-note:changed', note),
+  getActiveNote: (): Promise<{ workspaceId: string; noteId: string } | null> =>
+    ipcRenderer.invoke('active-note:get'),
+  onActiveNoteChanged: (
+    callback: (note: { workspaceId: string; noteId: string } | null) => void
+  ): (() => void) => {
+    const listener = (
+      _event: unknown,
+      note: { workspaceId: string; noteId: string } | null
+    ): void => callback(note)
+    ipcRenderer.on('mini:active-note-changed', listener)
+    return (): void => {
+      ipcRenderer.off('mini:active-note-changed', listener)
+    }
+  },
+  onMiniFocusRequested: (callback: () => void): (() => void) => {
+    const listener = (): void => callback()
+    ipcRenderer.on('mini:focus-requested', listener)
+    return (): void => {
+      ipcRenderer.off('mini:focus-requested', listener)
+    }
+  },
+  hideMiniTray: (): void => ipcRenderer.send('mini-tray:hide')
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

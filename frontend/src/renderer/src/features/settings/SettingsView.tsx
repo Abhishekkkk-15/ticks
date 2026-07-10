@@ -644,6 +644,37 @@ function SettingsView(): React.JSX.Element {
                     </div>
                   )}
                 </div>
+
+                {/* Mini-Tray Toggle */}
+                <div className="flex items-center justify-between border-t border-neutral-800/40 pt-4">
+                  <div>
+                    <h4 className="text-xs font-semibold text-neutral-200">Mini-Tray Toggle</h4>
+                    <p className="text-[10px] text-neutral-500">
+                      Show/hide the always-on-top mini note editor.
+                    </p>
+                  </div>
+                  {recordingShortcut === 'mini_tray_toggle' ? (
+                    <input
+                      autoFocus
+                      placeholder="Press shortcut keys…"
+                      onKeyDown={handleRecordShortcutKeyDown}
+                      className="w-36 rounded-md border border-amber-500 bg-neutral-950 px-2.5 py-1 text-center text-xs text-amber-400 placeholder:text-amber-500/70 focus:outline-none"
+                    />
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <kbd className="rounded bg-neutral-800 px-2 py-1 text-xs font-mono text-neutral-300 border border-neutral-700">
+                        {settings.keyboard_shortcuts.mini_tray_toggle || 'Ctrl+Alt+Shift+M'}
+                      </kbd>
+                      <button
+                        type="button"
+                        onClick={() => setRecordingShortcut('mini_tray_toggle')}
+                        className="rounded border border-neutral-800 bg-neutral-900 px-2.5 py-1 text-[10px] font-medium text-neutral-400 hover:text-neutral-200"
+                      >
+                        Edit
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </section>
 
@@ -661,6 +692,10 @@ function SettingsView(): React.JSX.Element {
                   {
                     action: 'Global Text Capture',
                     keys: [settings.keyboard_shortcuts.global_capture || 'Ctrl+Alt+Shift+C']
+                  },
+                  {
+                    action: 'Toggle Mini-Tray',
+                    keys: [settings.keyboard_shortcuts.mini_tray_toggle || 'Ctrl+Alt+Shift+M']
                   },
                   { action: 'Cancel Palette / Focus', keys: ['Esc'] }
                 ].map((row) => (

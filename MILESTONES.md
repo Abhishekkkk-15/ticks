@@ -292,6 +292,13 @@ the real app (not just unit-level checks) before moving on.
 - **Minimal scrollbar**: themed `::-webkit-scrollbar` rules in
   `main.css` using the existing `var(--color-neutral-700)` token, so it
   follows Dark/Light/Warm-Cozy automatically.
+- **Mini-tray Toggle (always-on-top mini editor)**: toggled by a global keyboard
+  shortcut (default `Ctrl+Alt+Shift+M`) or via settings. Displays only the
+  editor for the active note in the main window in a small, 353×743px frameless
+  and transparent, always-on-top window positioned at the bottom-right of the
+  work area. The active note's identity is synced over IPC via `active-note:changed`.
+  Autosaves in sync with the main window, and clicking `Esc` inside the mini window
+  or toggling the shortcut again hides it.
 - **Bug fix**: with a `default_workspace_id` set, clicking the sidebar's
   back arrow (`onSelectWorkspace(null)`) was immediately overridden back
   into that workspace, because `App.tsx`'s auto-select effect only
