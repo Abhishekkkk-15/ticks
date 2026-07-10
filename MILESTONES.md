@@ -150,6 +150,62 @@ the real app (not just unit-level checks) before moving on.
       non-default sidebar views (Favorites/Pinned/Recent/Trash) showing
       the right notes, the Organize panel persisting folder/tags, the
       folder filter narrowing correctly, and trash → restore working.
+12. **AI API integration (Mistral).** Full original scope, verified against
+    the real Mistral API with a working key (not mocked):
+    - **Settings (minimal, ahead of Milestone 13)**: a `settings.json` next
+      to the workspaces root stores the Mistral API key and writing-style
+      examples — a stand-in for the real Settings UI, since that milestone
+      hasn't landed yet. `GET /settings` never echoes the key back (just
+      `mistral_api_key_configured: bool`); `.env`'s `MISTRAL_API_KEY` is a
+      fallback for local dev, but `settings.json` (set via the UI) wins.
+    - **Mistral client** (`ai_service.py`, `httpx`-based, streaming):
+      `open_action_stream` opens the connection and confirms a non-error
+      status *before* any content streams, so the router can turn a
+      missing key / rate limit / 5xx into a real HTTP status (422/429/502)
+      instead of an error embedded mid-stream — StreamingResponse can't
+      change its status code once the first chunk goes out. Retries with
+      backoff on 429/5xx during that connection phase; a genuine mid-stream
+      drop has no clean recovery (accepted, documented below).
+    - **9 endpoints**: `/ai/summarize`, `/explain`, `/key-points`,
+      `/questions`, `/flashcards`, `/checklist`, `/table`,
+      `/rewrite` (`mode`: expand/shorten/examples), and `/style` (rewrite
+      using the saved style examples, or a generic clarity rewrite if none
+      are set) — all stream plain text. Every prompt explicitly instructs
+      staying faithful to the source and flagging ambiguity rather than
+      inventing, per the plan's accuracy-over-creativity rule.
+    - **Resource-processing tie-in**: `process_resource` now also asks the
+      AI for a faithful summary of the fetched content (`summary.txt`
+      alongside `content.txt`). The AI call is best-effort — if it fails
+      (no key configured, rate limited), the resource still completes
+      using its raw fetched content; only the bonus summary is skipped.
+    - **Frontend**: `lib/api.ts` gained `streamText` (reads the response
+      body via `getReader()`, decoding chunks as they arrive — no SSE
+      framing needed since both ends are ours). `useAiAction` wraps that
+      with cancellation (`AbortController`) and accumulates the streamed
+      result. A new `AiPanel` in the note editor runs any action against
+      the current CodeMirror selection (or the whole note if nothing's
+      selected) and offers Replace selection / Insert below / Copy.
+      CodeMirror's selection is surfaced via `MarkdownEditor`'s
+      `onUpdate` — typed against a minimal local structural interface
+      instead of importing `@codemirror/view` directly, since installing
+      it as a direct dependency kept stalling in this sandbox (see
+      follow-up).
+    - **Settings view**: API key field (write-only, shows a
+      configured/not-configured indicator, never displays the stored key),
+      style-example list (add/remove), and a live "preview rewrite in my
+      style" using the real endpoint.
+    - Verified against the real app with a real API key end-to-end:
+      summarize on a whole note → Insert below appended the real streamed
+      result; select-all → Shorten → Replace selection correctly replaced
+      the note's content with the (real, coherent) shortened rewrite;
+      Settings showed the configured indicator, added a casual-tone style
+      example, and Preview visibly changed tone to match it. Also verified
+      live via curl: all 9 endpoints, both 422 paths (empty text, and no
+      key configured — temporarily cleared the real key to confirm), and
+      the resource-processing summary appearing in a fetched resource's
+      `summary.txt`. The 429/502 status-code paths were only checked by
+      code review, not by actually exhausting a real rate limit or forcing
+      a 5xx from Mistral.
 
 ### Known follow-ups from completed milestones (not yet fixed)
 
@@ -219,34 +275,42 @@ the real app (not just unit-level checks) before moving on.
 - Command palette matching is substring-only (same approach as the rest of
   the app's search), not true fuzzy matching — no fuzzy-match library is
   installed, and adding one for this alone seemed like overkill.
-
-## Remaining
-
-### 12. AI API integration
-
-- **Mistral AI only** — no multi-provider abstraction. Backend calls the
-  Mistral API exclusively; API key configurable in Settings, stored
-  locally, never hardcoded, never touched directly by the renderer.
-- Endpoints: `/ai/summarize`, `/ai/explain`, `/ai/rewrite`, `/ai/questions`,
-  `/ai/flashcards`, `/ai/key-points`, `/ai/checklist`, `/ai/table`,
-  `/ai/style`, `/ai/process-resource`.
-- Backend owns: calling Mistral, prompt engineering, conversation/context
-  management, error handling + retries, streaming, rate-limit handling,
-  and (later) structured outputs.
-- Selected-text AI actions in the UI: summarize, explain simply, rewrite in
-  my style, extract key points, generate quiz questions, generate
-  flashcards, generate examples, expand, shorten, convert to
-  checklist/table.
-- Writing-style personalization: AI learns the user's note-writing style
-  from examples. Frontend needs settings + a preview; backend
-  implementation is explicitly allowed to lag behind the UI here.
-- AI must prioritize accuracy over creativity when processing resources —
-  stay faithful to source material, avoid hallucination, flag uncertainty.
+- No dedicated `/ai/process-resource` HTTP endpoint — the "process a
+  resource" action from the plan's endpoint list is invoked internally
+  by `resource_service.process_resource` (via `ai_service.run_action`)
+  rather than exposed over the API, since nothing in the frontend calls
+  it directly today; the resource pipeline is the only caller.
+- `@codemirror/view` isn't a direct dependency — `pnpm add` for it stalled
+  repeatedly in this sandbox (slow/stuck registry fetch for that one
+  package, unclear why). Worked around by typing `MarkdownEditor`'s
+  `onUpdate` callback against a minimal local structural interface
+  (`{ selectionSet, state: { selection, sliceDoc } }`) instead of
+  importing `ViewUpdate` — TypeScript's structural typing accepts the real
+  object at runtime regardless. Revisit adding the real dependency (and
+  its proper types) later if this causes friction.
+- Mid-stream Mistral failures (the connection opens fine, then drops or
+  errors partway through) have no clean recovery — the partial text
+  already sent to the frontend just stops, with no retry or resumption.
+  Only the pre-stream connection phase (missing key, rate limit, 5xx) gets
+  retries and a proper HTTP error status; documented as an accepted gap
+  rather than building stream-resumption logic.
+- The AI panel's action buttons are always all enabled regardless of
+  whether the input is realistically too long for the model's context — no
+  client-side length guard or truncation warning yet.
+- Style-example "preview" and the actual "rewrite in my style" action
+  share the same backend prompt logic, but there's no limit on how many/
+  how long style examples can be — a very large example set would inflate
+  every `/ai/style` request's prompt size. Fine at the scale of "a few
+  paragraphs," not stress-tested beyond that.
 
 ### 13. Settings
 
-- Theme, font size, editor font, autosave, default workspace, AI provider,
-  API keys, keyboard shortcuts, markdown preferences.
+- AI provider/API key and writing-style examples already have a minimal
+  stand-in from Milestone 12 (`settings.json`, a bare-bones Settings view).
+  What's left: theme, font size, editor font, autosave behavior, default
+  workspace, keyboard shortcuts, markdown preferences — and folding the
+  Milestone 12 settings into whatever this milestone's real Settings UI
+  looks like, rather than leaving it as a separate minimal page.
 
 ### 14. UI polish
 

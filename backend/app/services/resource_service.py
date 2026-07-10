@@ -1,6 +1,7 @@
 import asyncio
 import html
 import json
+import logging
 import re
 import shutil
 import urllib.error
@@ -12,8 +13,11 @@ from pathlib import Path
 from fastapi import HTTPException
 
 from app.schemas.resource import Resource, ResourceCreate, ResourceType
+from app.services import ai_service
 from app.services.note_service import note_exists
 from app.services.workspace_service import get_workspace_dir
+
+logger = logging.getLogger("app")
 
 METADATA_FILENAME = "resources.jsonl"
 FETCH_TIMEOUT_SECONDS = 10
@@ -174,10 +178,8 @@ def _fetch_and_extract(url: str) -> str:
 
 
 async def process_resource(workspace_id: str, resource_id: str) -> None:
-    # Reading = fetching the raw response; processing = stripping it down to
-    # plain text. Both happen here since neither needs the AI integration
-    # that lands in Milestone 12 — this pipeline only prepares raw material
-    # for that milestone to build on.
+    # Reading = fetching the raw response; processing = stripping it to
+    # plain text, then (Milestone 12) asking the AI for a faithful summary.
     workspace_dir = get_workspace_dir(workspace_id)
     entry = _find(_read_all(workspace_dir), resource_id)
     url = entry["source"]
@@ -190,5 +192,17 @@ async def process_resource(workspace_id: str, resource_id: str) -> None:
         _set_status(workspace_id, resource_id, "failed", error=str(err))
         return
 
-    (_resource_dir(workspace_dir, resource_id) / "content.txt").write_text(text)
+    resource_dir = _resource_dir(workspace_dir, resource_id)
+    (resource_dir / "content.txt").write_text(text)
+
+    # A summary is a bonus on top of the raw fetched content — if the AI
+    # call fails (no API key configured, rate limited, etc.) the resource
+    # is still fully usable via its raw content, so this doesn't fail the
+    # whole resource.
+    try:
+        summary = await ai_service.run_action("process-resource", text)
+        (resource_dir / "summary.txt").write_text(summary)
+    except Exception:
+        logger.exception("AI summary failed for resource %s", resource_id)
+
     _set_status(workspace_id, resource_id, "completed")

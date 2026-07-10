@@ -7,17 +7,20 @@ import {
   Pencil,
   Pin,
   PinOff,
+  Sparkles,
   Star,
   Tag,
   Trash2
 } from 'lucide-react'
 import EditorView from '../editor/EditorView'
+import type { EditorSelection } from '../editor/MarkdownEditor'
 import { useNoteEditor } from './useNoteEditor'
 import type { SaveStatus } from './useNoteEditor'
 import { deleteNote, duplicateNote, renameNote, setNoteFlags } from './api'
 import ResourcesPanel from '../resources/ResourcesPanel'
 import NoteDrawingsPanel from '../drawings/NoteDrawingsPanel'
 import NoteOrganizePanel from './NoteOrganizePanel'
+import AiPanel from '../ai/AiPanel'
 import type { Drawing } from '../drawings/types'
 import type { Note } from './types'
 
@@ -54,7 +57,10 @@ function NoteEditor({
   const [renaming, setRenaming] = useState(false)
   const [titleDraft, setTitleDraft] = useState('')
   const [loadedNoteId, setLoadedNoteId] = useState<string | null>(null)
-  const [activePanel, setActivePanel] = useState<'resources' | 'drawings' | 'organize' | null>(null)
+  const [activePanel, setActivePanel] = useState<
+    'resources' | 'drawings' | 'organize' | 'ai' | null
+  >(null)
+  const [selection, setSelection] = useState<EditorSelection | null>(null)
 
   // Reset local draft state when a different note finishes loading, without
   // the extra render + flicker an effect-based sync would cause.
@@ -104,6 +110,17 @@ function NoteEditor({
   function handleInsertDrawingEmbed(drawing: Drawing): void {
     const separator = content.endsWith('\n') || content === '' ? '' : '\n\n'
     onChange(`${content}${separator}![${drawing.title}](drawing://${drawing.id})\n`)
+  }
+
+  function handleReplaceSelection(result: string): void {
+    if (!selection) return
+    onChange(content.slice(0, selection.from) + result + content.slice(selection.to))
+    setSelection(null)
+  }
+
+  function handleInsertResult(result: string): void {
+    const separator = content.endsWith('\n') || content === '' ? '' : '\n\n'
+    onChange(`${content}${separator}${result}\n`)
   }
 
   if (loading) {
@@ -191,6 +208,14 @@ function NoteEditor({
           </button>
           <button
             type="button"
+            onClick={() => setActivePanel(activePanel === 'ai' ? null : 'ai')}
+            title="AI"
+            className={activePanel === 'ai' ? 'text-neutral-200' : 'hover:text-neutral-300'}
+          >
+            <Sparkles size={16} />
+          </button>
+          <button
+            type="button"
             onClick={() => setActivePanel(activePanel === 'organize' ? null : 'organize')}
             title="Organize (folder & tags)"
             className={activePanel === 'organize' ? 'text-neutral-200' : 'hover:text-neutral-300'}
@@ -224,6 +249,14 @@ function NoteEditor({
         </div>
       </div>
 
+      {activePanel === 'ai' && (
+        <AiPanel
+          selectedText={selection?.text ?? ''}
+          fullContent={content}
+          onReplaceSelection={handleReplaceSelection}
+          onInsert={handleInsertResult}
+        />
+      )}
       {activePanel === 'organize' && (
         <NoteOrganizePanel workspaceId={workspaceId} note={meta} onUpdated={setMeta} />
       )}
@@ -242,6 +275,7 @@ function NoteEditor({
           onChange={onChange}
           workspaceId={workspaceId}
           noteId={meta.id}
+          onSelectionChange={setSelection}
         />
       </div>
     </div>

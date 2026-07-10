@@ -21,6 +21,14 @@ class Settings(BaseSettings):
     # Everything the app stores lives under here as plain files — no SQL,
     # no vector DB, per the storage philosophy.
     workspaces_root: Path = Path.home() / "AILearningWorkspace" / "workspaces"
+    settings_path: Path = Path.home() / "AILearningWorkspace" / "settings.json"
+
+    # Falls back to the environment / .env for local dev testing (e.g. a
+    # developer's own key). Once the app is running, the real source of
+    # truth is settings.json (see app.services.settings_service), which a
+    # user sets via the UI — full Settings UI lands in Milestone 13, this
+    # is a minimal stand-in for just the AI API key.
+    mistral_api_key: str | None = None
 
 
 settings = Settings()

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import MarkdownEditor from './MarkdownEditor'
 import MarkdownPreview from './MarkdownPreview'
+import type { EditorSelection } from './MarkdownEditor'
 
 type EditorMode = 'edit' | 'preview' | 'split'
 
@@ -9,6 +10,7 @@ interface EditorViewProps {
   onChange: (value: string) => void
   workspaceId: string
   noteId: string
+  onSelectionChange?: (selection: EditorSelection) => void
 }
 
 const modes: { id: EditorMode; label: string }[] = [
@@ -17,7 +19,13 @@ const modes: { id: EditorMode; label: string }[] = [
   { id: 'preview', label: 'Preview' }
 ]
 
-function EditorView({ value, onChange, workspaceId, noteId }: EditorViewProps): React.JSX.Element {
+function EditorView({
+  value,
+  onChange,
+  workspaceId,
+  noteId,
+  onSelectionChange
+}: EditorViewProps): React.JSX.Element {
   const [mode, setMode] = useState<EditorMode>('split')
 
   return (
@@ -46,7 +54,11 @@ function EditorView({ value, onChange, workspaceId, noteId }: EditorViewProps): 
               mode === 'split' ? 'h-full w-1/2 border-r border-neutral-800' : 'h-full w-full'
             }
           >
-            <MarkdownEditor value={value} onChange={onChange} />
+            <MarkdownEditor
+              value={value}
+              onChange={onChange}
+              onSelectionChange={onSelectionChange}
+            />
           </div>
         )}
         {mode !== 'edit' && (

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Settings as SettingsIcon } from 'lucide-react'
 import AppShell from './components/layout/AppShell'
 import DrawingView from './features/drawings/DrawingView'
 import NoteEditor from './features/notes/NoteEditor'
@@ -9,8 +10,9 @@ import type { SaveStatus } from './features/notes/useNoteEditor'
 import { useWorkspaces } from './features/workspaces/useWorkspaces'
 import type { Workspace } from './features/workspaces/types'
 import CommandPalette from './features/command-palette/CommandPalette'
+import SettingsView from './features/settings/SettingsView'
 
-type MainView = 'notes' | 'whiteboard'
+type MainView = 'notes' | 'whiteboard' | 'settings'
 
 function App(): React.JSX.Element {
   const workspacesApi = useWorkspaces()
@@ -105,6 +107,19 @@ function App(): React.JSX.Element {
             Whiteboard
           </button>
           <span className="ml-auto text-xs text-neutral-600">Ctrl+Shift+P for commands</span>
+          <button
+            type="button"
+            onClick={() => setView('settings')}
+            title="Settings"
+            aria-pressed={view === 'settings'}
+            className={`rounded-md p-1.5 ${
+              view === 'settings'
+                ? 'bg-neutral-800 text-neutral-100'
+                : 'text-neutral-500 hover:bg-neutral-800 hover:text-neutral-300'
+            }`}
+          >
+            <SettingsIcon size={14} />
+          </button>
         </div>
         {view === 'notes' && (
           <TabBar
@@ -117,24 +132,24 @@ function App(): React.JSX.Element {
           />
         )}
         <div className="min-h-0 flex-1">
-          {view === 'notes' ? (
-            activeTab ? (
-              <NoteEditor
-                key={activeTab.note.id}
-                workspaceId={activeTab.workspaceId}
-                noteId={activeTab.note.id}
-                onDeleted={() => closeTab(activeTab.note.id)}
-                onDuplicated={(note) => openNote(activeTab.workspaceId, note)}
-                onRenamed={renameTab}
-                onSaveStatusChange={(status: SaveStatus) => setActiveDirty(status === 'saving')}
-              />
-            ) : (
-              <div className="flex h-full items-center justify-center text-sm text-neutral-500">
-                Select or create a note to get started
-              </div>
-            )
-          ) : (
+          {view === 'settings' ? (
+            <SettingsView />
+          ) : view === 'whiteboard' ? (
             <DrawingView />
+          ) : activeTab ? (
+            <NoteEditor
+              key={activeTab.note.id}
+              workspaceId={activeTab.workspaceId}
+              noteId={activeTab.note.id}
+              onDeleted={() => closeTab(activeTab.note.id)}
+              onDuplicated={(note) => openNote(activeTab.workspaceId, note)}
+              onRenamed={renameTab}
+              onSaveStatusChange={(status: SaveStatus) => setActiveDirty(status === 'saving')}
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center text-sm text-neutral-500">
+              Select or create a note to get started
+            </div>
           )}
         </div>
       </div>
