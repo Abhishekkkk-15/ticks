@@ -1,10 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import type { ReactCodeMirrorRef } from '@uiw/react-codemirror'
+import { PanelTop } from 'lucide-react'
 import MarkdownEditor from './MarkdownEditor'
 import MarkdownPreview from './MarkdownPreview'
+import EditorToolbar from './EditorToolbar'
 import type { EditorSelection } from './MarkdownEditor'
 import { useSettings } from '../settings/SettingsContext'
 
-type EditorMode = 'edit' | 'preview' | 'split'
+type EditorMode = 'edit' | 'preview'
 
 interface EditorViewProps {
   value: string
@@ -28,6 +31,8 @@ function EditorView({
 }: EditorViewProps): React.JSX.Element {
   const { settings } = useSettings()
   const [mode, setMode] = useState<EditorMode>('edit')
+  const [toolbarVisible, setToolbarVisible] = useState(true)
+  const editorRef = useRef<ReactCodeMirrorRef>(null)
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent): void {
@@ -51,22 +56,40 @@ function EditorView({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex shrink-0 items-center gap-1 border-b border-neutral-800 px-3 py-2">
-        {modes.map((m) => (
+      <div className="flex shrink-0 items-center justify-between gap-1 border-b border-neutral-800 px-3 py-2">
+        <div className="flex items-center gap-1">
+          {modes.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => setMode(m.id)}
+              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                mode === m.id
+                  ? 'bg-neutral-800 text-neutral-100'
+                  : 'text-neutral-500 hover:text-neutral-300'
+              }`}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+        {mode === 'edit' && (
           <button
-            key={m.id}
             type="button"
-            onClick={() => setMode(m.id)}
-            className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-              mode === m.id
+            onClick={() => setToolbarVisible((visible) => !visible)}
+            title={toolbarVisible ? 'Hide formatting toolbar' : 'Show formatting toolbar'}
+            className={`rounded-md p-1.5 transition-colors ${
+              toolbarVisible
                 ? 'bg-neutral-800 text-neutral-100'
                 : 'text-neutral-500 hover:text-neutral-300'
             }`}
           >
-            {m.label}
+            <PanelTop size={15} />
           </button>
-        ))}
+        )}
       </div>
+
+      {mode === 'edit' && toolbarVisible && <EditorToolbar editorRef={editorRef} />}
 
       <div className="flex min-h-0 flex-1">
         {mode === 'edit' ? (
@@ -75,6 +98,7 @@ function EditorView({
               value={value}
               onChange={onChange}
               onSelectionChange={onSelectionChange}
+              editorRef={editorRef}
             />
           </div>
         ) : (

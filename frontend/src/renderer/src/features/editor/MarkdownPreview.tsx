@@ -3,6 +3,7 @@ import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
 import DrawingEmbed from '../drawings/DrawingEmbed'
 import { useSettings } from '../settings/SettingsContext'
+import { isLightTheme } from '../settings/themeUtils'
 
 interface MarkdownPreviewProps {
   content: string
@@ -12,16 +13,13 @@ interface MarkdownPreviewProps {
 
 const DRAWING_SCHEME = 'drawing://'
 
-// Light-scheme themes should use dark prose text, not prose-invert.
-const LIGHT_THEMES = new Set(['light', 'solarized-light'])
-
 function MarkdownPreview({
   content,
   workspaceId,
   noteId
 }: MarkdownPreviewProps): React.JSX.Element {
   const { settings } = useSettings()
-  const isLight = LIGHT_THEMES.has(settings?.theme ?? '')
+  const isLight = isLightTheme(settings?.theme)
   const proseClass = isLight ? 'prose' : 'prose-invert'
 
   return (
@@ -55,4 +53,3 @@ function MarkdownPreview({
 }
 
 export default MarkdownPreview
-

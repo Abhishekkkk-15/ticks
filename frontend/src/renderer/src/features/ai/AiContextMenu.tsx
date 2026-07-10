@@ -1,13 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import {
-  AlignLeft,
-  BookOpen,
-  CheckSquare,
-  Sparkles,
-  WandSparkles,
-  Zap
-} from 'lucide-react'
+import { AlignLeft, BookOpen, CheckSquare, Sparkles, WandSparkles, Zap } from 'lucide-react'
 
 export interface AiContextMenuPosition {
   x: number

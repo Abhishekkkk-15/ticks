@@ -1,25 +1,31 @@
-import { EditorView, keymap, type KeyBinding } from '@uiw/react-codemirror'
+import { keymap, type KeyBinding } from '@uiw/react-codemirror'
+import { formatActions } from './formatting'
 
-function wrapSelection(marker: string) {
-  return (view: EditorView): boolean => {
-    const range = view.state.selection.main
-    const selectedText = view.state.sliceDoc(range.from, range.to)
-
-    view.dispatch({
-      changes: { from: range.from, to: range.to, insert: `${marker}${selectedText}${marker}` },
-      selection: {
-        anchor: range.from + marker.length,
-        head: range.from + marker.length + selectedText.length
-      },
-      scrollIntoView: true
-    })
-    return true
-  }
+// Maps each formatting action to its CodeMirror keybinding string. Kept
+// separate from formatActions itself so the toolbar (which just needs
+// action.run) doesn't have to know about key syntax at all.
+const keyByActionId: Record<string, string> = {
+  bold: 'Mod-b',
+  italic: 'Mod-i',
+  strikethrough: 'Mod-Shift-x',
+  code: 'Mod-Shift-m',
+  h1: 'Mod-1',
+  h2: 'Mod-2',
+  h3: 'Mod-3',
+  bulletList: 'Mod-Shift-8',
+  orderedList: 'Mod-Shift-7',
+  checklist: 'Mod-Shift-c',
+  blockquote: 'Mod-Shift-9',
+  link: 'Mod-k',
+  codeBlock: 'Mod-Shift-k'
 }
 
-const markdownShortcuts: KeyBinding[] = [
-  { key: 'Mod-b', run: wrapSelection('**'), preventDefault: true },
-  { key: 'Mod-i', run: wrapSelection('*'), preventDefault: true }
-]
+const bindings: KeyBinding[] = formatActions
+  .filter((action) => keyByActionId[action.id])
+  .map((action) => ({
+    key: keyByActionId[action.id],
+    run: action.run,
+    preventDefault: true
+  }))
 
-export const markdownKeymapExtension = keymap.of(markdownShortcuts)
+export const markdownKeymapExtension = keymap.of(bindings)

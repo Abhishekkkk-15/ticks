@@ -10,6 +10,51 @@
   background: transparent;
 }
 
+/* @tailwindcss/typography ships its own fixed slate/gray palette for
+   .prose and .prose-invert. Overriding its CSS variables retints the whole
+   preview pane (headings, links, code, quotes, table borders...) to follow
+   whichever of the app's 7 themes is active, instead of a generic light/dark
+   split.
+
+   Every theme in this app (see the .theme-* blocks below) defines its
+   --color-neutral-* scale so that neutral-950 is always "the app's
+   background" and neutral-100 is always "the app's primary text" — for
+   light-scheme themes (theme-light, theme-solarized-light) the concrete
+   hex values are simply reversed from the dark themes' scale so that
+   convention holds either way. That means ONE mapping (tuned by eye against
+   a dark background) already produces correct contrast in light themes too,
+   without a separate light-mode-specific set of numbers — an earlier version
+   of this file used the opposite direction (headings: neutral-900) assuming
+   the plain Tailwind convention where a higher number is always darker, which
+   is only true for this app's *dark* themes; it made headings/code render in
+   a background-matching (i.e. invisible) color under theme-solarized-light.
+
+   MarkdownPreview applies "prose-invert prose" together (the plugin's own
+   documented dark-mode pattern), so this single ruleset covers both — the
+   plugin's own rule that's supposed to redirect the *consumed* variable
+   (--tw-prose-headings) to the invert one on .prose-invert doesn't reliably
+   win its cascade tie against plain .prose, so !important on the directly-
+   consumed variables sidesteps that rather than fighting it. */
+.prose {
+  --tw-prose-body: var(--color-neutral-300) !important;
+  --tw-prose-headings: var(--color-neutral-100) !important;
+  --tw-prose-lead: var(--color-neutral-400) !important;
+  --tw-prose-links: var(--color-amber-500) !important;
+  --tw-prose-bold: var(--color-neutral-100) !important;
+  --tw-prose-counters: var(--color-neutral-500) !important;
+  --tw-prose-bullets: var(--color-neutral-600) !important;
+  --tw-prose-hr: var(--color-neutral-800) !important;
+  --tw-prose-quotes: var(--color-neutral-100) !important;
+  --tw-prose-quote-borders: var(--color-neutral-700) !important;
+  --tw-prose-captions: var(--color-neutral-500) !important;
+  --tw-prose-kbd: var(--color-neutral-100) !important;
+  --tw-prose-code: var(--color-neutral-200) !important;
+  --tw-prose-pre-code: var(--color-neutral-200) !important;
+  --tw-prose-pre-bg: var(--color-neutral-900) !important;
+  --tw-prose-th-borders: var(--color-neutral-700) !important;
+  --tw-prose-td-borders: var(--color-neutral-800) !important;
+}
+
 :root {
   color-scheme: dark;
 }
@@ -103,7 +148,7 @@
   --color-neutral-300: #4a6068;
   --color-neutral-200: #073642;
   --color-neutral-100: #002b36;
-  --color-neutral-50:  #001e26;
+  --color-neutral-50: #001e26;
 }
 
 /* Layered so Tailwind's utilities (space-y-*, mb-*, mt-*, etc.) can still

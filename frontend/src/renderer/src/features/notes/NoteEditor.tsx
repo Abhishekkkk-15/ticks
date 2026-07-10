@@ -198,13 +198,10 @@ function NoteEditor({
     setContextMenu({ x, y })
   }
 
-  const handleContextMenuAction = useCallback(
-    (action: string) => {
-      setActivePanel('ai')
-      setAutoTriggerAction(action)
-    },
-    []
-  )
+  const handleContextMenuAction = useCallback((action: string) => {
+    setActivePanel('ai')
+    setAutoTriggerAction(action)
+  }, [])
 
   const handleCloseContextMenu = useCallback(() => {
     setContextMenu(null)

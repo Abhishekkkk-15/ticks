@@ -42,7 +42,6 @@ function mapShortcutToAccelerator(shortcut: string): string {
     .join('+')
 }
 
-
 // Read highlighted (primary) selection on Linux without touching the clipboard.
 // Tries X11 (xclip) first, then Wayland (wl-paste), then gives up.
 function getLinuxPrimarySelection(): Promise<string> {
@@ -70,8 +69,8 @@ function getLinuxPrimarySelection(): Promise<string> {
 // synthetic copy so modifier keys don't corrupt it.
 function simulateCopyAndRead(oldClipboard: string): Promise<string> {
   return new Promise((resolve) => {
-    const RELEASE_DELAY = 500  // ms – wait for shortcut keys to be physically released
-    const READ_DELAY   = 350  // ms – wait for the OS copy to land in the clipboard
+    const RELEASE_DELAY = 500 // ms – wait for shortcut keys to be physically released
+    const READ_DELAY = 350 // ms – wait for the OS copy to land in the clipboard
 
     setTimeout(() => {
       let copyCmd = ''

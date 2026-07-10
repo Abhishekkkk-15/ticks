@@ -6,6 +6,7 @@ import { markdown } from '@codemirror/lang-markdown'
 import { languages } from '@codemirror/language-data'
 import { markdownKeymapExtension } from './markdownShortcuts'
 import { useSettings } from '../settings/SettingsContext'
+import { isLightTheme } from '../settings/themeUtils'
 
 export interface EditorSelection {
   text: string
@@ -29,6 +30,31 @@ interface MarkdownEditorProps {
 }
 
 const baseExtensions = [markdown({ codeLanguages: languages }), markdownKeymapExtension]
+
+// Overrides CodeMirror's built-in 'light'/'dark' chrome (background, gutters,
+// selection, cursor) with our theme's actual CSS variables, so all 7 app
+// themes (not just a generic dark/light split) are reflected in the editor —
+// registered after the base theme in the extensions array, so it wins for
+// any overlapping rule. Syntax token colors still come from the base 'dark'/
+// 'light' string theme, since those only meaningfully differ by light vs dark.
+const chromeTheme = EditorView.theme({
+  '&': {
+    backgroundColor: 'var(--color-neutral-900)',
+    color: 'var(--color-neutral-100)'
+  },
+  '.cm-content': { caretColor: 'var(--color-neutral-100)' },
+  '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--color-neutral-100)' },
+  '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection': {
+    backgroundColor: 'var(--color-neutral-700)'
+  },
+  '.cm-gutters': {
+    backgroundColor: 'transparent',
+    color: 'var(--color-neutral-600)',
+    border: 'none'
+  },
+  '.cm-activeLine': { backgroundColor: 'var(--color-neutral-800)' },
+  '.cm-activeLineGutter': { backgroundColor: 'transparent' }
+})
 
 function MarkdownEditor({
   value,
@@ -61,7 +87,7 @@ function MarkdownEditor({
   }, [settings?.editor_font, settings?.font_size])
 
   const extensions = useMemo(() => {
-    return [...baseExtensions, fontTheme]
+    return [...baseExtensions, fontTheme, chromeTheme]
   }, [fontTheme])
 
   function handleUpdate(viewUpdate: MinimalViewUpdate): void {
@@ -76,7 +102,7 @@ function MarkdownEditor({
       value={value}
       onChange={onChange}
       onUpdate={handleUpdate}
-      theme={settings?.theme === 'light' ? 'light' : 'dark'}
+      theme={isLightTheme(settings?.theme) ? 'light' : 'dark'}
       height="100%"
       extensions={extensions}
       basicSetup={{ foldGutter: false }}

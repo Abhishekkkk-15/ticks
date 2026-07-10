@@ -89,7 +89,7 @@ function FontPicker({ value, onChange }: FontPickerProps): React.JSX.Element {
     if (open) {
       setTimeout(() => searchRef.current?.focus(), 50)
     } else {
-      setQuery('')
+      Promise.resolve().then(() => setQuery(''))
     }
   }, [open])
 
@@ -110,10 +110,7 @@ function FontPicker({ value, onChange }: FontPickerProps): React.JSX.Element {
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center justify-between gap-2 rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm transition-colors hover:border-neutral-700 focus:border-neutral-600 focus:outline-none"
       >
-        <span
-          className="flex-1 truncate text-left text-neutral-200"
-          style={{ fontFamily: value }}
-        >
+        <span className="flex-1 truncate text-left text-neutral-200" style={{ fontFamily: value }}>
           {value || 'Select a font…'}
         </span>
         <ChevronDown

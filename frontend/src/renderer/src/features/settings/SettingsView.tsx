@@ -224,7 +224,10 @@ function SettingsView(): React.JSX.Element {
                       : 'border-neutral-800 bg-neutral-900/30'
                   }`}
                 >
-                  <div className="flex h-10 w-full items-center gap-1 rounded p-1.5" style={{ background: '#0a0a0a' }}>
+                  <div
+                    className="flex h-10 w-full items-center gap-1 rounded p-1.5"
+                    style={{ background: '#0a0a0a' }}
+                  >
                     <div className="h-full w-3 rounded" style={{ background: '#171717' }} />
                     <div className="h-full flex-1 rounded" style={{ background: '#262626' }} />
                   </div>
@@ -244,7 +247,10 @@ function SettingsView(): React.JSX.Element {
                       : 'border-neutral-800 bg-neutral-900/30'
                   }`}
                 >
-                  <div className="flex h-10 w-full items-center gap-1 rounded p-1.5" style={{ background: '#f5f5f5' }}>
+                  <div
+                    className="flex h-10 w-full items-center gap-1 rounded p-1.5"
+                    style={{ background: '#f5f5f5' }}
+                  >
                     <div className="h-full w-3 rounded" style={{ background: '#e5e5e5' }} />
                     <div className="h-full flex-1 rounded" style={{ background: '#d4d4d4' }} />
                   </div>
@@ -264,13 +270,18 @@ function SettingsView(): React.JSX.Element {
                       : 'border-neutral-800 bg-stone-900/10'
                   }`}
                 >
-                  <div className="flex h-10 w-full items-center gap-1 rounded p-1.5" style={{ background: '#1c1917' }}>
+                  <div
+                    className="flex h-10 w-full items-center gap-1 rounded p-1.5"
+                    style={{ background: '#1c1917' }}
+                  >
                     <div className="h-full w-3 rounded" style={{ background: '#292524' }} />
                     <div className="h-full flex-1 rounded" style={{ background: '#44403c' }} />
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-medium">Warm Cozy</span>
-                    {settings.theme === 'warm-dark' && <Check size={13} className="text-emerald-400" />}
+                    {settings.theme === 'warm-dark' && (
+                      <Check size={13} className="text-emerald-400" />
+                    )}
                   </div>
                 </button>
 
@@ -284,13 +295,18 @@ function SettingsView(): React.JSX.Element {
                       : 'border-neutral-800 bg-neutral-900/30 hover:border-green-800'
                   }`}
                 >
-                  <div className="flex h-10 w-full items-center gap-1 rounded p-1.5" style={{ background: '#0d1f12' }}>
+                  <div
+                    className="flex h-10 w-full items-center gap-1 rounded p-1.5"
+                    style={{ background: '#0d1f12' }}
+                  >
                     <div className="h-full w-3 rounded" style={{ background: '#142a19' }} />
                     <div className="h-full flex-1 rounded" style={{ background: '#1e3d26' }} />
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-medium">Forest</span>
-                    {settings.theme === 'forest-dark' && <Check size={13} className="text-green-400" />}
+                    {settings.theme === 'forest-dark' && (
+                      <Check size={13} className="text-green-400" />
+                    )}
                   </div>
                 </button>
 
@@ -304,13 +320,18 @@ function SettingsView(): React.JSX.Element {
                       : 'border-neutral-800 bg-neutral-900/30 hover:border-blue-800'
                   }`}
                 >
-                  <div className="flex h-10 w-full items-center gap-1 rounded p-1.5" style={{ background: '#07111f' }}>
+                  <div
+                    className="flex h-10 w-full items-center gap-1 rounded p-1.5"
+                    style={{ background: '#07111f' }}
+                  >
                     <div className="h-full w-3 rounded" style={{ background: '#0d1b2e' }} />
                     <div className="h-full flex-1 rounded" style={{ background: '#152844' }} />
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-medium">Ocean</span>
-                    {settings.theme === 'ocean-blue' && <Check size={13} className="text-blue-400" />}
+                    {settings.theme === 'ocean-blue' && (
+                      <Check size={13} className="text-blue-400" />
+                    )}
                   </div>
                 </button>
 
@@ -324,7 +345,10 @@ function SettingsView(): React.JSX.Element {
                       : 'border-neutral-800 bg-neutral-900/30 hover:border-sky-800'
                   }`}
                 >
-                  <div className="flex h-10 w-full items-center gap-1 rounded p-1.5" style={{ background: '#2e3440' }}>
+                  <div
+                    className="flex h-10 w-full items-center gap-1 rounded p-1.5"
+                    style={{ background: '#2e3440' }}
+                  >
                     <div className="h-full w-3 rounded" style={{ background: '#3b4252' }} />
                     <div className="h-full flex-1 rounded" style={{ background: '#434c5e' }} />
                   </div>
@@ -344,18 +368,22 @@ function SettingsView(): React.JSX.Element {
                       : 'border-neutral-800 bg-neutral-900/30 hover:border-amber-700'
                   }`}
                 >
-                  <div className="flex h-10 w-full items-center gap-1 rounded p-1.5" style={{ background: '#fdf6e3' }}>
+                  <div
+                    className="flex h-10 w-full items-center gap-1 rounded p-1.5"
+                    style={{ background: '#fdf6e3' }}
+                  >
                     <div className="h-full w-3 rounded" style={{ background: '#eee8d5' }} />
                     <div className="h-full flex-1 rounded" style={{ background: '#ddd6c1' }} />
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-medium">Solarized</span>
-                    {settings.theme === 'solarized-light' && <Check size={13} className="text-amber-500" />}
+                    {settings.theme === 'solarized-light' && (
+                      <Check size={13} className="text-amber-500" />
+                    )}
                   </div>
                 </button>
               </div>
             </section>
-
 
             {/* Launch Workspace */}
             <section className="space-y-2">
