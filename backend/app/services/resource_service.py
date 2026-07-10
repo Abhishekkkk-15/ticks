@@ -140,6 +140,17 @@ def create_file_resource(
     return _to_resource(entry)
 
 
+def get_resource_file_path(workspace_id: str, resource_id: str) -> Path | None:
+    """Return the stored binary file path for a resource, or None if not found."""
+    workspace_dir = get_workspace_dir(workspace_id)
+    resource_dir = _resource_dir(workspace_dir, resource_id)
+    if not resource_dir.exists():
+        return None
+    # The file is saved as original.<ext> (e.g. original.png, original.mp4)
+    matches = list(resource_dir.glob("original.*"))
+    return matches[0] if matches else None
+
+
 def delete_resource(workspace_id: str, resource_id: str) -> None:
     workspace_dir = get_workspace_dir(workspace_id)
     entries = _read_all(workspace_dir)

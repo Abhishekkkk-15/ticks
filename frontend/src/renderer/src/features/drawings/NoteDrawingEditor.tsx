@@ -67,7 +67,10 @@ function NoteDrawingEditor({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-neutral-950">
+    <div
+      className="fixed inset-0 z-50 flex flex-col"
+      style={{ background: 'rgb(10,10,10)' }} // hardcoded: theme vars can be transparent in Electron frameless windows
+    >
       <div className="flex shrink-0 items-center justify-between border-b border-neutral-800 px-3 py-2">
         <span className="text-sm font-medium text-neutral-200">{title}</span>
         <div className="flex items-center gap-2">

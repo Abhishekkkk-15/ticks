@@ -3,6 +3,7 @@ import {
   Copy,
   Download,
   Image,
+  ImagePlus,
   Paperclip,
   Pencil,
   Pin,
@@ -26,6 +27,7 @@ import type { AiContextMenuPosition } from '../ai/AiContextMenu'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Drawing } from '../drawings/types'
 import type { Note } from './types'
+import { uploadFileResource } from '../resources/api'
 
 interface NoteEditorProps {
   workspaceId: string
@@ -71,6 +73,8 @@ function NoteEditor({
   const [contextMenu, setContextMenu] = useState<AiContextMenuPosition | null>(null)
   const [autoTriggerAction, setAutoTriggerAction] = useState<string | null>(null)
   const editorAreaRef = useRef<HTMLDivElement>(null)
+  const mediaInputRef = useRef<HTMLInputElement>(null)
+  const [mediaUploading, setMediaUploading] = useState(false)
 
   // Reset local draft state when a different note finishes loading, without
   // the extra render + flicker an effect-based sync would cause.
@@ -136,6 +140,39 @@ function NoteEditor({
   function handleInsertDrawingEmbed(drawing: Drawing): void {
     const separator = content.endsWith('\n') || content === '' ? '' : '\n\n'
     onChange(`${content}${separator}![${drawing.title}](drawing://${drawing.id})\n`)
+  }
+
+  async function handleMediaUpload(e: React.ChangeEvent<HTMLInputElement>): Promise<void> {
+    const file = e.target.files?.[0]
+    if (!file || !meta) return
+    // Reset so the same file can be picked again
+    e.target.value = ''
+    setMediaUploading(true)
+    try {
+      const buffer = await file.arrayBuffer()
+      const data = new Uint8Array(buffer)
+      const isVideo = file.type.startsWith('video/')
+      const resource = await uploadFileResource(
+        workspaceId,
+        meta.id,
+        'file',
+        file.name,
+        file.name,
+        data
+      )
+      // Build the API URL for the resource file
+      const baseUrl = await window.api.getApiBaseUrl()
+      const url = `${baseUrl}/workspaces/${workspaceId}/notes/${meta.id}/resources/${resource.id}/file`
+      const separator = content.endsWith('\n') || content === '' ? '' : '\n\n'
+      const embed = isVideo
+        ? `<video controls src="${url}" style="max-width:100%"></video>`
+        : `![${file.name}](${url})`
+      onChange(`${content}${separator}${embed}\n`)
+    } catch (err) {
+      console.error('Media upload failed:', err)
+    } finally {
+      setMediaUploading(false)
+    }
   }
 
   function handleReplaceSelection(result: string): void {
@@ -256,6 +293,23 @@ function NoteEditor({
           >
             <Download size={16} />
           </button>
+          {/* Upload Image / Video */}
+          <button
+            type="button"
+            onClick={() => mediaInputRef.current?.click()}
+            title={mediaUploading ? 'Uploading…' : 'Insert Image / Video'}
+            disabled={mediaUploading}
+            className={`${TOOLBAR_BTN} ${mediaUploading ? 'animate-pulse text-violet-400' : TOOLBAR_BTN_IDLE}`}
+          >
+            <ImagePlus size={16} />
+          </button>
+          <input
+            ref={mediaInputRef}
+            type="file"
+            accept="image/*,video/*"
+            className="hidden"
+            onChange={handleMediaUpload}
+          />
           <button
             type="button"
             onClick={() => setActivePanel(activePanel === 'ai' ? null : 'ai')}
