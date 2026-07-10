@@ -56,6 +56,18 @@ export function SettingsProvider({ children }: { children: React.ReactNode }): R
     root.classList.add(`theme-${settings.theme}`)
   }, [settings?.theme])
 
+  // Apply font & size globally via CSS custom properties so the whole
+  // app (sidebar, toolbar, preview, etc.) picks up the change immediately.
+  useEffect(() => {
+    const root = document.documentElement
+    if (settings?.editor_font) {
+      root.style.setProperty('--app-font', settings.editor_font)
+    }
+    if (settings?.font_size) {
+      root.style.setProperty('--app-font-size', `${settings.font_size}px`)
+    }
+  }, [settings?.editor_font, settings?.font_size])
+
   const updateSettings = async (update: SettingsUpdate): Promise<void> => {
     try {
       const updated = await updateSettingsApi(update)

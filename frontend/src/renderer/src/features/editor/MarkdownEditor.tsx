@@ -39,11 +39,13 @@ function MarkdownEditor({
   const { settings } = useSettings()
 
   const fontTheme = useMemo(() => {
-    const font = settings?.editor_font || 'monospace'
-    const size = settings?.font_size || 14
+    // Use the same CSS variables that SettingsContext injects onto :root,
+    // so the editor always matches whatever font the rest of the app uses.
+    const font = `var(--app-font, ${settings?.editor_font || 'monospace'})`
+    const size = `var(--app-font-size, ${settings?.font_size || 14}px)`
     return EditorView.theme({
       '&.cm-editor': {
-        fontSize: `${size}px`,
+        fontSize: size,
         height: '100%'
       },
       '.cm-content': {
