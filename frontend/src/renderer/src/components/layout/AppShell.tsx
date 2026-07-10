@@ -27,7 +27,7 @@ function AppShell({
   onToggleSidebar
 }: AppShellProps): React.JSX.Element {
   return (
-    <div className="flex h-screen bg-neutral-950 text-neutral-100 overflow-hidden relative">
+    <div className="flex h-full bg-neutral-950 text-neutral-100 overflow-hidden relative">
       <motion.div
         animate={{ width: sidebarCollapsed ? 0 : 256 }}
         transition={{ type: 'spring', stiffness: 350, damping: 30 }}

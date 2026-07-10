@@ -17,6 +17,20 @@ const api = {
     return (): void => {
       ipcRenderer.off('shortcut:capture-text', listener)
     }
+  },
+  platform: process.platform,
+  windowControls: {
+    minimize: (): void => ipcRenderer.send('window:minimize'),
+    toggleMaximize: (): void => ipcRenderer.send('window:toggle-maximize'),
+    close: (): void => ipcRenderer.send('window:close'),
+    isMaximized: (): Promise<boolean> => ipcRenderer.invoke('window:is-maximized'),
+    onMaximizedChange: (callback: (maximized: boolean) => void): (() => void) => {
+      const listener = (_event: unknown, maximized: boolean): void => callback(maximized)
+      ipcRenderer.on('window:maximized-changed', listener)
+      return (): void => {
+        ipcRenderer.off('window:maximized-changed', listener)
+      }
+    }
   }
 }
 

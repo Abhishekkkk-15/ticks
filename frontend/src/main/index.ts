@@ -138,6 +138,11 @@ function registerGlobalCapture(): void {
   }
 }
 
+// macOS keeps its native traffic-light frame (hiddenInset); Windows/Linux
+// get a frameless window so the renderer can draw its own title bar.
+const ZOOM_STEP = 0.5
+const ZOOM_LIMIT = 4
+
 function createWindow(): void {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
@@ -147,7 +152,8 @@ function createWindow(): void {
     minHeight: 600,
     show: false,
     autoHideMenuBar: true,
-    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
+    frame: process.platform === 'darwin',
+    ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset' as const } : {}),
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -157,6 +163,24 @@ function createWindow(): void {
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
+  })
+
+  mainWindow.on('maximize', () => mainWindow.webContents.send('window:maximized-changed', true))
+  mainWindow.on('unmaximize', () => mainWindow.webContents.send('window:maximized-changed', false))
+
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.type !== 'keyDown' || !(input.control || input.meta)) return
+    const zoom = mainWindow.webContents.getZoomLevel()
+    if (input.key === '=' || input.key === '+') {
+      event.preventDefault()
+      mainWindow.webContents.setZoomLevel(Math.min(zoom + ZOOM_STEP, ZOOM_LIMIT))
+    } else if (input.key === '-') {
+      event.preventDefault()
+      mainWindow.webContents.setZoomLevel(Math.max(zoom - ZOOM_STEP, -ZOOM_LIMIT))
+    } else if (input.key === '0') {
+      event.preventDefault()
+      mainWindow.webContents.setZoomLevel(0)
+    }
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -210,6 +234,22 @@ if (!gotSingleInstanceLock) {
 
     ipcMain.on('settings:updated', () => {
       registerGlobalCapture()
+    })
+
+    ipcMain.on('window:minimize', (event) => {
+      BrowserWindow.fromWebContents(event.sender)?.minimize()
+    })
+    ipcMain.on('window:toggle-maximize', (event) => {
+      const win = BrowserWindow.fromWebContents(event.sender)
+      if (!win) return
+      if (win.isMaximized()) win.unmaximize()
+      else win.maximize()
+    })
+    ipcMain.on('window:close', (event) => {
+      BrowserWindow.fromWebContents(event.sender)?.close()
+    })
+    ipcMain.handle('window:is-maximized', (event) => {
+      return BrowserWindow.fromWebContents(event.sender)?.isMaximized() ?? false
     })
 
     startBackend()

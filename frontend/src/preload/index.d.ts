@@ -7,6 +7,14 @@ interface Api {
   pickResourceFile: () => Promise<{ name: string; data: Uint8Array } | null>
   notifySettingsUpdated: () => void
   onCaptureText: (callback: (text: string) => void) => () => void
+  platform: NodeJS.Platform
+  windowControls: {
+    minimize: () => void
+    toggleMaximize: () => void
+    close: () => void
+    isMaximized: () => Promise<boolean>
+    onMaximizedChange: (callback: (maximized: boolean) => void) => () => void
+  }
 }
 
 declare global {

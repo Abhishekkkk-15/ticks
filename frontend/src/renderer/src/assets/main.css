@@ -101,3 +101,24 @@ body {
 .range-slider::-moz-range-track {
   background: transparent;
 }
+
+/* Minimal themed scrollbar instead of the OS default. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: var(--color-neutral-700);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-neutral-600);
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}

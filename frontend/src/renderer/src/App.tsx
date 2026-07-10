@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Settings as SettingsIcon, X } from 'lucide-react'
 import AppShell from './components/layout/AppShell'
+import TitleBar from './components/layout/TitleBar'
 import DrawingView from './features/drawings/DrawingView'
 import NoteEditor from './features/notes/NoteEditor'
 import TabBar from './features/notes/TabBar'
@@ -33,14 +34,21 @@ function App(): React.JSX.Element {
 
   const { settings } = useSettings()
 
+  // Only auto-select the default workspace once on startup — without this
+  // guard, backing out to the workspace list (selectedWorkspace -> null)
+  // would immediately re-trigger this effect and snap the user right back in.
+  const autoSelectedDefaultRef = useRef(false)
+
   useEffect(() => {
     if (
+      !autoSelectedDefaultRef.current &&
       !selectedWorkspace &&
       settings?.default_workspace_id &&
       workspacesApi.workspaces.length > 0
     ) {
       const defaultWs = workspacesApi.workspaces.find((w) => w.id === settings.default_workspace_id)
       if (defaultWs) {
+        autoSelectedDefaultRef.current = true
         Promise.resolve().then(() => {
           setSelectedWorkspace(defaultWs)
         })
@@ -170,135 +178,140 @@ function App(): React.JSX.Element {
   const activeTab = tabs.find((t) => t.note.id === activeTabId) ?? null
 
   return (
-    <AppShell
-      selectedNoteId={activeTabId ?? undefined}
-      onOpenNote={openNote}
-      workspacesApi={workspacesApi}
-      selectedWorkspace={selectedWorkspace}
-      onSelectWorkspace={setSelectedWorkspace}
-      sidebarCollapsed={sidebarCollapsed}
-      onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
-    >
-      <div className="flex h-full flex-col">
-        <div className="flex shrink-0 items-center gap-1 border-b border-neutral-800 px-3 py-2">
-          <button
-            type="button"
-            onClick={() => setView('notes')}
-            className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-              view === 'notes'
-                ? 'bg-neutral-800 text-neutral-100'
-                : 'text-neutral-500 hover:text-neutral-300'
-            }`}
-          >
-            Notes
-          </button>
-          <button
-            type="button"
-            onClick={() => setView('whiteboard')}
-            className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-              view === 'whiteboard'
-                ? 'bg-neutral-800 text-neutral-100'
-                : 'text-neutral-500 hover:text-neutral-300'
-            }`}
-          >
-            Whiteboard
-          </button>
-          <span className="ml-auto text-xs text-neutral-600">Ctrl+Shift+P for commands</span>
-          <button
-            type="button"
-            onClick={() => setView('settings')}
-            title="Settings"
-            aria-pressed={view === 'settings'}
-            className={`rounded-md p-1.5 ${
-              view === 'settings'
-                ? 'bg-neutral-800 text-neutral-100'
-                : 'text-neutral-500 hover:bg-neutral-800 hover:text-neutral-300'
-            }`}
-          >
-            <SettingsIcon size={14} />
-          </button>
-        </div>
-        {view === 'notes' && (
-          <TabBar
-            tabs={tabs}
-            activeId={activeTabId}
-            activeDirty={activeDirty}
-            onSelect={setActiveTabId}
-            onClose={closeTab}
-            onReorder={reorderTabs}
-          />
-        )}
-        <div className="min-h-0 flex-1">
-          {view === 'settings' ? (
-            <SettingsView />
-          ) : view === 'whiteboard' ? (
-            <DrawingView />
-          ) : activeTab ? (
-            <NoteEditor
-              key={activeTab.note.id}
-              workspaceId={activeTab.workspaceId}
-              noteId={activeTab.note.id}
-              onDeleted={() => closeTab(activeTab.note.id)}
-              onDuplicated={(note) => openNote(activeTab.workspaceId, note)}
-              onRenamed={renameTab}
-              onSaveStatusChange={(status: SaveStatus) => setActiveDirty(status === 'saving')}
-            />
-          ) : (
-            <EmptyState
-              selectedWorkspaceName={selectedWorkspace?.name ?? null}
-              onOpenCommandPalette={() => setPaletteOpen(true)}
-              onNewNote={handleCreateNote}
-              onNewWorkspace={handleCreateWorkspace}
-              onOpenWhiteboard={() => setView('whiteboard')}
-            />
-          )}
-        </div>
+    <div className="flex h-screen flex-col">
+      <TitleBar />
+      <div className="min-h-0 flex-1">
+        <AppShell
+          selectedNoteId={activeTabId ?? undefined}
+          onOpenNote={openNote}
+          workspacesApi={workspacesApi}
+          selectedWorkspace={selectedWorkspace}
+          onSelectWorkspace={setSelectedWorkspace}
+          sidebarCollapsed={sidebarCollapsed}
+          onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
+        >
+          <div className="flex h-full flex-col">
+            <div className="flex shrink-0 items-center gap-1 border-b border-neutral-800 px-3 py-2">
+              <button
+                type="button"
+                onClick={() => setView('notes')}
+                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                  view === 'notes'
+                    ? 'bg-neutral-800 text-neutral-100'
+                    : 'text-neutral-500 hover:text-neutral-300'
+                }`}
+              >
+                Notes
+              </button>
+              <button
+                type="button"
+                onClick={() => setView('whiteboard')}
+                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                  view === 'whiteboard'
+                    ? 'bg-neutral-800 text-neutral-100'
+                    : 'text-neutral-500 hover:text-neutral-300'
+                }`}
+              >
+                Whiteboard
+              </button>
+              <span className="ml-auto text-xs text-neutral-600">Ctrl+Shift+P for commands</span>
+              <button
+                type="button"
+                onClick={() => setView('settings')}
+                title="Settings"
+                aria-pressed={view === 'settings'}
+                className={`rounded-md p-1.5 ${
+                  view === 'settings'
+                    ? 'bg-neutral-800 text-neutral-100'
+                    : 'text-neutral-500 hover:bg-neutral-800 hover:text-neutral-300'
+                }`}
+              >
+                <SettingsIcon size={14} />
+              </button>
+            </div>
+            {view === 'notes' && (
+              <TabBar
+                tabs={tabs}
+                activeId={activeTabId}
+                activeDirty={activeDirty}
+                onSelect={setActiveTabId}
+                onClose={closeTab}
+                onReorder={reorderTabs}
+              />
+            )}
+            <div className="min-h-0 flex-1">
+              {view === 'settings' ? (
+                <SettingsView />
+              ) : view === 'whiteboard' ? (
+                <DrawingView />
+              ) : activeTab ? (
+                <NoteEditor
+                  key={activeTab.note.id}
+                  workspaceId={activeTab.workspaceId}
+                  noteId={activeTab.note.id}
+                  onDeleted={() => closeTab(activeTab.note.id)}
+                  onDuplicated={(note) => openNote(activeTab.workspaceId, note)}
+                  onRenamed={renameTab}
+                  onSaveStatusChange={(status: SaveStatus) => setActiveDirty(status === 'saving')}
+                />
+              ) : (
+                <EmptyState
+                  selectedWorkspaceName={selectedWorkspace?.name ?? null}
+                  onOpenCommandPalette={() => setPaletteOpen(true)}
+                  onNewNote={handleCreateNote}
+                  onNewWorkspace={handleCreateWorkspace}
+                  onOpenWhiteboard={() => setView('whiteboard')}
+                />
+              )}
+            </div>
+          </div>
+
+          <AnimatePresence>
+            {paletteOpen && (
+              <CommandPalette
+                workspacesApi={workspacesApi}
+                activeWorkspaceId={selectedWorkspace?.id ?? activeTab?.workspaceId ?? null}
+                onSelectWorkspace={setSelectedWorkspace}
+                onOpenNote={openNote}
+                onClose={() => setPaletteOpen(false)}
+              />
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {captureNotification && (
+              <motion.div
+                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 15, scale: 0.95 }}
+                className="fixed bottom-4 right-4 z-50 flex items-center gap-3 rounded-lg border border-neutral-800 bg-neutral-900/95 px-4 py-3 shadow-2xl backdrop-blur-md"
+              >
+                <span className="text-xs text-neutral-300">Text captured to note!</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const text = captureNotification
+                    setCaptureNotification(null)
+                    setView('notes')
+                    window.dispatchEvent(new CustomEvent('editor:open-ai', { detail: { text } }))
+                  }}
+                  className="rounded bg-amber-500 hover:bg-amber-600 px-2 py-1 text-[10px] font-medium text-neutral-950 transition-colors"
+                >
+                  Enhance with AI
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCaptureNotification(null)}
+                  className="text-neutral-500 hover:text-neutral-300 transition-colors p-0.5 rounded hover:bg-neutral-800"
+                >
+                  <X size={12} />
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </AppShell>
       </div>
-
-      <AnimatePresence>
-        {paletteOpen && (
-          <CommandPalette
-            workspacesApi={workspacesApi}
-            activeWorkspaceId={selectedWorkspace?.id ?? activeTab?.workspaceId ?? null}
-            onSelectWorkspace={setSelectedWorkspace}
-            onOpenNote={openNote}
-            onClose={() => setPaletteOpen(false)}
-          />
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {captureNotification && (
-          <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 15, scale: 0.95 }}
-            className="fixed bottom-4 right-4 z-50 flex items-center gap-3 rounded-lg border border-neutral-800 bg-neutral-900/95 px-4 py-3 shadow-2xl backdrop-blur-md"
-          >
-            <span className="text-xs text-neutral-300">Text captured to note!</span>
-            <button
-              type="button"
-              onClick={() => {
-                const text = captureNotification
-                setCaptureNotification(null)
-                setView('notes')
-                window.dispatchEvent(new CustomEvent('editor:open-ai', { detail: { text } }))
-              }}
-              className="rounded bg-amber-500 hover:bg-amber-600 px-2 py-1 text-[10px] font-medium text-neutral-950 transition-colors"
-            >
-              Enhance with AI
-            </button>
-            <button
-              type="button"
-              onClick={() => setCaptureNotification(null)}
-              className="text-neutral-500 hover:text-neutral-300 transition-colors p-0.5 rounded hover:bg-neutral-800"
-            >
-              <X size={12} />
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </AppShell>
+    </div>
   )
 }
 

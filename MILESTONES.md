@@ -274,6 +274,38 @@ the real app (not just unit-level checks) before moving on.
     `getBoundingClientRect()` diffs between sections (0px before the fix,
     48px after) and re-screenshotted Settings and the empty state.
 
+**Follow-up features (not part of the original milestone plan):**
+- **Custom window chrome**: macOS keeps its native traffic-light frame
+  (`titleBarStyle: 'hiddenInset'`); Windows/Linux now get `frame: false`
+  with a renderer-drawn `TitleBar.tsx` (drag region + minimize/maximize/
+  restore/close), wired through new `ipcMain` handlers
+  (`window:minimize`/`window:toggle-maximize`/`window:close`/
+  `window:is-maximized`) and a `windowControls` object on the preload
+  `api`. Maximize state is pushed to the renderer via a
+  `window:maximized-changed` IPC event so the button icon flips between
+  "maximize" and "restore" in sync with the real `BrowserWindow` state
+  (also catches OS-level double-click/drag maximize, not just the
+  button).
+- **Zoom shortcuts**: `Ctrl`/`Cmd` + `=`/`-`/`0` handled entirely in the
+  main process via `webContents.on('before-input-event', ...)` — no
+  renderer or preload changes needed. Clamped to ±4 zoom levels.
+- **Minimal scrollbar**: themed `::-webkit-scrollbar` rules in
+  `main.css` using the existing `var(--color-neutral-700)` token, so it
+  follows Dark/Light/Warm-Cozy automatically.
+- **Bug fix**: with a `default_workspace_id` set, clicking the sidebar's
+  back arrow (`onSelectWorkspace(null)`) was immediately overridden back
+  into that workspace, because `App.tsx`'s auto-select effect only
+  guarded on `!selectedWorkspace` — indistinguishable from "user backed
+  out." Fixed with a `useRef` flag so the auto-select only ever fires
+  once, on startup.
+- Verified against the real app: the back-arrow bug fix (confirmed
+  landing on `WorkspaceList` and staying there), maximize/restore via
+  the actual button (checked against real `BrowserWindow.isMaximized()`,
+  not just DOM state), zoom via `sendInputEvent` (a real native input,
+  unlike a synthetic renderer `KeyboardEvent` which never reaches
+  `before-input-event`) with before/after `getZoomLevel()` values, and a
+  themed scrollbar rendering on a long note's preview pane.
+
 ### Known follow-ups from completed milestones (not yet fixed)
 
 - `useWorkspaces` has no retry on its initial fetch — if the backend is
