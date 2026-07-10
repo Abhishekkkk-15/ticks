@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { createWorkspace, deleteWorkspace, listWorkspaces } from './api'
 import type { Workspace } from './types'
 
-interface UseWorkspacesResult {
+export interface UseWorkspacesResult {
   workspaces: Workspace[]
   loading: boolean
   error: string | null

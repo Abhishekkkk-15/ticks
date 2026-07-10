@@ -5,6 +5,11 @@ export interface Note {
   updated_at: string
   favorite: boolean
   pinned: boolean
+  folder: string | null
+  tags: string[]
+  trashed: boolean
+  trashed_at: string | null
+  opened_at: string | null
 }
 
 export interface NoteDetail extends Note {

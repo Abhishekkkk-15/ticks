@@ -111,6 +111,45 @@ the real app (not just unit-level checks) before moving on.
       (sidebar: folders/tags/favorites/recent/pinned). Search is built to
       extend to them once that data exists rather than adding unused
       fields now.
+11. **Command palette, tabs, and the rest of the sidebar.** The full
+    original scope landed in one pass:
+    - **Data model**: notes gained `folder` (a "/"-separated path,
+      organizational only — doesn't move the `.md` file on disk), `tags`,
+      and a soft-delete `trashed`/`trashed_at` pair. `opened_at` is bumped
+      every time a note is fetched for editing, powering Recent.
+      `DELETE /notes/{id}` is now a soft delete (moves to Trash); a new
+      `DELETE /notes/{id}/permanent` does the real removal, with
+      `POST /notes/{id}/restore` to undo. New endpoints:
+      `GET /notes/recent`, `GET /notes/trash`, `PATCH /notes/{id}/folder`,
+      `PATCH /notes/{id}/tags`, `GET /folders`, `GET /tags`; `list`/`search`
+      gained a `pinned_only` filter alongside the existing `favorite_only`.
+    - **Tabs**: `App.tsx` now owns `openTabs`/`activeTabId` instead of a
+      single open note. A new `TabBar` supports switching, closing via the
+      `×` button, middle-click close (`onAuxClick`, button 1), and
+      drag-to-reorder (native HTML5 DnD — the handlers only track index
+      state, not `dataTransfer` payloads). Only the active tab's editor is
+      mounted, so the "unsaved" dot only reflects the active tab's live
+      save status (see follow-up).
+    - **Sidebar rework**: `WorkspaceList` and workspace selection moved up
+      into `App.tsx` (via a lifted `useWorkspaces()` call) so the command
+      palette can search/switch workspaces from outside the sidebar.
+      `NoteList` gained a view switcher (All/Favorites/Pinned/Recent/Trash)
+      and folder/tag filter dropdowns; Trash view swaps the normal
+      favorite/delete row actions for Restore/permanently-delete.
+    - **Organize panel**: a note-header toggle (`Tag` icon) for setting a
+      note's folder and comma-separated tags.
+    - **Command palette**: `Ctrl+Shift+P` opens an overlay that substring-
+      matches (not true fuzzy matching — no new dependency for that, same
+      approach the rest of the app already uses) over: switch-workspace
+      commands, open-note commands for the active workspace, "New note",
+      and "New workspace"; arrow keys + Enter to navigate/execute.
+    - Verified against the real app end-to-end: multiple tabs open/switch/
+      close (both via `×` and middle-click), the unsaved dot appearing
+      while typing and clearing once autosaved, the palette opening via
+      the shortcut and reopening a closed note by search, all four
+      non-default sidebar views (Favorites/Pinned/Recent/Trash) showing
+      the right notes, the Organize panel persisting folder/tags, the
+      folder filter narrowing correctly, and trash → restore working.
 
 ### Known follow-ups from completed milestones (not yet fixed)
 
@@ -154,17 +193,34 @@ the real app (not just unit-level checks) before moving on.
   underlying `exportToBlob` path is the same one Milestone 8 already
   verified visually, so this is a test-automation gap, not an unverified
   code path — but a real non-empty drawing embed hasn't been eyeballed.
+- The Organize panel (folder/tags) and the sidebar's `NoteList` are
+  separate component trees with independent `useNotes` state, same as the
+  pre-existing title/favorite/pin sync gap above — setting a note's folder
+  or tags via the Organize panel doesn't refresh the sidebar's folder/tag
+  filter dropdowns until you navigate back to the workspace list and back
+  in. Same root cause, same deferral reasoning (would need lifting note
+  state up to `App`).
+- Tab drag-to-reorder only carries an in-memory index (the drag handlers
+  never read/write `dataTransfer`), so it can't be dragged in from or out
+  to anything outside the tab bar — reordering within the bar is the only
+  supported interaction, which is all Milestone 11 asked for.
+- The tab bar's "unsaved" dot only reflects the *active* tab's live save
+  status — only the active tab's `NoteEditor`/`useNoteEditor` is mounted,
+  so background tabs have no live save-status to show a dot for. Showing
+  per-tab dirty state for inactive tabs would need lifting the debounced-
+  save logic out of `NoteEditor` to a shared place; deferred as
+  disproportionate to what Milestone 11 asked for.
+- The command palette's "New workspace" action creates it but doesn't
+  auto-select it (the created workspace shows up in `WorkspaceList` like
+  any other) — `useWorkspaces().create` only returns `void` today. Wiring
+  it to return the created workspace so the palette can switch to it
+  immediately was left as a small follow-up rather than changing that
+  hook's shared contract mid-milestone.
+- Command palette matching is substring-only (same approach as the rest of
+  the app's search), not true fuzzy matching — no fuzzy-match library is
+  installed, and adding one for this alone seemed like overkill.
 
 ## Remaining
-
-### 11. Command palette
-
-- `Ctrl+Shift+P`, VS Code-style, everything reachable through it.
-- Rest of the sidebar: folders, tags, favorites, recent, trash, pinned.
-- Optional nested folder structure within a workspace (e.g.
-  `System Design/networking_notes`, `database_notes`) — user-optional.
-- Tabs: multiple open notes, middle-click to close, unsaved indicator, drag
-  to reorder — VS Code-like.
 
 ### 12. AI API integration
 

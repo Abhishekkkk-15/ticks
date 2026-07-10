@@ -82,24 +82,34 @@ def note_exists(workspace_id: str, note_id: str) -> bool:
     return any(e["id"] == note_id for e in _read_all(workspace_dir))
 
 
-def list_notes(workspace_id: str, favorite_only: bool = False) -> list[NoteListItem]:
+def list_notes(
+    workspace_id: str, favorite_only: bool = False, pinned_only: bool = False
+) -> list[NoteListItem]:
     workspace_dir = get_workspace_dir(workspace_id)
-    entries = _sort(_read_all(workspace_dir))
+    entries = _sort([e for e in _read_all(workspace_dir) if not e["trashed"]])
     if favorite_only:
         entries = [e for e in entries if e["favorite"]]
+    if pinned_only:
+        entries = [e for e in entries if e["pinned"]]
     return [_to_list_item(workspace_dir, e) for e in entries]
 
 
-def search_notes(workspace_id: str, query: str, favorite_only: bool = False) -> list[NoteListItem]:
+def search_notes(
+    workspace_id: str, query: str, favorite_only: bool = False, pinned_only: bool = False
+) -> list[NoteListItem]:
     query = query.strip()
     if not query:
-        return list_notes(workspace_id, favorite_only=favorite_only)
+        return list_notes(workspace_id, favorite_only=favorite_only, pinned_only=pinned_only)
 
     workspace_dir = get_workspace_dir(workspace_id)
     lower_query = query.lower()
     matches = []
     for entry in _read_all(workspace_dir):
+        if entry["trashed"]:
+            continue
         if favorite_only and not entry["favorite"]:
+            continue
+        if pinned_only and not entry["pinned"]:
             continue
         if lower_query in entry["title"].lower():
             matches.append(entry)
@@ -110,9 +120,40 @@ def search_notes(workspace_id: str, query: str, favorite_only: bool = False) -> 
     return [_to_list_item(workspace_dir, e, query) for e in _sort(matches)]
 
 
+def list_recent(workspace_id: str, limit: int = 20) -> list[NoteListItem]:
+    workspace_dir = get_workspace_dir(workspace_id)
+    entries = [e for e in _read_all(workspace_dir) if e["opened_at"] and not e["trashed"]]
+    entries.sort(key=lambda e: e["opened_at"], reverse=True)
+    return [_to_list_item(workspace_dir, e) for e in entries[:limit]]
+
+
+def list_trash(workspace_id: str) -> list[NoteListItem]:
+    workspace_dir = get_workspace_dir(workspace_id)
+    entries = [e for e in _read_all(workspace_dir) if e["trashed"]]
+    entries.sort(key=lambda e: e["trashed_at"], reverse=True)
+    return [_to_list_item(workspace_dir, e) for e in entries]
+
+
+def list_folders(workspace_id: str) -> list[str]:
+    workspace_dir = get_workspace_dir(workspace_id)
+    folders = {e["folder"] for e in _read_all(workspace_dir) if e["folder"]}
+    return sorted(folders)
+
+
+def list_tags(workspace_id: str) -> list[str]:
+    workspace_dir = get_workspace_dir(workspace_id)
+    tags: set[str] = set()
+    for entry in _read_all(workspace_dir):
+        tags.update(entry["tags"])
+    return sorted(tags)
+
+
 def get_note(workspace_id: str, note_id: str) -> NoteDetail:
     workspace_dir = get_workspace_dir(workspace_id)
-    entry = _find(_read_all(workspace_dir), note_id)
+    entries = _read_all(workspace_dir)
+    entry = _find(entries, note_id)
+    entry["opened_at"] = datetime.now(UTC).isoformat()
+    _write_all(workspace_dir, entries)
     content = _note_path(workspace_dir, note_id).read_text()
     return NoteDetail(**entry, content=content)
 
@@ -132,6 +173,11 @@ def create_note(workspace_id: str, data: NoteCreate) -> NoteDetail:
         "updated_at": now,
         "favorite": False,
         "pinned": False,
+        "folder": None,
+        "tags": [],
+        "trashed": False,
+        "trashed_at": None,
+        "opened_at": None,
     }
 
     entries = _read_all(workspace_dir)
@@ -178,6 +224,28 @@ def set_flags(workspace_id: str, note_id: str, favorite: bool | None, pinned: bo
     return _to_note(entry)
 
 
+def set_folder(workspace_id: str, note_id: str, folder: str | None) -> Note:
+    folder = folder.strip("/") if folder else None
+    workspace_dir = get_workspace_dir(workspace_id)
+    entries = _read_all(workspace_dir)
+    entry = _find(entries, note_id)
+    entry["folder"] = folder or None
+    entry["updated_at"] = datetime.now(UTC).isoformat()
+    _write_all(workspace_dir, entries)
+    return _to_note(entry)
+
+
+def set_tags(workspace_id: str, note_id: str, tags: list[str]) -> Note:
+    cleaned = sorted({t.strip() for t in tags if t.strip()})
+    workspace_dir = get_workspace_dir(workspace_id)
+    entries = _read_all(workspace_dir)
+    entry = _find(entries, note_id)
+    entry["tags"] = cleaned
+    entry["updated_at"] = datetime.now(UTC).isoformat()
+    _write_all(workspace_dir, entries)
+    return _to_note(entry)
+
+
 def duplicate_note(workspace_id: str, note_id: str) -> NoteDetail:
     workspace_dir = get_workspace_dir(workspace_id)
     entries = _read_all(workspace_dir)
@@ -192,6 +260,11 @@ def duplicate_note(workspace_id: str, note_id: str) -> NoteDetail:
         "updated_at": now,
         "favorite": False,
         "pinned": False,
+        "folder": source["folder"],
+        "tags": list(source["tags"]),
+        "trashed": False,
+        "trashed_at": None,
+        "opened_at": None,
     }
     entries.append(new_entry)
     _write_all(workspace_dir, entries)
@@ -221,7 +294,26 @@ def move_note(workspace_id: str, note_id: str, target_workspace_id: str) -> Note
     return _to_note(entry)
 
 
-def delete_note(workspace_id: str, note_id: str) -> None:
+def trash_note(workspace_id: str, note_id: str) -> None:
+    workspace_dir = get_workspace_dir(workspace_id)
+    entries = _read_all(workspace_dir)
+    entry = _find(entries, note_id)
+    entry["trashed"] = True
+    entry["trashed_at"] = datetime.now(UTC).isoformat()
+    _write_all(workspace_dir, entries)
+
+
+def restore_note(workspace_id: str, note_id: str) -> Note:
+    workspace_dir = get_workspace_dir(workspace_id)
+    entries = _read_all(workspace_dir)
+    entry = _find(entries, note_id)
+    entry["trashed"] = False
+    entry["trashed_at"] = None
+    _write_all(workspace_dir, entries)
+    return _to_note(entry)
+
+
+def purge_note(workspace_id: str, note_id: str) -> None:
     workspace_dir = get_workspace_dir(workspace_id)
     entries = _read_all(workspace_dir)
     entry = _find(entries, note_id)

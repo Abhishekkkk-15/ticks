@@ -6,6 +6,7 @@ const JSON_HEADERS = { 'Content-Type': 'application/json' }
 interface ListNotesOptions {
   query?: string
   favoriteOnly?: boolean
+  pinnedOnly?: boolean
 }
 
 export function listNotes(
@@ -15,8 +16,25 @@ export function listNotes(
   const params = new URLSearchParams()
   if (options.query) params.set('q', options.query)
   if (options.favoriteOnly) params.set('favorite_only', 'true')
+  if (options.pinnedOnly) params.set('pinned_only', 'true')
   const suffix = params.toString() ? `?${params.toString()}` : ''
   return apiFetch<NoteListItem[]>(`/workspaces/${workspaceId}/notes${suffix}`)
+}
+
+export function listRecentNotes(workspaceId: string): Promise<NoteListItem[]> {
+  return apiFetch<NoteListItem[]>(`/workspaces/${workspaceId}/notes/recent`)
+}
+
+export function listTrash(workspaceId: string): Promise<NoteListItem[]> {
+  return apiFetch<NoteListItem[]>(`/workspaces/${workspaceId}/notes/trash`)
+}
+
+export function listFolders(workspaceId: string): Promise<string[]> {
+  return apiFetch<string[]>(`/workspaces/${workspaceId}/folders`)
+}
+
+export function listTags(workspaceId: string): Promise<string[]> {
+  return apiFetch<string[]>(`/workspaces/${workspaceId}/tags`)
 }
 
 export function getNote(workspaceId: string, noteId: string): Promise<NoteDetail> {
@@ -93,6 +111,37 @@ export function moveNote(
   })
 }
 
+export function setNoteFolder(
+  workspaceId: string,
+  noteId: string,
+  folder: string | null
+): Promise<Note> {
+  return apiFetch<Note>(`/workspaces/${workspaceId}/notes/${noteId}/folder`, {
+    method: 'PATCH',
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ folder })
+  })
+}
+
+export function setNoteTags(workspaceId: string, noteId: string, tags: string[]): Promise<Note> {
+  return apiFetch<Note>(`/workspaces/${workspaceId}/notes/${noteId}/tags`, {
+    method: 'PATCH',
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ tags })
+  })
+}
+
+// Soft delete — moves the note to Trash. Use purgeNote to remove for good.
 export function deleteNote(workspaceId: string, noteId: string): Promise<void> {
   return apiFetch<void>(`/workspaces/${workspaceId}/notes/${noteId}`, { method: 'DELETE' })
+}
+
+export function restoreNote(workspaceId: string, noteId: string): Promise<Note> {
+  return apiFetch<Note>(`/workspaces/${workspaceId}/notes/${noteId}/restore`, { method: 'POST' })
+}
+
+export function purgeNote(workspaceId: string, noteId: string): Promise<void> {
+  return apiFetch<void>(`/workspaces/${workspaceId}/notes/${noteId}/permanent`, {
+    method: 'DELETE'
+  })
 }

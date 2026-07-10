@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { getNote, updateNoteContent } from './api'
 import type { NoteDetail } from './types'
 
-type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
+export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 
 interface UseNoteEditorResult {
   note: NoteDetail | null

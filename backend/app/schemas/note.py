@@ -30,6 +30,15 @@ class NoteMove(BaseModel):
     target_workspace_id: str
 
 
+class NoteFolderUpdate(BaseModel):
+    # None (or "") clears the folder — the note lives at the workspace root.
+    folder: str | None = None
+
+
+class NoteTagsUpdate(BaseModel):
+    tags: list[str]
+
+
 class Note(BaseModel):
     id: str
     title: str
@@ -37,6 +46,16 @@ class Note(BaseModel):
     updated_at: datetime
     favorite: bool = False
     pinned: bool = False
+    # "/"-separated path, e.g. "System Design/networking" — None means the
+    # workspace root. Purely organizational; doesn't affect where the note's
+    # .md file lives on disk.
+    folder: str | None = None
+    tags: list[str] = []
+    trashed: bool = False
+    trashed_at: datetime | None = None
+    # Bumped whenever the note is fetched for editing — powers the "Recent"
+    # view. Not bumped by list/search, only by opening a specific note.
+    opened_at: datetime | None = None
 
 
 class NoteDetail(Note):

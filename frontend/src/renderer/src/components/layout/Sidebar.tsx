@@ -1,7 +1,7 @@
-import { useState } from 'react'
 import WorkspaceList from '../../features/workspaces/WorkspaceList'
 import NoteList from '../../features/notes/NoteList'
 import { useBackendStatus } from '../../lib/useBackendStatus'
+import type { UseWorkspacesResult } from '../../features/workspaces/useWorkspaces'
 import type { Workspace } from '../../features/workspaces/types'
 import type { Note } from '../../features/notes/types'
 
@@ -20,11 +20,19 @@ const statusLabels: Record<string, string> = {
 interface SidebarProps {
   selectedNoteId?: string
   onOpenNote: (workspaceId: string, note: Note) => void
+  workspacesApi: UseWorkspacesResult
+  selectedWorkspace: Workspace | null
+  onSelectWorkspace: (workspace: Workspace | null) => void
 }
 
-function Sidebar({ selectedNoteId, onOpenNote }: SidebarProps): React.JSX.Element {
+function Sidebar({
+  selectedNoteId,
+  onOpenNote,
+  workspacesApi,
+  selectedWorkspace,
+  onSelectWorkspace
+}: SidebarProps): React.JSX.Element {
   const status = useBackendStatus()
-  const [selectedWorkspace, setSelectedWorkspace] = useState<Workspace | null>(null)
 
   return (
     <aside className="flex w-64 shrink-0 flex-col border-r border-neutral-800 bg-neutral-900">
@@ -34,11 +42,11 @@ function Sidebar({ selectedNoteId, onOpenNote }: SidebarProps): React.JSX.Elemen
           workspaceId={selectedWorkspace.id}
           workspaceName={selectedWorkspace.name}
           selectedNoteId={selectedNoteId}
-          onBack={() => setSelectedWorkspace(null)}
+          onBack={() => onSelectWorkspace(null)}
           onOpenNote={(note) => onOpenNote(selectedWorkspace.id, note)}
         />
       ) : (
-        <WorkspaceList onSelect={setSelectedWorkspace} />
+        <WorkspaceList workspacesApi={workspacesApi} onSelect={onSelectWorkspace} />
       )}
       <div className="flex items-center gap-2 border-t border-neutral-800 px-4 py-3 text-xs text-neutral-400">
         <span className={`h-2 w-2 rounded-full ${statusStyles[status]}`} />

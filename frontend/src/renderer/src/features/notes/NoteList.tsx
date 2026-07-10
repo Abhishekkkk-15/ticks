@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { ArrowLeft, Pin, Star, Upload } from 'lucide-react'
+import { ArrowLeft, Clock, List, Pin, RotateCcw, Star, Trash2, Upload } from 'lucide-react'
 import { useNotes } from './useNotes'
+import type { NoteView } from './useNotes'
 import { highlightMatch } from './highlightMatch'
 import type { Note } from './types'
 
@@ -10,6 +11,22 @@ interface NoteListProps {
   selectedNoteId?: string
   onBack: () => void
   onOpenNote: (note: Note) => void
+}
+
+const VIEW_TABS: { id: NoteView; label: string; Icon: typeof List }[] = [
+  { id: 'all', label: 'All notes', Icon: List },
+  { id: 'favorites', label: 'Favorites', Icon: Star },
+  { id: 'pinned', label: 'Pinned', Icon: Pin },
+  { id: 'recent', label: 'Recent', Icon: Clock },
+  { id: 'trash', label: 'Trash', Icon: Trash2 }
+]
+
+const EMPTY_MESSAGES: Record<NoteView, string> = {
+  all: 'No notes yet',
+  favorites: 'No favorites yet',
+  pinned: 'No pinned notes',
+  recent: 'No recently opened notes',
+  trash: 'Trash is empty'
 }
 
 function NoteList({
@@ -25,14 +42,25 @@ function NoteList({
     error,
     query,
     setQuery,
-    favoriteOnly,
-    setFavoriteOnly,
+    view,
+    setView,
+    folderFilter,
+    setFolderFilter,
+    tagFilter,
+    setTagFilter,
+    folders,
+    tags,
     create,
     remove,
+    restore,
+    purge,
     toggleFavorite,
     importNote
   } = useNotes(workspaceId)
   const [newTitle, setNewTitle] = useState('')
+
+  const canCreate = view !== 'recent' && view !== 'trash'
+  const canSearch = view !== 'recent' && view !== 'trash'
 
   async function handleCreate(event: React.FormEvent): Promise<void> {
     event.preventDefault()
@@ -74,35 +102,75 @@ function NoteList({
         </button>
       </div>
 
-      <div className="flex items-center gap-1 px-2 pt-2">
-        <input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search notes…"
-          className="min-w-0 flex-1 rounded-md border border-neutral-700 bg-neutral-800 px-2 py-1.5 text-sm text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500"
-        />
-        <button
-          type="button"
-          onClick={() => setFavoriteOnly(!favoriteOnly)}
-          aria-label={favoriteOnly ? 'Show all notes' : 'Show favorites only'}
-          aria-pressed={favoriteOnly}
-          title="Favorites only"
-          className={`shrink-0 rounded-md p-1.5 ${
-            favoriteOnly
-              ? 'text-amber-400'
-              : 'text-neutral-500 hover:bg-neutral-800 hover:text-neutral-300'
-          }`}
-        >
-          <Star size={14} fill={favoriteOnly ? 'currentColor' : 'none'} />
-        </button>
+      <div className="flex items-center gap-0.5 border-b border-neutral-800 px-2 py-1.5">
+        {VIEW_TABS.map(({ id, label, Icon }) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setView(id)}
+            title={label}
+            aria-pressed={view === id}
+            className={`rounded-md p-1.5 ${
+              view === id
+                ? 'bg-neutral-800 text-neutral-100'
+                : 'text-neutral-500 hover:bg-neutral-800 hover:text-neutral-300'
+            }`}
+          >
+            <Icon size={14} />
+          </button>
+        ))}
       </div>
+
+      {canSearch && (
+        <div className="px-2 pt-2">
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search notes…"
+            className="w-full rounded-md border border-neutral-700 bg-neutral-800 px-2 py-1.5 text-sm text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500"
+          />
+        </div>
+      )}
+
+      {(folders.length > 0 || tags.length > 0) && (
+        <div className="flex items-center gap-1 px-2 pt-2">
+          {folders.length > 0 && (
+            <select
+              value={folderFilter ?? ''}
+              onChange={(event) => setFolderFilter(event.target.value || null)}
+              className="min-w-0 flex-1 rounded-md border border-neutral-700 bg-neutral-800 px-1.5 py-1 text-xs text-neutral-300 focus:outline-none focus:ring-1 focus:ring-neutral-500"
+            >
+              <option value="">All folders</option>
+              {folders.map((folder) => (
+                <option key={folder} value={folder}>
+                  {folder}
+                </option>
+              ))}
+            </select>
+          )}
+          {tags.length > 0 && (
+            <select
+              value={tagFilter ?? ''}
+              onChange={(event) => setTagFilter(event.target.value || null)}
+              className="min-w-0 flex-1 rounded-md border border-neutral-700 bg-neutral-800 px-1.5 py-1 text-xs text-neutral-300 focus:outline-none focus:ring-1 focus:ring-neutral-500"
+            >
+              <option value="">All tags</option>
+              {tags.map((tag) => (
+                <option key={tag} value={tag}>
+                  #{tag}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+      )}
 
       <div className="flex-1 overflow-auto px-2 py-2">
         {loading ? (
           <div className="px-2 py-4 text-center text-sm text-neutral-500">Loading…</div>
         ) : notes.length === 0 ? (
           <div className="px-2 py-4 text-center text-sm text-neutral-500">
-            {favoriteOnly ? 'No favorites yet' : 'No notes yet'}
+            {EMPTY_MESSAGES[view]}
           </div>
         ) : (
           <ul className="space-y-0.5">
@@ -131,26 +199,51 @@ function NoteList({
                   )}
                 </button>
                 <div className="flex shrink-0 items-center gap-1 pt-0.5">
-                  <button
-                    type="button"
-                    onClick={() => toggleFavorite(note)}
-                    aria-label={note.favorite ? 'Unfavorite' : 'Favorite'}
-                    className={
-                      note.favorite
-                        ? 'text-amber-400'
-                        : 'hidden text-neutral-500 hover:text-amber-400 group-hover:inline'
-                    }
-                  >
-                    <Star size={13} fill={note.favorite ? 'currentColor' : 'none'} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => remove(note.id)}
-                    aria-label={`Delete ${note.title}`}
-                    className="hidden text-neutral-500 hover:text-red-400 group-hover:inline"
-                  >
-                    ×
-                  </button>
+                  {view === 'trash' ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => restore(note.id)}
+                        aria-label={`Restore ${note.title}`}
+                        className="text-neutral-500 hover:text-emerald-400"
+                      >
+                        <RotateCcw size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm(`Permanently delete "${note.title}"?`)) purge(note.id)
+                        }}
+                        aria-label={`Permanently delete ${note.title}`}
+                        className="text-neutral-500 hover:text-red-400"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => toggleFavorite(note)}
+                        aria-label={note.favorite ? 'Unfavorite' : 'Favorite'}
+                        className={
+                          note.favorite
+                            ? 'text-amber-400'
+                            : 'hidden text-neutral-500 hover:text-amber-400 group-hover:inline'
+                        }
+                      >
+                        <Star size={13} fill={note.favorite ? 'currentColor' : 'none'} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => remove(note.id)}
+                        aria-label={`Delete ${note.title}`}
+                        className="hidden text-neutral-500 hover:text-red-400 group-hover:inline"
+                      >
+                        ×
+                      </button>
+                    </>
+                  )}
                 </div>
               </li>
             ))}
@@ -158,14 +251,16 @@ function NoteList({
         )}
       </div>
 
-      <form onSubmit={handleCreate} className="border-t border-neutral-800 px-2 py-2">
-        <input
-          value={newTitle}
-          onChange={(event) => setNewTitle(event.target.value)}
-          placeholder="New note…"
-          className="w-full rounded-md border border-neutral-700 bg-neutral-800 px-2 py-1.5 text-sm text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500"
-        />
-      </form>
+      {canCreate && (
+        <form onSubmit={handleCreate} className="border-t border-neutral-800 px-2 py-2">
+          <input
+            value={newTitle}
+            onChange={(event) => setNewTitle(event.target.value)}
+            placeholder="New note…"
+            className="w-full rounded-md border border-neutral-700 bg-neutral-800 px-2 py-1.5 text-sm text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500"
+          />
+        </form>
+      )}
 
       {error && <div className="px-3 pb-2 text-xs text-red-400">{error}</div>}
     </div>

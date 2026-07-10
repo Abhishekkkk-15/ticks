@@ -1,13 +1,14 @@
 import { useState } from 'react'
-import { useWorkspaces } from './useWorkspaces'
+import type { UseWorkspacesResult } from './useWorkspaces'
 import type { Workspace } from './types'
 
 interface WorkspaceListProps {
+  workspacesApi: UseWorkspacesResult
   onSelect: (workspace: Workspace) => void
 }
 
-function WorkspaceList({ onSelect }: WorkspaceListProps): React.JSX.Element {
-  const { workspaces, loading, error, create, remove } = useWorkspaces()
+function WorkspaceList({ workspacesApi, onSelect }: WorkspaceListProps): React.JSX.Element {
+  const { workspaces, loading, error, create, remove } = workspacesApi
   const [newName, setNewName] = useState('')
 
   async function handleCreate(event: React.FormEvent): Promise<void> {

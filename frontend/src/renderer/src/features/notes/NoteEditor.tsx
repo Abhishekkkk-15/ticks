@@ -1,10 +1,23 @@
-import { useState } from 'react'
-import { Copy, Download, Image, Paperclip, Pencil, Pin, PinOff, Star, Trash2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import {
+  Copy,
+  Download,
+  Image,
+  Paperclip,
+  Pencil,
+  Pin,
+  PinOff,
+  Star,
+  Tag,
+  Trash2
+} from 'lucide-react'
 import EditorView from '../editor/EditorView'
 import { useNoteEditor } from './useNoteEditor'
+import type { SaveStatus } from './useNoteEditor'
 import { deleteNote, duplicateNote, renameNote, setNoteFlags } from './api'
 import ResourcesPanel from '../resources/ResourcesPanel'
 import NoteDrawingsPanel from '../drawings/NoteDrawingsPanel'
+import NoteOrganizePanel from './NoteOrganizePanel'
 import type { Drawing } from '../drawings/types'
 import type { Note } from './types'
 
@@ -13,6 +26,8 @@ interface NoteEditorProps {
   noteId: string
   onDeleted: () => void
   onDuplicated: (note: Note) => void
+  onRenamed?: (note: Note) => void
+  onSaveStatusChange?: (status: SaveStatus) => void
 }
 
 const saveStatusLabels: Record<string, string> = {
@@ -26,14 +41,20 @@ function NoteEditor({
   workspaceId,
   noteId,
   onDeleted,
-  onDuplicated
+  onDuplicated,
+  onRenamed,
+  onSaveStatusChange
 }: NoteEditorProps): React.JSX.Element {
   const { note, content, onChange, loading, error, saveStatus } = useNoteEditor(workspaceId, noteId)
+
+  useEffect(() => {
+    onSaveStatusChange?.(saveStatus)
+  }, [saveStatus, onSaveStatusChange])
   const [meta, setMeta] = useState<Note | null>(null)
   const [renaming, setRenaming] = useState(false)
   const [titleDraft, setTitleDraft] = useState('')
   const [loadedNoteId, setLoadedNoteId] = useState<string | null>(null)
-  const [activePanel, setActivePanel] = useState<'resources' | 'drawings' | null>(null)
+  const [activePanel, setActivePanel] = useState<'resources' | 'drawings' | 'organize' | null>(null)
 
   // Reset local draft state when a different note finishes loading, without
   // the extra render + flicker an effect-based sync would cause.
@@ -48,7 +69,9 @@ function NoteEditor({
     setRenaming(false)
     const title = titleDraft.trim()
     if (!meta || !title || title === meta.title) return
-    setMeta(await renameNote(workspaceId, meta.id, title))
+    const updated = await renameNote(workspaceId, meta.id, title)
+    setMeta(updated)
+    onRenamed?.(updated)
   }
 
   async function toggleFavorite(): Promise<void> {
@@ -68,7 +91,7 @@ function NoteEditor({
 
   async function handleDelete(): Promise<void> {
     if (!meta) return
-    if (!window.confirm(`Delete "${meta.title}"? This can't be undone.`)) return
+    // Soft delete — moves to Trash, recoverable from there.
     await deleteNote(workspaceId, meta.id)
     onDeleted()
   }
@@ -168,6 +191,14 @@ function NoteEditor({
           </button>
           <button
             type="button"
+            onClick={() => setActivePanel(activePanel === 'organize' ? null : 'organize')}
+            title="Organize (folder & tags)"
+            className={activePanel === 'organize' ? 'text-neutral-200' : 'hover:text-neutral-300'}
+          >
+            <Tag size={16} />
+          </button>
+          <button
+            type="button"
             onClick={() => setActivePanel(activePanel === 'resources' ? null : 'resources')}
             title="Resources"
             className={activePanel === 'resources' ? 'text-neutral-200' : 'hover:text-neutral-300'}
@@ -193,6 +224,9 @@ function NoteEditor({
         </div>
       </div>
 
+      {activePanel === 'organize' && (
+        <NoteOrganizePanel workspaceId={workspaceId} note={meta} onUpdated={setMeta} />
+      )}
       {activePanel === 'resources' && <ResourcesPanel workspaceId={workspaceId} noteId={meta.id} />}
       {activePanel === 'drawings' && (
         <NoteDrawingsPanel
