@@ -42,48 +42,68 @@ function mapShortcutToAccelerator(shortcut: string): string {
     .join('+')
 }
 
+
+// Read highlighted (primary) selection on Linux without touching the clipboard.
+// Tries X11 (xclip) first, then Wayland (wl-paste), then gives up.
 function getLinuxPrimarySelection(): Promise<string> {
   return new Promise((resolve) => {
-    if (process.platform !== 'linux') {
-      resolve('')
-      return
-    }
-    exec('xclip -o -selection primary', (err, stdout) => {
-      if (!err && stdout) {
+    // X11 path
+    exec('xclip -o -selection primary 2>/dev/null', (err, stdout) => {
+      if (!err && stdout && stdout.trim()) {
         resolve(stdout.trim())
-      } else {
-        resolve('')
+        return
       }
+      // Wayland path
+      exec('wl-paste --primary --no-newline 2>/dev/null', (err2, stdout2) => {
+        if (!err2 && stdout2 && stdout2.trim()) {
+          resolve(stdout2.trim())
+        } else {
+          resolve('')
+        }
+      })
     })
   })
 }
 
-function triggerSystemCopy(): Promise<void> {
+// On macOS/Windows we simulate Ctrl/Cmd+C to copy the selected text.
+// We wait 500ms for the user to release the shortcut keys before sending the
+// synthetic copy so modifier keys don't corrupt it.
+function simulateCopyAndRead(oldClipboard: string): Promise<string> {
   return new Promise((resolve) => {
-    // Wait longer (350ms) for the user to release physical modifier keys (Ctrl/Alt/Shift)
-    // so they do not corrupt the simulated keystroke
+    const RELEASE_DELAY = 500  // ms – wait for shortcut keys to be physically released
+    const READ_DELAY   = 350  // ms – wait for the OS copy to land in the clipboard
+
     setTimeout(() => {
+      let copyCmd = ''
       if (process.platform === 'darwin') {
-        exec(
-          `osascript -e 'tell application "System Events" to keystroke "c" using {command down}'`,
-          () => resolve()
-        )
+        copyCmd = `osascript -e 'tell application "System Events" to keystroke "c" using {command down}'`
       } else if (process.platform === 'win32') {
-        const psCommand = `powershell -Command "[void][System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms'); [System.Windows.Forms].SendKeys::SendWait('^c')"`
-        exec(psCommand, () => resolve())
-      } else if (process.platform === 'linux') {
-        exec(`xdotool key ctrl+c`, () => resolve())
+        // Use PowerShell + SendKeys (most reliable way without extra deps)
+        copyCmd = `powershell -NonInteractive -WindowStyle Hidden -Command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('^c')"`
       } else {
-        resolve()
+        // Linux fallback (xdotool) – should rarely reach here
+        copyCmd = 'xdotool key --clearmodifiers ctrl+c'
       }
-    }, 350)
+
+      exec(copyCmd, () => {
+        setTimeout(() => {
+          const newText = clipboard.readText().trim()
+          // Restore the original clipboard immediately after reading
+          if (oldClipboard) {
+            clipboard.writeText(oldClipboard)
+          } else {
+            clipboard.clear()
+          }
+          resolve(newText)
+        }, READ_DELAY)
+      })
+    }, RELEASE_DELAY)
   })
 }
 
 let activeCaptureShortcut = ''
 
 function registerGlobalCapture(): void {
-  // Unregister old shortcut
   if (activeCaptureShortcut) {
     globalShortcut.unregister(activeCaptureShortcut)
   }
@@ -94,48 +114,35 @@ function registerGlobalCapture(): void {
 
   try {
     const success = globalShortcut.register(accelerator, async () => {
-      // 1. On Linux, try reading active highlighted text selection directly
+      let capturedText = ''
+
+      // ── Linux: read highlighted text directly from the primary selection
+      //    (X11 stores mouse-highlight in the "primary" buffer without Ctrl+C)
       if (process.platform === 'linux') {
-        const primaryText = await getLinuxPrimarySelection()
-        if (primaryText) {
-          const [mainWindow] = BrowserWindow.getAllWindows()
-          if (mainWindow) {
-            mainWindow.webContents.send('shortcut:capture-text', primaryText)
-            if (mainWindow.isMinimized()) mainWindow.restore()
-            mainWindow.focus()
-          }
-          return
+        capturedText = await getLinuxPrimarySelection()
+      }
+
+      // ── macOS / Windows (or Linux without xclip/wl-paste):
+      //    back up clipboard, simulate Ctrl/Cmd+C, read new clipboard, restore.
+      if (!capturedText) {
+        const oldClipboard = clipboard.readText()
+        const newClipboard = await simulateCopyAndRead(oldClipboard)
+        // Only use it if it actually changed – otherwise the copy simulation
+        // failed (nothing selected) and we'd just re-capture stale clipboard data.
+        if (newClipboard && newClipboard !== oldClipboard.trim()) {
+          capturedText = newClipboard
         }
       }
 
-      // 2. Backup clipboard
-      const oldClipboardText = clipboard.readText()
+      if (!capturedText) return
 
-      // 3. Trigger OS-level copy simulation
-      await triggerSystemCopy()
-
-      // 4. Wait a brief moment for clipboard to update, then read selection
-      setTimeout(() => {
-        const capturedText = clipboard.readText().trim()
-
-        // 5. Restore clipboard contents so user's copy history remains unaffected
-        if (oldClipboardText) {
-          clipboard.writeText(oldClipboardText)
-        }
-
-        // Avoid capturing if copy failed or returned identical text to previous clipboard
-        if (!capturedText || capturedText === oldClipboardText.trim()) return
-
-        // 6. Send text to renderer
-        const [mainWindow] = BrowserWindow.getAllWindows()
-        if (mainWindow) {
-          mainWindow.webContents.send('shortcut:capture-text', capturedText)
-
-          // 7. Focus application window
-          if (mainWindow.isMinimized()) mainWindow.restore()
-          mainWindow.focus()
-        }
-      }, 150)
+      // Send text to the main window renderer
+      const [mainWindow] = BrowserWindow.getAllWindows()
+      if (mainWindow) {
+        mainWindow.webContents.send('shortcut:capture-text', capturedText)
+        if (mainWindow.isMinimized()) mainWindow.restore()
+        mainWindow.focus()
+      }
     })
 
     if (!success) {
