@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Copy,
   Download,
@@ -21,6 +21,8 @@ import ResourcesPanel from '../resources/ResourcesPanel'
 import NoteDrawingsPanel from '../drawings/NoteDrawingsPanel'
 import NoteOrganizePanel from './NoteOrganizePanel'
 import AiPanel from '../ai/AiPanel'
+import AiContextMenu from '../ai/AiContextMenu'
+import type { AiContextMenuPosition } from '../ai/AiContextMenu'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Drawing } from '../drawings/types'
 import type { Note } from './types'
@@ -66,6 +68,9 @@ function NoteEditor({
     'resources' | 'drawings' | 'organize' | 'ai' | null
   >(null)
   const [selection, setSelection] = useState<EditorSelection | null>(null)
+  const [contextMenu, setContextMenu] = useState<AiContextMenuPosition | null>(null)
+  const [autoTriggerAction, setAutoTriggerAction] = useState<string | null>(null)
+  const editorAreaRef = useRef<HTMLDivElement>(null)
 
   // Reset local draft state when a different note finishes loading, without
   // the extra render + flicker an effect-based sync would cause.
@@ -143,6 +148,30 @@ function NoteEditor({
     const separator = content.endsWith('\n') || content === '' ? '' : '\n\n'
     onChange(`${content}${separator}${result}\n`)
   }
+
+  function handleContextMenu(e: React.MouseEvent): void {
+    const sel = window.getSelection()?.toString()
+    if (!sel || !sel.trim()) return // only show when text is selected
+    e.preventDefault()
+    // Clamp so the menu doesn't overflow the viewport
+    const menuW = 210
+    const menuH = 200
+    const x = Math.min(e.clientX, window.innerWidth - menuW - 8)
+    const y = Math.min(e.clientY, window.innerHeight - menuH - 8)
+    setContextMenu({ x, y })
+  }
+
+  const handleContextMenuAction = useCallback(
+    (action: string) => {
+      setActivePanel('ai')
+      setAutoTriggerAction(action)
+    },
+    []
+  )
+
+  const handleCloseContextMenu = useCallback(() => {
+    setContextMenu(null)
+  }, [])
 
   if (loading) {
     return (
@@ -283,6 +312,8 @@ function NoteEditor({
               fullContent={content}
               onReplaceSelection={handleReplaceSelection}
               onInsert={handleInsertResult}
+              autoTriggerAction={autoTriggerAction}
+              onClearAutoTrigger={() => setAutoTriggerAction(null)}
             />
           </motion.div>
         )}
@@ -322,7 +353,7 @@ function NoteEditor({
         )}
       </AnimatePresence>
 
-      <div className="min-h-0 flex-1">
+      <div ref={editorAreaRef} className="min-h-0 flex-1" onContextMenu={handleContextMenu}>
         <EditorView
           value={content}
           onChange={onChange}
@@ -331,6 +362,13 @@ function NoteEditor({
           onSelectionChange={setSelection}
         />
       </div>
+
+      <AiContextMenu
+        position={contextMenu}
+        selectedText={selection?.text ?? window.getSelection()?.toString() ?? ''}
+        onAction={handleContextMenuAction}
+        onClose={handleCloseContextMenu}
+      />
     </div>
   )
 }

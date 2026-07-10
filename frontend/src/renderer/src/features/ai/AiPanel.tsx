@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAiAction } from './useAiAction'
 import type { AiAction, RewriteMode } from './api'
 
@@ -7,6 +7,8 @@ interface AiPanelProps {
   fullContent: string
   onReplaceSelection: (result: string) => void
   onInsert: (result: string) => void
+  autoTriggerAction?: string | null
+  onClearAutoTrigger?: () => void
 }
 
 const ACTIONS: { id: AiAction | RewriteMode; label: string }[] = [
@@ -28,13 +30,22 @@ function AiPanel({
   selectedText,
   fullContent,
   onReplaceSelection,
-  onInsert
+  onInsert,
+  autoTriggerAction,
+  onClearAutoTrigger
 }: AiPanelProps): React.JSX.Element {
   const { result, loading, error, run, reset, cancel } = useAiAction()
   const [copied, setCopied] = useState(false)
 
   const hasSelection = selectedText.trim().length > 0
   const inputText = hasSelection ? selectedText : fullContent
+
+  useEffect(() => {
+    if (autoTriggerAction && inputText.trim()) {
+      run(autoTriggerAction, inputText)
+      onClearAutoTrigger?.()
+    }
+  }, [autoTriggerAction, inputText, run, onClearAutoTrigger])
 
   function handleRun(action: string): void {
     if (!inputText.trim()) return
