@@ -212,24 +212,24 @@ function SettingsView(): React.JSX.Element {
             {/* Theme section */}
             <section className="space-y-3">
               <h3 className="text-sm font-medium text-neutral-200">Theme</h3>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-4 gap-3">
                 {/* Dark Theme Card */}
                 <button
                   type="button"
                   onClick={() => updateSettings({ theme: 'dark' })}
-                  className={`relative flex flex-col gap-2 rounded-lg border p-4 text-left transition-all hover:border-neutral-500 ${
+                  className={`relative flex flex-col gap-2 rounded-lg border p-3 text-left transition-all hover:border-neutral-500 ${
                     settings.theme === 'dark'
                       ? 'border-neutral-200 bg-neutral-900 shadow-lg'
                       : 'border-neutral-800 bg-neutral-900/30'
                   }`}
                 >
-                  <div className="flex h-12 w-full items-center justify-between rounded bg-neutral-950 p-2 text-[10px]">
-                    <div className="h-full w-4 rounded bg-neutral-900" />
-                    <div className="h-full flex-1 ml-1 rounded bg-neutral-900/50" />
+                  <div className="flex h-10 w-full items-center gap-1 rounded p-1.5" style={{ background: '#0a0a0a' }}>
+                    <div className="h-full w-3 rounded" style={{ background: '#171717' }} />
+                    <div className="h-full flex-1 rounded" style={{ background: '#262626' }} />
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium">Dark Theme</span>
-                    {settings.theme === 'dark' && <Check size={14} className="text-emerald-400" />}
+                    <span className="text-xs font-medium">Dark</span>
+                    {settings.theme === 'dark' && <Check size={13} className="text-emerald-400" />}
                   </div>
                 </button>
 
@@ -237,45 +237,124 @@ function SettingsView(): React.JSX.Element {
                 <button
                   type="button"
                   onClick={() => updateSettings({ theme: 'light' })}
-                  className={`relative flex flex-col gap-2 rounded-lg border p-4 text-left transition-all hover:border-neutral-400 ${
+                  className={`relative flex flex-col gap-2 rounded-lg border p-3 text-left transition-all hover:border-neutral-400 ${
                     settings.theme === 'light'
                       ? 'border-neutral-400 bg-white/5 shadow-lg'
                       : 'border-neutral-800 bg-neutral-900/30'
                   }`}
                 >
-                  <div className="flex h-12 w-full items-center justify-between rounded bg-neutral-200 p-2 text-[10px]">
-                    <div className="h-full w-4 rounded bg-neutral-300" />
-                    <div className="h-full flex-1 ml-1 rounded bg-neutral-300/50" />
+                  <div className="flex h-10 w-full items-center gap-1 rounded p-1.5" style={{ background: '#f5f5f5' }}>
+                    <div className="h-full w-3 rounded" style={{ background: '#e5e5e5' }} />
+                    <div className="h-full flex-1 rounded" style={{ background: '#d4d4d4' }} />
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium">Light Theme</span>
-                    {settings.theme === 'light' && <Check size={14} className="text-neutral-500" />}
+                    <span className="text-xs font-medium">Light</span>
+                    {settings.theme === 'light' && <Check size={13} className="text-neutral-500" />}
                   </div>
                 </button>
 
-                {/* Warm Dark Theme Card */}
+                {/* Warm Cozy Theme Card */}
                 <button
                   type="button"
                   onClick={() => updateSettings({ theme: 'warm-dark' })}
-                  className={`relative flex flex-col gap-2 rounded-lg border p-4 text-left transition-all hover:border-neutral-500 ${
+                  className={`relative flex flex-col gap-2 rounded-lg border p-3 text-left transition-all hover:border-neutral-500 ${
                     settings.theme === 'warm-dark'
                       ? 'border-neutral-200 bg-stone-900 shadow-lg'
                       : 'border-neutral-800 bg-stone-900/10'
                   }`}
                 >
-                  <div className="flex h-12 w-full items-center justify-between rounded bg-stone-950 p-2 text-[10px]">
-                    <div className="h-full w-4 rounded bg-stone-900" />
-                    <div className="h-full flex-1 ml-1 rounded bg-stone-900/50" />
+                  <div className="flex h-10 w-full items-center gap-1 rounded p-1.5" style={{ background: '#1c1917' }}>
+                    <div className="h-full w-3 rounded" style={{ background: '#292524' }} />
+                    <div className="h-full flex-1 rounded" style={{ background: '#44403c' }} />
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-medium">Warm Cozy</span>
-                    {settings.theme === 'warm-dark' && (
-                      <Check size={14} className="text-emerald-400" />
-                    )}
+                    {settings.theme === 'warm-dark' && <Check size={13} className="text-emerald-400" />}
+                  </div>
+                </button>
+
+                {/* Forest Dark Theme Card */}
+                <button
+                  type="button"
+                  onClick={() => updateSettings({ theme: 'forest-dark' })}
+                  className={`relative flex flex-col gap-2 rounded-lg border p-3 text-left transition-all ${
+                    settings.theme === 'forest-dark'
+                      ? 'border-green-600 shadow-lg shadow-green-900/30'
+                      : 'border-neutral-800 bg-neutral-900/30 hover:border-green-800'
+                  }`}
+                >
+                  <div className="flex h-10 w-full items-center gap-1 rounded p-1.5" style={{ background: '#0d1f12' }}>
+                    <div className="h-full w-3 rounded" style={{ background: '#142a19' }} />
+                    <div className="h-full flex-1 rounded" style={{ background: '#1e3d26' }} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium">Forest</span>
+                    {settings.theme === 'forest-dark' && <Check size={13} className="text-green-400" />}
+                  </div>
+                </button>
+
+                {/* Ocean Blue Theme Card */}
+                <button
+                  type="button"
+                  onClick={() => updateSettings({ theme: 'ocean-blue' })}
+                  className={`relative flex flex-col gap-2 rounded-lg border p-3 text-left transition-all ${
+                    settings.theme === 'ocean-blue'
+                      ? 'border-blue-600 shadow-lg shadow-blue-900/30'
+                      : 'border-neutral-800 bg-neutral-900/30 hover:border-blue-800'
+                  }`}
+                >
+                  <div className="flex h-10 w-full items-center gap-1 rounded p-1.5" style={{ background: '#07111f' }}>
+                    <div className="h-full w-3 rounded" style={{ background: '#0d1b2e' }} />
+                    <div className="h-full flex-1 rounded" style={{ background: '#152844' }} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium">Ocean</span>
+                    {settings.theme === 'ocean-blue' && <Check size={13} className="text-blue-400" />}
+                  </div>
+                </button>
+
+                {/* Nord Theme Card */}
+                <button
+                  type="button"
+                  onClick={() => updateSettings({ theme: 'nord' })}
+                  className={`relative flex flex-col gap-2 rounded-lg border p-3 text-left transition-all ${
+                    settings.theme === 'nord'
+                      ? 'border-sky-500 shadow-lg shadow-sky-900/20'
+                      : 'border-neutral-800 bg-neutral-900/30 hover:border-sky-800'
+                  }`}
+                >
+                  <div className="flex h-10 w-full items-center gap-1 rounded p-1.5" style={{ background: '#2e3440' }}>
+                    <div className="h-full w-3 rounded" style={{ background: '#3b4252' }} />
+                    <div className="h-full flex-1 rounded" style={{ background: '#434c5e' }} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium">Nord</span>
+                    {settings.theme === 'nord' && <Check size={13} className="text-sky-400" />}
+                  </div>
+                </button>
+
+                {/* Solarized Light Theme Card */}
+                <button
+                  type="button"
+                  onClick={() => updateSettings({ theme: 'solarized-light' })}
+                  className={`relative flex flex-col gap-2 rounded-lg border p-3 text-left transition-all ${
+                    settings.theme === 'solarized-light'
+                      ? 'border-amber-500 shadow-lg shadow-amber-900/20'
+                      : 'border-neutral-800 bg-neutral-900/30 hover:border-amber-700'
+                  }`}
+                >
+                  <div className="flex h-10 w-full items-center gap-1 rounded p-1.5" style={{ background: '#fdf6e3' }}>
+                    <div className="h-full w-3 rounded" style={{ background: '#eee8d5' }} />
+                    <div className="h-full flex-1 rounded" style={{ background: '#ddd6c1' }} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium">Solarized</span>
+                    {settings.theme === 'solarized-light' && <Check size={13} className="text-amber-500" />}
                   </div>
                 </button>
               </div>
             </section>
+
 
             {/* Launch Workspace */}
             <section className="space-y-2">

@@ -44,7 +44,15 @@ export function SettingsProvider({ children }: { children: React.ReactNode }): R
   useEffect(() => {
     if (!settings?.theme) return
     const root = document.documentElement
-    root.classList.remove('theme-light', 'theme-dark', 'theme-warm-dark')
+    root.classList.remove(
+      'theme-light',
+      'theme-dark',
+      'theme-warm-dark',
+      'theme-forest-dark',
+      'theme-ocean-blue',
+      'theme-nord',
+      'theme-solarized-light'
+    )
     root.classList.add(`theme-${settings.theme}`)
   }, [settings?.theme])
 
