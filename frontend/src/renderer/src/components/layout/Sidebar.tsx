@@ -1,4 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
+import { ChevronLeft } from 'lucide-react'
 import WorkspaceList from '../../features/workspaces/WorkspaceList'
 import NoteList from '../../features/notes/NoteList'
 import { useBackendStatus } from '../../lib/useBackendStatus'
@@ -24,6 +25,7 @@ interface SidebarProps {
   workspacesApi: UseWorkspacesResult
   selectedWorkspace: Workspace | null
   onSelectWorkspace: (workspace: Workspace | null) => void
+  onToggleSidebar: () => void
 }
 
 function Sidebar({
@@ -31,13 +33,24 @@ function Sidebar({
   onOpenNote,
   workspacesApi,
   selectedWorkspace,
-  onSelectWorkspace
+  onSelectWorkspace,
+  onToggleSidebar
 }: SidebarProps): React.JSX.Element {
   const status = useBackendStatus()
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col border-r border-neutral-800/60 bg-neutral-950">
-      <div className="px-4 py-4 text-sm font-medium text-neutral-200">AI Learning Workspace</div>
+    <aside className="flex w-64 shrink-0 flex-col border-r border-neutral-800/60 bg-neutral-950 h-full">
+      <div className="flex items-center justify-between px-4 py-4 text-sm font-medium text-neutral-200">
+        <span>AI Learning Workspace</span>
+        <button
+          type="button"
+          onClick={onToggleSidebar}
+          className="rounded p-1 text-neutral-500 hover:bg-neutral-800 hover:text-neutral-300 transition-colors"
+          title="Collapse Sidebar"
+        >
+          <ChevronLeft size={16} />
+        </button>
+      </div>
       <div className="flex-1 flex flex-col min-h-0 relative">
         <AnimatePresence mode="wait">
           {selectedWorkspace ? (

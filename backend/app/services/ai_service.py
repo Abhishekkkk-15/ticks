@@ -77,9 +77,15 @@ PROMPTS: dict[str, str] = {
         "preserving its key facts and structure so it can be referenced "
         f"later. {_FAITHFULNESS_RULE}"
     ),
+    "format": (
+        "Reformat the following text as a clean, beautiful Markdown document. "
+        "Add appropriate Markdown elements such as headers, bold text, lists, task lists, and code blocks "
+        "to structure it nicely. Do not summarize or expand it. Do not change the meaning. "
+        "Do not include any introductory or concluding remarks. Return ONLY the reformatted Markdown content."
+    ),
 }
 
-REWRITE_MODES = frozenset({"expand", "shorten", "examples"})
+REWRITE_MODES = frozenset({"expand", "shorten", "examples", "format"})
 
 
 def _style_prompt(style_examples: list[str]) -> str:

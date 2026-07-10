@@ -34,9 +34,26 @@ function mapShortcutToAccelerator(shortcut: string): string {
     .join('+')
 }
 
+function getLinuxPrimarySelection(): Promise<string> {
+  return new Promise((resolve) => {
+    if (process.platform !== 'linux') {
+      resolve('')
+      return
+    }
+    exec('xclip -o -selection primary', (err, stdout) => {
+      if (!err && stdout) {
+        resolve(stdout.trim())
+      } else {
+        resolve('')
+      }
+    })
+  })
+}
+
 function triggerSystemCopy(): Promise<void> {
   return new Promise((resolve) => {
-    // Wait for the user's keystrokes release to not conflict with simulated ones
+    // Wait longer (350ms) for the user to release physical modifier keys (Ctrl/Alt/Shift)
+    // so they do not corrupt the simulated keystroke
     setTimeout(() => {
       if (process.platform === 'darwin') {
         exec(
@@ -51,7 +68,7 @@ function triggerSystemCopy(): Promise<void> {
       } else {
         resolve()
       }
-    }, 150)
+    }, 350)
   })
 }
 
@@ -69,23 +86,48 @@ function registerGlobalCapture(): void {
 
   try {
     const success = globalShortcut.register(accelerator, async () => {
-      // 1. Trigger OS-level copy on selected text
+      // 1. On Linux, try reading active highlighted text selection directly
+      if (process.platform === 'linux') {
+        const primaryText = await getLinuxPrimarySelection()
+        if (primaryText) {
+          const [mainWindow] = BrowserWindow.getAllWindows()
+          if (mainWindow) {
+            mainWindow.webContents.send('shortcut:capture-text', primaryText)
+            if (mainWindow.isMinimized()) mainWindow.restore()
+            mainWindow.focus()
+          }
+          return
+        }
+      }
+
+      // 2. Backup clipboard
+      const oldClipboardText = clipboard.readText()
+
+      // 3. Trigger OS-level copy simulation
       await triggerSystemCopy()
-      // 2. Wait a brief moment for clipboard to update
+
+      // 4. Wait a brief moment for clipboard to update, then read selection
       setTimeout(() => {
         const capturedText = clipboard.readText().trim()
-        if (!capturedText) return
 
-        // 3. Send text to renderer
+        // 5. Restore clipboard contents so user's copy history remains unaffected
+        if (oldClipboardText) {
+          clipboard.writeText(oldClipboardText)
+        }
+
+        // Avoid capturing if copy failed or returned identical text to previous clipboard
+        if (!capturedText || capturedText === oldClipboardText.trim()) return
+
+        // 6. Send text to renderer
         const [mainWindow] = BrowserWindow.getAllWindows()
         if (mainWindow) {
           mainWindow.webContents.send('shortcut:capture-text', capturedText)
 
-          // 4. Focus application window
+          // 7. Focus application window
           if (mainWindow.isMinimized()) mainWindow.restore()
           mainWindow.focus()
         }
-      }, 100)
+      }, 150)
     })
 
     if (!success) {

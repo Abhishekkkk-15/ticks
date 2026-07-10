@@ -16,7 +16,6 @@ interface EditorViewProps {
 
 const modes: { id: EditorMode; label: string }[] = [
   { id: 'edit', label: 'Edit' },
-  { id: 'split', label: 'Split' },
   { id: 'preview', label: 'Preview' }
 ]
 
@@ -28,12 +27,24 @@ function EditorView({
   onSelectionChange
 }: EditorViewProps): React.JSX.Element {
   const { settings } = useSettings()
-  const [mode, setMode] = useState<EditorMode>('split')
+  const [mode, setMode] = useState<EditorMode>('edit')
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent): void {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'e') {
+        event.preventDefault()
+        setMode((m) => (m === 'edit' ? 'preview' : 'edit'))
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   useEffect(() => {
     if (settings?.default_editor_mode) {
       Promise.resolve().then(() => {
-        setMode(settings.default_editor_mode)
+        // Map default editor mode ('split' defaults to 'edit')
+        setMode(settings.default_editor_mode === 'split' ? 'edit' : settings.default_editor_mode)
       })
     }
   }, [settings?.default_editor_mode])
@@ -58,21 +69,16 @@ function EditorView({
       </div>
 
       <div className="flex min-h-0 flex-1">
-        {mode !== 'preview' && (
-          <div
-            className={
-              mode === 'split' ? 'h-full w-1/2 border-r border-neutral-800' : 'h-full w-full'
-            }
-          >
+        {mode === 'edit' ? (
+          <div className="h-full w-full">
             <MarkdownEditor
               value={value}
               onChange={onChange}
               onSelectionChange={onSelectionChange}
             />
           </div>
-        )}
-        {mode !== 'edit' && (
-          <div className={mode === 'split' ? 'h-full w-1/2' : 'h-full w-full'}>
+        ) : (
+          <div className="h-full w-full">
             <MarkdownPreview content={value} workspaceId={workspaceId} noteId={noteId} />
           </div>
         )}

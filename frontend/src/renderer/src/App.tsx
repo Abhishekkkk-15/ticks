@@ -29,6 +29,7 @@ function App(): React.JSX.Element {
   const [view, setView] = useState<MainView>('notes')
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [captureNotification, setCaptureNotification] = useState<string | null>(null)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   const { settings } = useSettings()
 
@@ -175,6 +176,8 @@ function App(): React.JSX.Element {
       workspacesApi={workspacesApi}
       selectedWorkspace={selectedWorkspace}
       onSelectWorkspace={setSelectedWorkspace}
+      sidebarCollapsed={sidebarCollapsed}
+      onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
     >
       <div className="flex h-full flex-col">
         <div className="flex shrink-0 items-center gap-1 border-b border-neutral-800 px-3 py-2">

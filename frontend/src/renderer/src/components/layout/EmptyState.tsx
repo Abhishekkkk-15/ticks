@@ -30,7 +30,7 @@ export function EmptyState({
         className="z-10 flex max-w-md flex-col items-center"
       >
         {/* Animated Icon Ring */}
-        <div className="relative mb-8 flex h-16 w-16 items-center justify-center rounded-2xl border border-neutral-800 bg-neutral-900 shadow-xl shadow-neutral-950/50">
+        <div className="relative mb- flex h-16 w-16 items-center justify-center rounded-2xl border border-neutral-800 bg-neutral-900 shadow-xl shadow-neutral-950/50">
           <Sparkles size={28} className="text-amber-500 animate-pulse" />
           <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 opacity-20 blur-sm" />
         </div>

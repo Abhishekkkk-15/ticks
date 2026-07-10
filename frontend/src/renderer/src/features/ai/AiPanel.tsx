@@ -20,7 +20,8 @@ const ACTIONS: { id: AiAction | RewriteMode; label: string }[] = [
   { id: 'expand', label: 'Expand' },
   { id: 'shorten', label: 'Shorten' },
   { id: 'examples', label: 'Add examples' },
-  { id: 'style', label: 'Rewrite in my style' }
+  { id: 'style', label: 'Rewrite in my style' },
+  { id: 'format', label: 'Format with AI' }
 ]
 
 function AiPanel({

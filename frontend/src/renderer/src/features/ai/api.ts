@@ -10,9 +10,9 @@ export type AiAction =
   | 'table'
   | 'style'
 
-export type RewriteMode = 'expand' | 'shorten' | 'examples'
+export type RewriteMode = 'expand' | 'shorten' | 'examples' | 'format'
 
-const REWRITE_MODES: ReadonlySet<string> = new Set(['expand', 'shorten', 'examples'])
+const REWRITE_MODES: ReadonlySet<string> = new Set(['expand', 'shorten', 'examples', 'format'])
 
 export function isRewriteMode(action: string): action is RewriteMode {
   return REWRITE_MODES.has(action)

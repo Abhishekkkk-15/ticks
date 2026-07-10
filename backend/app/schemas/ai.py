@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-RewriteMode = Literal["expand", "shorten", "examples"]
+RewriteMode = Literal["expand", "shorten", "examples", "format"]
 
 
 class AiTextRequest(BaseModel):
