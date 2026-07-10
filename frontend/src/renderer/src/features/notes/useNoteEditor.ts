@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { getNote, updateNoteContent } from './api'
 import type { NoteDetail } from './types'
 
+import { useSettings } from '../settings/SettingsContext'
+
 export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 
 interface UseNoteEditorResult {
@@ -13,8 +15,6 @@ interface UseNoteEditorResult {
   saveStatus: SaveStatus
 }
 
-const AUTOSAVE_DELAY_MS = 800
-
 interface PendingSave {
   workspaceId: string
   noteId: string
@@ -22,6 +22,9 @@ interface PendingSave {
 }
 
 export function useNoteEditor(workspaceId: string, noteId: string): UseNoteEditorResult {
+  const { settings } = useSettings()
+  const autosaveDelay = settings?.autosave_delay ?? 800
+
   const [note, setNote] = useState<NoteDetail | null>(null)
   const [content, setContent] = useState('')
   const [loading, setLoading] = useState(true)
@@ -82,9 +85,9 @@ export function useNoteEditor(workspaceId: string, noteId: string): UseNoteEdito
         } catch {
           setSaveStatus('error')
         }
-      }, AUTOSAVE_DELAY_MS)
+      }, autosaveDelay)
     },
-    [workspaceId, noteId]
+    [workspaceId, noteId, autosaveDelay]
   )
 
   return { note, content, onChange, loading, error, saveStatus }

@@ -1,5 +1,6 @@
 import { Excalidraw } from '@excalidraw/excalidraw'
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types'
+import { useSettings } from '../settings/SettingsContext'
 
 declare global {
   interface Window {
@@ -20,9 +21,14 @@ interface DrawingCanvasProps {
 }
 
 function DrawingCanvas({ onApiReady }: DrawingCanvasProps): React.JSX.Element {
+  const { settings } = useSettings()
+
   return (
     <div className="h-full w-full">
-      <Excalidraw excalidrawAPI={onApiReady} theme="dark" />
+      <Excalidraw
+        excalidrawAPI={onApiReady}
+        theme={settings?.theme === 'light' ? 'light' : 'dark'}
+      />
     </div>
   )
 }

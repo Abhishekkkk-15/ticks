@@ -206,6 +206,24 @@ the real app (not just unit-level checks) before moving on.
       `summary.txt`. The 429/502 status-code paths were only checked by
       code review, not by actually exhausting a real rate limit or forcing
       a 5xx from Mistral.
+13. **Settings** — complete preferences management (theme, font size, editor
+    font, autosave delay, default workspace, default editor mode, custom
+    keyboard shortcuts) folded with the previous AI Settings.
+    - Backend: schemas and `settings_service` updated with default data. Added
+      `PATCH /settings` endpoint to partially update preferences in
+      `settings.json` on disk.
+    - Frontend: shared settings state via a React Context. Applied theme
+      (Light, Dark, Warm Cozy) dynamically at document level and to components
+      (CodeMirror and Excalidraw).
+    - Preference bindings: editor font/font size linked to CodeMirror,
+      autosave delay linked to editor debouncer, default editor mode linked to
+      `EditorView`, default workspace selected on launch.
+    - Shortcuts recording: custom shortcuts utility to match modifier keys.
+      Interactive key listener in Settings UI to record and customize the
+      Command Palette trigger.
+    - Redesigned Settings UI: premium tabbed layout with visual theme card
+      previews, ranges/sliders for size/delay configuration, AI Tone samples
+      editor, and keyboard shortcut settings.
 
 ### Known follow-ups from completed milestones (not yet fixed)
 
@@ -302,15 +320,6 @@ the real app (not just unit-level checks) before moving on.
   how long style examples can be — a very large example set would inflate
   every `/ai/style` request's prompt size. Fine at the scale of "a few
   paragraphs," not stress-tested beyond that.
-
-### 13. Settings
-
-- AI provider/API key and writing-style examples already have a minimal
-  stand-in from Milestone 12 (`settings.json`, a bare-bones Settings view).
-  What's left: theme, font size, editor font, autosave behavior, default
-  workspace, keyboard shortcuts, markdown preferences — and folding the
-  Milestone 12 settings into whatever this milestone's real Settings UI
-  looks like, rather than leaving it as a separate minimal page.
 
 ### 14. UI polish
 

@@ -1,7 +1,9 @@
-import CodeMirror from '@uiw/react-codemirror'
+import { useMemo } from 'react'
+import CodeMirror, { EditorView } from '@uiw/react-codemirror'
 import { markdown } from '@codemirror/lang-markdown'
 import { languages } from '@codemirror/language-data'
 import { markdownKeymapExtension } from './markdownShortcuts'
+import { useSettings } from '../settings/SettingsContext'
 
 export interface EditorSelection {
   text: string
@@ -9,11 +11,6 @@ export interface EditorSelection {
   to: number
 }
 
-// Structurally typed against CodeMirror's real ViewUpdate (only the fields
-// this component reads) instead of importing @codemirror/view directly —
-// it isn't a direct dependency of this project, only a peer of
-// @uiw/react-codemirror, and the real object passed at runtime satisfies
-// this shape regardless.
 interface MinimalViewUpdate {
   selectionSet: boolean
   state: {
@@ -28,13 +25,32 @@ interface MarkdownEditorProps {
   onSelectionChange?: (selection: EditorSelection) => void
 }
 
-const extensions = [markdown({ codeLanguages: languages }), markdownKeymapExtension]
+const baseExtensions = [markdown({ codeLanguages: languages }), markdownKeymapExtension]
 
 function MarkdownEditor({
   value,
   onChange,
   onSelectionChange
 }: MarkdownEditorProps): React.JSX.Element {
+  const { settings } = useSettings()
+
+  const fontTheme = useMemo(() => {
+    const font = settings?.editor_font || 'monospace'
+    const size = settings?.font_size || 14
+    return EditorView.theme({
+      '&.cm-editor': {
+        fontSize: `${size}px`
+      },
+      '.cm-content, .cm-gutters': {
+        fontFamily: font
+      }
+    })
+  }, [settings?.editor_font, settings?.font_size])
+
+  const extensions = useMemo(() => {
+    return [...baseExtensions, fontTheme]
+  }, [fontTheme])
+
   function handleUpdate(viewUpdate: MinimalViewUpdate): void {
     if (!onSelectionChange || !viewUpdate.selectionSet) return
     const { from, to } = viewUpdate.state.selection.main
@@ -46,11 +62,11 @@ function MarkdownEditor({
       value={value}
       onChange={onChange}
       onUpdate={handleUpdate}
-      theme="dark"
+      theme={settings?.theme === 'light' ? 'light' : 'dark'}
       height="100%"
       extensions={extensions}
       basicSetup={{ foldGutter: false }}
-      className="h-full text-sm"
+      className="h-full"
     />
   )
 }

@@ -1,10 +1,18 @@
 import { apiFetch } from '../../lib/api'
-import type { SettingsInfo } from './types'
+import type { SettingsInfo, SettingsUpdate } from './types'
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' }
 
 export function getSettings(): Promise<SettingsInfo> {
   return apiFetch<SettingsInfo>('/settings')
+}
+
+export function updateSettings(settings: SettingsUpdate): Promise<SettingsInfo> {
+  return apiFetch<SettingsInfo>('/settings', {
+    method: 'PATCH',
+    headers: JSON_HEADERS,
+    body: JSON.stringify(settings)
+  })
 }
 
 export function setMistralApiKey(apiKey: string): Promise<void> {

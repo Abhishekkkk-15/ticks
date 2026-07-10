@@ -12,6 +12,9 @@ import type { Workspace } from './features/workspaces/types'
 import CommandPalette from './features/command-palette/CommandPalette'
 import SettingsView from './features/settings/SettingsView'
 
+import { useSettings } from './features/settings/SettingsContext'
+import { matchShortcut } from './lib/shortcuts'
+
 type MainView = 'notes' | 'whiteboard' | 'settings'
 
 function App(): React.JSX.Element {
@@ -22,6 +25,23 @@ function App(): React.JSX.Element {
   const [activeDirty, setActiveDirty] = useState(false)
   const [view, setView] = useState<MainView>('notes')
   const [paletteOpen, setPaletteOpen] = useState(false)
+
+  const { settings } = useSettings()
+
+  useEffect(() => {
+    if (
+      !selectedWorkspace &&
+      settings?.default_workspace_id &&
+      workspacesApi.workspaces.length > 0
+    ) {
+      const defaultWs = workspacesApi.workspaces.find((w) => w.id === settings.default_workspace_id)
+      if (defaultWs) {
+        Promise.resolve().then(() => {
+          setSelectedWorkspace(defaultWs)
+        })
+      }
+    }
+  }, [settings?.default_workspace_id, workspacesApi.workspaces, selectedWorkspace])
 
   const openNote = useCallback((workspaceId: string, note: Note) => {
     setTabs((prev) =>
@@ -61,16 +81,15 @@ function App(): React.JSX.Element {
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent): void {
-      const isPaletteShortcut =
-        (event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'p'
-      if (isPaletteShortcut) {
+      const shortcutStr = settings?.keyboard_shortcuts?.command_palette || 'Ctrl+Shift+P'
+      if (matchShortcut(event, shortcutStr)) {
         event.preventDefault()
         setPaletteOpen((open) => !open)
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
+  }, [settings?.keyboard_shortcuts?.command_palette])
 
   const activeTab = tabs.find((t) => t.note.id === activeTabId) ?? null
 

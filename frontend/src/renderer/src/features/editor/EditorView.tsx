@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import MarkdownEditor from './MarkdownEditor'
 import MarkdownPreview from './MarkdownPreview'
 import type { EditorSelection } from './MarkdownEditor'
+import { useSettings } from '../settings/SettingsContext'
 
 type EditorMode = 'edit' | 'preview' | 'split'
 
@@ -26,7 +27,16 @@ function EditorView({
   noteId,
   onSelectionChange
 }: EditorViewProps): React.JSX.Element {
+  const { settings } = useSettings()
   const [mode, setMode] = useState<EditorMode>('split')
+
+  useEffect(() => {
+    if (settings?.default_editor_mode) {
+      Promise.resolve().then(() => {
+        setMode(settings.default_editor_mode)
+      })
+    }
+  }, [settings?.default_editor_mode])
 
   return (
     <div className="flex h-full flex-col">

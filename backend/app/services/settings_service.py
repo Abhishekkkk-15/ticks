@@ -3,14 +3,36 @@ from typing import Any
 
 from app.config import settings
 
-DEFAULT_DATA: dict[str, Any] = {"mistral_api_key": None, "style_examples": []}
+DEFAULT_DATA: dict[str, Any] = {
+    "mistral_api_key": None,
+    "style_examples": [],
+    "theme": "dark",
+    "font_size": 14,
+    "editor_font": "monospace",
+    "autosave_delay": 800,
+    "default_workspace_id": None,
+    "default_editor_mode": "split",
+    "keyboard_shortcuts": {
+        "command_palette": "Ctrl+Shift+P",
+    },
+}
 
 
 def _read() -> dict[str, Any]:
     if not settings.settings_path.exists():
         return dict(DEFAULT_DATA)
-    data = json.loads(settings.settings_path.read_text())
-    return {**DEFAULT_DATA, **data}
+    try:
+        data = json.loads(settings.settings_path.read_text())
+    except Exception:
+        data = {}
+    # Make sure nested dicts like keyboard_shortcuts are also merged correctly
+    merged = {**DEFAULT_DATA, **data}
+    if "keyboard_shortcuts" in data and isinstance(data["keyboard_shortcuts"], dict):
+        merged["keyboard_shortcuts"] = {
+            **DEFAULT_DATA["keyboard_shortcuts"],
+            **data["keyboard_shortcuts"],
+        }
+    return merged
 
 
 def _write(data: dict[str, Any]) -> None:
@@ -43,7 +65,32 @@ def set_style_examples(examples: list[str]) -> list[str]:
 
 
 def get_settings_info() -> dict[str, Any]:
+    data = _read()
     return {
         "mistral_api_key_configured": bool(get_mistral_api_key()),
         "style_examples": get_style_examples(),
+        "theme": data["theme"],
+        "font_size": data["font_size"],
+        "editor_font": data["editor_font"],
+        "autosave_delay": data["autosave_delay"],
+        "default_workspace_id": data["default_workspace_id"],
+        "default_editor_mode": data["default_editor_mode"],
+        "keyboard_shortcuts": data["keyboard_shortcuts"],
     }
+
+
+def update_settings(update_data: dict[str, Any]) -> dict[str, Any]:
+    data = _read()
+    for key, val in update_data.items():
+        is_valid_key = key in DEFAULT_DATA and key not in (
+            "mistral_api_key",
+            "style_examples",
+        )
+        if is_valid_key:
+            if key == "keyboard_shortcuts" and isinstance(val, dict):
+                # Merge nested keyboard shortcuts
+                data[key] = {**data.get(key, {}), **val}
+            else:
+                data[key] = val
+    _write(data)
+    return get_settings_info()
