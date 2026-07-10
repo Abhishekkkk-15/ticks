@@ -1,17 +1,11 @@
-import { useEffect, useState } from 'react'
 import { Copy, Minus, Square, X } from 'lucide-react'
+import { useIsMaximized } from '../../lib/useIsMaximized'
 
 const DRAG_REGION = { WebkitAppRegion: 'drag' } as React.CSSProperties
 const NO_DRAG_REGION = { WebkitAppRegion: 'no-drag' } as React.CSSProperties
 
 function TitleBar(): React.JSX.Element | null {
-  const [isMaximized, setIsMaximized] = useState(false)
-
-  useEffect(() => {
-    if (window.api.platform === 'darwin') return
-    window.api.windowControls.isMaximized().then(setIsMaximized)
-    return window.api.windowControls.onMaximizedChange(setIsMaximized)
-  }, [])
+  const isMaximized = useIsMaximized()
 
   if (window.api.platform === 'darwin') return null
 

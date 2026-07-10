@@ -18,6 +18,7 @@ import { matchShortcut } from './lib/shortcuts'
 import { createNote } from './features/notes/api'
 import { EmptyState } from './components/layout/EmptyState'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useIsMaximized } from './lib/useIsMaximized'
 
 type MainView = 'notes' | 'whiteboard' | 'settings'
 
@@ -177,8 +178,18 @@ function App(): React.JSX.Element {
 
   const activeTab = tabs.find((t) => t.note.id === activeTabId) ?? null
 
+  // Frameless windows (Windows/Linux) are rendered with a transparent
+  // BrowserWindow so these CSS corners actually show through to the desktop;
+  // squared off again once maximized, since a rounded shape flush against
+  // the screen edges just looks like a rendering glitch.
+  const isMaximized = useIsMaximized()
+  const isMac = window.api.platform === 'darwin'
+  const rounded = !isMac && !isMaximized
+
   return (
-    <div className="flex h-screen flex-col">
+    <div
+      className={`flex h-screen flex-col ${rounded ? 'overflow-hidden rounded-lg shadow-2xl' : ''}`}
+    >
       <TitleBar />
       <div className="min-h-0 flex-1">
         <AppShell

@@ -153,6 +153,9 @@ function createWindow(): void {
     show: false,
     autoHideMenuBar: true,
     frame: process.platform === 'darwin',
+    // Frameless windows are otherwise an opaque rectangle, so the renderer's
+    // own rounded corners need a transparent window to actually show through.
+    transparent: process.platform !== 'darwin',
     ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset' as const } : {}),
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {

@@ -50,6 +50,15 @@
   }
 }
 
+/* The BrowserWindow itself is transparent on Windows/Linux (see main/index.ts)
+   so the app's own rounded corners can show through to the desktop instead
+   of leaving square corners peeking out from behind the rounded content. */
+html,
+body,
+#root {
+  background: transparent;
+}
+
 body {
   min-height: 100vh;
   font-family:

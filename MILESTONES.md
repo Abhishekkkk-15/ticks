@@ -305,6 +305,21 @@ the real app (not just unit-level checks) before moving on.
   unlike a synthetic renderer `KeyboardEvent` which never reaches
   `before-input-event`) with before/after `getZoomLevel()` values, and a
   themed scrollbar rendering on a long note's preview pane.
+- **Rounded window corners** (Windows/Linux): the frameless `BrowserWindow`
+  is now `transparent: true`, with `App.tsx`'s root wrapper carrying
+  `rounded-lg overflow-hidden` so the app's own corners — not an opaque
+  OS rectangle — define the window's visible shape; `html`/`body`/`#root`
+  are set to `background: transparent` in `main.css` so nothing paints
+  behind the rounded content. Squared off again while maximized (a new
+  shared `useIsMaximized` hook, extracted from `TitleBar.tsx` so both it
+  and `App.tsx` react to the same state) since rounded corners flush
+  against the screen edges just read as a rendering glitch. Verified by
+  inspecting the actual alpha channel of `capturePage()`'s output
+  (not just eyeballing a screenshot, since near-black content is hard to
+  tell apart from true transparency): alpha 1 at the exact corner pixel,
+  238 on the anti-aliased curve, 255 just past the 8px radius and at
+  the content center — confirming the corner is a genuine transparent
+  hole through to the desktop, not merely dark-colored content.
 
 ### Known follow-ups from completed milestones (not yet fixed)
 
