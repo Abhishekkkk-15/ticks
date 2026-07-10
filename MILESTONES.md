@@ -87,6 +87,30 @@ the real app (not just unit-level checks) before moving on.
 
    Milestone 9 is now fully done — all of the original plan's scope for
    this milestone has landed.
+10. **Search** — scoped to the currently open workspace (not global across
+    workspaces, matching how workspaces already behave as separate
+    contexts). Builds on Milestone 9's substring search rather than adding
+    a new UI surface (a dedicated overlay is closer to Milestone 11's
+    command-palette territory):
+    - Backend: `GET /workspaces/{id}/notes` (both the plain list and `?q=`
+      search) now returns a content snippet per note — centered on the
+      matched text for a content hit, otherwise the start of the note —
+      and accepts `favorite_only=true` to filter to favorited notes,
+      composable with `q`.
+    - Frontend: `NoteList` shows the snippet under each note's title, has a
+      favorites-only toggle (star button next to the search input), and
+      highlights the matched substring in both title and snippet via a
+      `highlightMatch` helper.
+    - Verified against the real app: created three notes with distinct
+      content, favorited one, confirmed the snippet preview renders for
+      all three, searched a content-only term (narrows correctly),
+      toggled favorites-only (narrows correctly), and confirmed the match
+      highlight renders on a hit.
+    - Tags and folders (also named in the search milestone's description)
+      don't exist as note properties yet — both are Milestone 11 concepts
+      (sidebar: folders/tags/favorites/recent/pinned). Search is built to
+      extend to them once that data exists rather than adding unused
+      fields now.
 
 ### Known follow-ups from completed milestones (not yet fixed)
 
@@ -132,11 +156,6 @@ the real app (not just unit-level checks) before moving on.
   code path — but a real non-empty drawing embed hasn't been eyeballed.
 
 ## Remaining
-
-### 10. Search
-
-- Fast local search across titles, content, tags, folders, recent notes,
-  favorites. Explicitly **no vector search**.
 
 ### 11. Command palette
 

@@ -1,11 +1,22 @@
 import { apiFetch } from '../../lib/api'
-import type { Note, NoteDetail } from './types'
+import type { Note, NoteDetail, NoteListItem } from './types'
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' }
 
-export function listNotes(workspaceId: string, query?: string): Promise<Note[]> {
-  const suffix = query ? `?q=${encodeURIComponent(query)}` : ''
-  return apiFetch<Note[]>(`/workspaces/${workspaceId}/notes${suffix}`)
+interface ListNotesOptions {
+  query?: string
+  favoriteOnly?: boolean
+}
+
+export function listNotes(
+  workspaceId: string,
+  options: ListNotesOptions = {}
+): Promise<NoteListItem[]> {
+  const params = new URLSearchParams()
+  if (options.query) params.set('q', options.query)
+  if (options.favoriteOnly) params.set('favorite_only', 'true')
+  const suffix = params.toString() ? `?${params.toString()}` : ''
+  return apiFetch<NoteListItem[]>(`/workspaces/${workspaceId}/notes${suffix}`)
 }
 
 export function getNote(workspaceId: string, noteId: string): Promise<NoteDetail> {

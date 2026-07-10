@@ -41,3 +41,10 @@ class Note(BaseModel):
 
 class NoteDetail(Note):
     content: str
+
+
+class NoteListItem(Note):
+    # A short content preview for the note list/search UI — centered on the
+    # matched query when there's a content match, otherwise just the start
+    # of the note. Empty for a brand-new empty note.
+    snippet: str = ""

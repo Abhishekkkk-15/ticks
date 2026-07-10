@@ -10,3 +10,7 @@ export interface Note {
 export interface NoteDetail extends Note {
   content: string
 }
+
+export interface NoteListItem extends Note {
+  snippet: string
+}

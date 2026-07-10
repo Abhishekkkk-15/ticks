@@ -6,10 +6,11 @@ from pathlib import Path
 
 from fastapi import HTTPException
 
-from app.schemas.note import Note, NoteCreate, NoteDetail
+from app.schemas.note import Note, NoteCreate, NoteDetail, NoteListItem
 from app.services.workspace_service import get_workspace_dir
 
 METADATA_FILENAME = "notes.jsonl"
+SNIPPET_LENGTH = 140
 
 
 def _metadata_path(workspace_dir: Path) -> Path:
@@ -53,31 +54,60 @@ def _to_note(entry: dict) -> Note:
     return Note(**entry)
 
 
+def _make_snippet(content: str, query: str) -> str:
+    content = " ".join(content.split())
+    if not content:
+        return ""
+    if not query:
+        return content[:SNIPPET_LENGTH]
+
+    idx = content.lower().find(query.lower())
+    if idx == -1:
+        return content[:SNIPPET_LENGTH]
+
+    start = max(0, idx - SNIPPET_LENGTH // 3)
+    end = min(len(content), start + SNIPPET_LENGTH)
+    prefix = "…" if start > 0 else ""
+    suffix = "…" if end < len(content) else ""
+    return f"{prefix}{content[start:end]}{suffix}"
+
+
+def _to_list_item(workspace_dir: Path, entry: dict, query: str = "") -> NoteListItem:
+    content = _note_path(workspace_dir, entry["id"]).read_text()
+    return NoteListItem(**entry, snippet=_make_snippet(content, query))
+
+
 def note_exists(workspace_id: str, note_id: str) -> bool:
     workspace_dir = get_workspace_dir(workspace_id)
     return any(e["id"] == note_id for e in _read_all(workspace_dir))
 
 
-def list_notes(workspace_id: str) -> list[Note]:
+def list_notes(workspace_id: str, favorite_only: bool = False) -> list[NoteListItem]:
     workspace_dir = get_workspace_dir(workspace_id)
-    return [_to_note(e) for e in _sort(_read_all(workspace_dir))]
+    entries = _sort(_read_all(workspace_dir))
+    if favorite_only:
+        entries = [e for e in entries if e["favorite"]]
+    return [_to_list_item(workspace_dir, e) for e in entries]
 
 
-def search_notes(workspace_id: str, query: str) -> list[Note]:
-    query = query.strip().lower()
+def search_notes(workspace_id: str, query: str, favorite_only: bool = False) -> list[NoteListItem]:
+    query = query.strip()
     if not query:
-        return list_notes(workspace_id)
+        return list_notes(workspace_id, favorite_only=favorite_only)
 
     workspace_dir = get_workspace_dir(workspace_id)
+    lower_query = query.lower()
     matches = []
     for entry in _read_all(workspace_dir):
-        if query in entry["title"].lower():
+        if favorite_only and not entry["favorite"]:
+            continue
+        if lower_query in entry["title"].lower():
             matches.append(entry)
             continue
-        if query in _note_path(workspace_dir, entry["id"]).read_text().lower():
+        if lower_query in _note_path(workspace_dir, entry["id"]).read_text().lower():
             matches.append(entry)
 
-    return [_to_note(e) for e in _sort(matches)]
+    return [_to_list_item(workspace_dir, e, query) for e in _sort(matches)]
 
 
 def get_note(workspace_id: str, note_id: str) -> NoteDetail:

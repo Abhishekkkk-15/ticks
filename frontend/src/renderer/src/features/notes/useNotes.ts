@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
 import { createNote, deleteNote, importNote as importNoteApi, listNotes, setNoteFlags } from './api'
-import type { Note } from './types'
+import type { Note, NoteListItem } from './types'
 
 interface UseNotesResult {
-  notes: Note[]
+  notes: NoteListItem[]
   loading: boolean
   error: string | null
   query: string
   setQuery: (value: string) => void
+  favoriteOnly: boolean
+  setFavoriteOnly: (value: boolean) => void
   create: (title: string) => Promise<Note | null>
   remove: (id: string) => Promise<void>
   toggleFavorite: (note: Note) => Promise<void>
@@ -17,25 +19,20 @@ interface UseNotesResult {
 const SEARCH_DEBOUNCE_MS = 250
 
 export function useNotes(workspaceId: string): UseNotesResult {
-  const [notes, setNotes] = useState<Note[]>([])
+  const [notes, setNotes] = useState<NoteListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
+  const [favoriteOnly, setFavoriteOnly] = useState(false)
 
-  const refresh = useCallback(
-    async (q: string) => {
-      setLoading(true)
-      try {
-        setNotes(await listNotes(workspaceId, q))
-        setError(null)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load notes')
-      } finally {
-        setLoading(false)
-      }
-    },
-    [workspaceId]
-  )
+  const refresh = useCallback(async () => {
+    try {
+      setNotes(await listNotes(workspaceId, { query, favoriteOnly }))
+      setError(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load notes')
+    }
+  }, [workspaceId, query, favoriteOnly])
 
   useEffect(() => {
     let cancelled = false
@@ -43,7 +40,7 @@ export function useNotes(workspaceId: string): UseNotesResult {
     async function run(): Promise<void> {
       setLoading(true)
       try {
-        const data = await listNotes(workspaceId, query)
+        const data = await listNotes(workspaceId, { query, favoriteOnly })
         if (!cancelled) {
           setNotes(data)
           setError(null)
@@ -67,21 +64,21 @@ export function useNotes(workspaceId: string): UseNotesResult {
       cancelled = true
       clearTimeout(timer)
     }
-  }, [workspaceId, query])
+  }, [workspaceId, query, favoriteOnly])
 
   const create = useCallback(
     async (title: string): Promise<Note | null> => {
       try {
         const note = await createNote(workspaceId, title)
         setError(null)
-        await refresh(query)
+        await refresh()
         return note
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to create note')
         return null
       }
     },
-    [workspaceId, query, refresh]
+    [workspaceId, refresh]
   )
 
   const remove = useCallback(
@@ -89,12 +86,12 @@ export function useNotes(workspaceId: string): UseNotesResult {
       try {
         await deleteNote(workspaceId, id)
         setError(null)
-        await refresh(query)
+        await refresh()
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to delete note')
       }
     },
-    [workspaceId, query, refresh]
+    [workspaceId, refresh]
   )
 
   const toggleFavorite = useCallback(
@@ -102,12 +99,12 @@ export function useNotes(workspaceId: string): UseNotesResult {
       try {
         await setNoteFlags(workspaceId, note.id, { favorite: !note.favorite })
         setError(null)
-        await refresh(query)
+        await refresh()
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to update note')
       }
     },
-    [workspaceId, query, refresh]
+    [workspaceId, refresh]
   )
 
   const importNote = useCallback(
@@ -115,15 +112,27 @@ export function useNotes(workspaceId: string): UseNotesResult {
       try {
         const note = await importNoteApi(workspaceId, title, content)
         setError(null)
-        await refresh(query)
+        await refresh()
         return note
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to import note')
         return null
       }
     },
-    [workspaceId, query, refresh]
+    [workspaceId, refresh]
   )
 
-  return { notes, loading, error, query, setQuery, create, remove, toggleFavorite, importNote }
+  return {
+    notes,
+    loading,
+    error,
+    query,
+    setQuery,
+    favoriteOnly,
+    setFavoriteOnly,
+    create,
+    remove,
+    toggleFavorite,
+    importNote
+  }
 }

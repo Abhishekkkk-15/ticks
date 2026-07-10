@@ -7,6 +7,7 @@ from app.schemas.note import (
     NoteDetail,
     NoteFlags,
     NoteImport,
+    NoteListItem,
     NoteMove,
     NoteRename,
 )
@@ -15,11 +16,13 @@ from app.services import note_service
 router = APIRouter(prefix="/workspaces/{workspace_id}/notes", tags=["notes"])
 
 
-@router.get("", response_model=list[Note])
-def list_notes(workspace_id: str, q: str | None = None) -> list[Note]:
+@router.get("", response_model=list[NoteListItem])
+def list_notes(
+    workspace_id: str, q: str | None = None, favorite_only: bool = False
+) -> list[NoteListItem]:
     if q:
-        return note_service.search_notes(workspace_id, q)
-    return note_service.list_notes(workspace_id)
+        return note_service.search_notes(workspace_id, q, favorite_only=favorite_only)
+    return note_service.list_notes(workspace_id, favorite_only=favorite_only)
 
 
 @router.post("", response_model=NoteDetail, status_code=201)
