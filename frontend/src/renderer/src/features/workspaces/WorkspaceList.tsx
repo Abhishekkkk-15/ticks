@@ -1,7 +1,12 @@
 import { useState } from 'react'
 import { useWorkspaces } from './useWorkspaces'
+import type { Workspace } from './types'
 
-function WorkspaceList(): React.JSX.Element {
+interface WorkspaceListProps {
+  onSelect: (workspace: Workspace) => void
+}
+
+function WorkspaceList({ onSelect }: WorkspaceListProps): React.JSX.Element {
   const { workspaces, loading, error, create, remove } = useWorkspaces()
   const [newName, setNewName] = useState('')
 
@@ -26,7 +31,13 @@ function WorkspaceList(): React.JSX.Element {
               key={workspace.id}
               className="group flex items-center justify-between rounded-md px-2 py-1.5 text-sm text-neutral-300 hover:bg-neutral-800"
             >
-              <span className="truncate">{workspace.name}</span>
+              <button
+                type="button"
+                onClick={() => onSelect(workspace)}
+                className="min-w-0 flex-1 truncate text-left"
+              >
+                {workspace.name}
+              </button>
               <button
                 type="button"
                 onClick={() => remove(workspace.id)}

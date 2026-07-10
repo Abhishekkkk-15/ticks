@@ -3,6 +3,7 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { getApiBaseUrl, startBackend, stopBackend } from './backend'
+import { exportNoteFile, importNoteFile } from './files'
 
 function createWindow(): void {
   // Create the browser window.
@@ -68,6 +69,10 @@ if (!gotSingleInstanceLock) {
     })
 
     ipcMain.handle('api:get-base-url', () => getApiBaseUrl())
+    ipcMain.handle('file:export-note', (_event, defaultName: string, content: string) =>
+      exportNoteFile(defaultName, content)
+    )
+    ipcMain.handle('file:import-note', () => importNoteFile())
 
     startBackend()
     createWindow()

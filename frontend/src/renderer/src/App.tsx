@@ -1,51 +1,28 @@
 import { useState } from 'react'
 import AppShell from './components/layout/AppShell'
-import EditorView from './features/editor/EditorView'
 import DrawingView from './features/drawings/DrawingView'
-
-// Standalone demo doc for the editor milestone — not yet backed by a real
-// note file. Wiring this to actual per-workspace notes lands with file storage.
-const DEMO_DOCUMENT = `# Getting Started
-
-This is a **demo** document showing off the editor — *headings*, lists, checklists, tables, and code all render live.
-
-## Task list
-
-- [x] Set up the editor
-- [ ] Wire it to real notes
-- [ ] Ship it
-
-## A table
-
-| Feature | Status |
-| --- | --- |
-| Live preview | done |
-| Split view | done |
-| Syntax highlighting | done |
-
-## Code
-
-\`\`\`ts
-function greet(name: string): string {
-  return \`Hello, \${name}!\`
-}
-\`\`\`
-
-## An image
-
-![A tiny dot](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=)
-`
+import NoteEditor from './features/notes/NoteEditor'
+import type { Note } from './features/notes/types'
 
 type MainView = 'notes' | 'whiteboard'
 
-// Temporary top-level switcher for demoing the editor and whiteboard in
-// isolation. Replaced by the real per-note tab system once notes exist.
+interface OpenNote {
+  workspaceId: string
+  note: Note
+}
+
+// Temporary top-level switcher for demoing notes and the whiteboard in
+// isolation. Replaced by the real per-note tab system once tabs exist
+// (Milestone 11).
 function App(): React.JSX.Element {
-  const [content, setContent] = useState(DEMO_DOCUMENT)
+  const [openNote, setOpenNote] = useState<OpenNote | null>(null)
   const [view, setView] = useState<MainView>('notes')
 
   return (
-    <AppShell>
+    <AppShell
+      selectedNoteId={openNote?.note.id}
+      onOpenNote={(workspaceId, note) => setOpenNote({ workspaceId, note })}
+    >
       <div className="flex h-full flex-col">
         <div className="flex shrink-0 items-center gap-1 border-b border-neutral-800 px-3 py-2">
           <button
@@ -73,7 +50,18 @@ function App(): React.JSX.Element {
         </div>
         <div className="min-h-0 flex-1">
           {view === 'notes' ? (
-            <EditorView value={content} onChange={setContent} />
+            openNote ? (
+              <NoteEditor
+                workspaceId={openNote.workspaceId}
+                noteId={openNote.note.id}
+                onDeleted={() => setOpenNote(null)}
+                onDuplicated={(note) => setOpenNote({ workspaceId: openNote.workspaceId, note })}
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center text-sm text-neutral-500">
+                Select or create a note to get started
+              </div>
+            )
           ) : (
             <DrawingView />
           )}

@@ -28,7 +28,7 @@ def _unique_slug(base_slug: str) -> str:
     return slug
 
 
-def _workspace_dir(workspace_id: str) -> Path:
+def get_workspace_dir(workspace_id: str) -> Path:
     # workspace_id comes straight from the URL path, and gets joined onto a
     # real filesystem path below — reject anything that isn't a plain slug
     # before it can be used to escape workspaces_root (e.g. "../../etc").
@@ -93,7 +93,7 @@ def rename_workspace(workspace_id: str, name: str) -> Workspace:
     if not name:
         raise HTTPException(status_code=422, detail="Workspace name cannot be empty")
 
-    workspace_dir = _workspace_dir(workspace_id)
+    workspace_dir = get_workspace_dir(workspace_id)
     config = _read_config(workspace_dir)
     config["name"] = name
     _write_config(workspace_dir, config)
@@ -102,5 +102,5 @@ def rename_workspace(workspace_id: str, name: str) -> Workspace:
 
 
 def delete_workspace(workspace_id: str) -> None:
-    workspace_dir = _workspace_dir(workspace_id)
+    workspace_dir = get_workspace_dir(workspace_id)
     shutil.rmtree(workspace_dir)

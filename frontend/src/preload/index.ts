@@ -3,7 +3,11 @@ import { electronAPI } from '@electron-toolkit/preload'
 
 // Custom APIs for renderer
 const api = {
-  getApiBaseUrl: (): Promise<string> => ipcRenderer.invoke('api:get-base-url')
+  getApiBaseUrl: (): Promise<string> => ipcRenderer.invoke('api:get-base-url'),
+  exportNote: (defaultName: string, content: string): Promise<boolean> =>
+    ipcRenderer.invoke('file:export-note', defaultName, content),
+  importNote: (): Promise<{ title: string; content: string } | null> =>
+    ipcRenderer.invoke('file:import-note')
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

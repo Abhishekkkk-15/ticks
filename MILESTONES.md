@@ -23,15 +23,33 @@ the real app (not just unit-level checks) before moving on.
    `resources/`, `assets/images/`, `config.json`); `workspace_id` validated
    against path traversal. `features/workspaces/` in the frontend.
 7. **Markdown editor** — CodeMirror 6 source pane + `react-markdown` preview,
-   Edit/Split/Preview modes, `Mod-B`/`Mod-I` shortcuts. Currently wired to an
-   **in-memory demo document only** — not yet backed by real note files
-   (that's Milestone 9).
+   Edit/Split/Preview modes, `Mod-B`/`Mod-I` shortcuts. Now backed by real
+   per-workspace note files with autosave (Milestone 9), not the old
+   in-memory demo document.
 8. **Excalidraw integration** — whiteboard with PNG/SVG/`.excalidraw` export
    and a full-screen toggle. Fonts are served from a local copy (not
    Excalidraw's default esm.sh CDN) to keep the app's no-cloud-dependency
    promise; required resolving `EXCALIDRAW_ASSET_PATH` to an absolute URL via
    `document.baseURI` since packaged `file://` builds can't rely on
    `window.location.origin`.
+9. **File storage — notes CRUD + autosave.** Notes are Markdown files under
+   each workspace's `notes/` dir, with metadata (title, timestamps,
+   favorite, pinned) in a per-workspace `notes.jsonl` — no SQL, no vector DB.
+   Backend: full CRUD, favorite/pin flags, duplicate, move between
+   workspaces, substring search over title+content, Markdown import/export.
+   Frontend: workspace list → note list → note editor navigation wired
+   through `AppShell`/`Sidebar`; `NoteEditor` header supports rename,
+   favorite, pin, duplicate, delete, and export; `NoteList` supports create,
+   search, favorite-toggle, delete, and import. Import/export go through
+   real native OS file dialogs (Electron's `dialog.showSaveDialog` /
+   `showOpenDialog`), not the backend. Autosave is debounced (800ms) client
+   side. Verified against the real app: created/edited/renamed/
+   favorited/pinned/duplicated/deleted a note and a workspace end-to-end,
+   confirmed autosave's "Saving…" → "Saved" transition and live preview
+   update, all through actual UI interaction (not just curl/typecheck).
+   Resources (attaching learning resources with a processing pipeline) and
+   saving/embedding `.excalidraw` drawings inside a note — both part of the
+   original Milestone 9 scope — were deliberately deferred; see below.
 
 ### Known follow-ups from completed milestones (not yet fixed)
 
@@ -45,21 +63,30 @@ the real app (not just unit-level checks) before moving on.
   variable theming) — Tailwind + `@tailwindcss/typography` were used
   directly instead, deferring shadcn's setup to whenever the theme work in
   Milestone 14 happens for real, to avoid guessing at theme tokens twice.
+- `NoteList` (sidebar) doesn't live-refresh when a note's title/favorite/pin
+  changes via the open note's editor header — it only picks up the change
+  once you navigate back to the workspace list and reopen it. Cross-syncing
+  would need lifting note-list state up to `App`/`AppShell` instead of each
+  owning its own `useNotes`/`useNoteEditor` state; deferred as
+  disproportionate to Milestone 9's scope.
+- Moving a note between workspaces is implemented and tested on the backend
+  (`POST /workspaces/{id}/notes/{note_id}/move`) but has no frontend UI yet
+  — it needs a workspace-picker component that doesn't exist.
 
 ## Remaining
 
-### 9. File storage
+### 9 (continued). Resources & drawing-linking
 
-- Wire the editor to **real** per-workspace note files instead of the demo
-  doc: create / rename / delete / move / duplicate / search / favorite /
-  pin / export / import, with autosave.
-- Notes as Markdown files, metadata as JSONL (per the storage philosophy —
-  no SQL, no vector DB).
+Deferred from Milestone 9's original scope (notes CRUD + autosave landed;
+see Done above):
+
 - Resources: attach learning resources (website, blog, doc, PDF, markdown,
   local file) to a note, with source/title/URL-or-file/date-added metadata
   and a processing status (`queued` → `reading` → `processing` →
   `completed`/`failed`). Backend does the processing; frontend only
-  uploads and displays status.
+  uploads and displays status. Overlaps with Milestone 12 (AI integration)
+  since "processing" is really an AI call — may make more sense to build
+  alongside that milestone rather than before it.
 - Save/load `.excalidraw` files linked to a note, and embed a drawing
   inside a note.
 
