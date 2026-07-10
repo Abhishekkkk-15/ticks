@@ -5,6 +5,7 @@ import { setMistralApiKey, setStyleExamples } from './api'
 import { useAiAction } from '../ai/useAiAction'
 import { useWorkspaces } from '../workspaces/useWorkspaces'
 import Select from '../../components/ui/Select'
+import FontPicker from './FontPicker'
 
 type SettingsTab = 'general' | 'editor' | 'ai' | 'shortcuts'
 
@@ -421,25 +422,21 @@ function SettingsView(): React.JSX.Element {
               <label htmlFor="editorFont" className="block text-sm font-medium text-neutral-200">
                 Editor Font Family
               </label>
-              <div className="flex max-w-md gap-2">
-                <input
-                  id="editorFont"
-                  type="text"
-                  value={settings.editor_font}
-                  onChange={(e) => updateSettings({ editor_font: e.target.value })}
-                  placeholder="e.g. JetBrains Mono, monospace"
-                  className="min-w-0 flex-1 rounded-md border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-200 focus:border-neutral-600 focus:outline-none"
-                />
+              <FontPicker
+                value={settings.editor_font}
+                onChange={(font) => updateSettings({ editor_font: font })}
+              />
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => updateSettings({ editor_font: 'monospace' })}
                   className="rounded-md border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-xs font-medium text-neutral-400 hover:text-neutral-200"
                 >
-                  Reset
+                  Reset to default
                 </button>
               </div>
               <p className="text-[10px] text-neutral-500">
-                Will fall back to local system fonts if the specific font is unavailable.
+                Picks from fonts installed on your system. Falls back to monospace if unavailable.
               </p>
             </section>
 
