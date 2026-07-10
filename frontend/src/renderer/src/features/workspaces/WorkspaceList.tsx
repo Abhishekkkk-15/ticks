@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { X } from 'lucide-react'
 import type { UseWorkspacesResult } from './useWorkspaces'
 import type { Workspace } from './types'
 
@@ -42,10 +43,10 @@ function WorkspaceList({ workspacesApi, onSelect }: WorkspaceListProps): React.J
               <button
                 type="button"
                 onClick={() => remove(workspace.id)}
-                className="hidden text-neutral-500 hover:text-red-400 group-hover:inline"
+                className="hidden rounded p-0.5 text-neutral-500 hover:bg-neutral-700 hover:text-red-400 group-hover:inline"
                 aria-label={`Delete ${workspace.name}`}
               >
-                ×
+                <X size={13} />
               </button>
             </li>
           ))}

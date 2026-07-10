@@ -75,14 +75,14 @@ function NoteDrawingEditor({
             type="button"
             onClick={handleSave}
             disabled={!loaded || saving}
-            className="rounded-md px-2.5 py-1 text-xs font-medium text-neutral-400 hover:text-neutral-200 disabled:opacity-40"
+            className="rounded-md px-2.5 py-1 text-xs font-medium text-neutral-400 transition-colors hover:bg-neutral-800 hover:text-neutral-200 disabled:opacity-40"
           >
             {saving ? 'Saving…' : 'Save'}
           </button>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md px-2.5 py-1 text-xs font-medium text-neutral-400 hover:text-neutral-200"
+            className="rounded-md px-2.5 py-1 text-xs font-medium text-neutral-400 transition-colors hover:bg-neutral-800 hover:text-neutral-200"
           >
             Close
           </button>

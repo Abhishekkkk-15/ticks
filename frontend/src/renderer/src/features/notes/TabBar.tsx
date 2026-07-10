@@ -30,7 +30,7 @@ function TabBar({
   if (tabs.length === 0) return null
 
   return (
-    <div className="flex shrink-0 items-stretch overflow-x-auto border-b border-neutral-800 bg-neutral-950">
+    <div className="flex shrink-0 items-stretch gap-1 overflow-x-auto border-b border-neutral-800 bg-neutral-950 px-1.5 pt-1.5">
       {tabs.map((tab, index) => {
         const isActive = tab.note.id === activeId
         return (
@@ -50,22 +50,22 @@ function TabBar({
             }}
             role="tab"
             aria-selected={isActive}
-            className={`group relative flex max-w-[180px] shrink-0 cursor-pointer items-center gap-1.5 border-r border-neutral-800 px-3 py-2 text-xs ${
+            className={`group relative flex max-w-[180px] shrink-0 cursor-pointer items-center gap-1.5 rounded-t-md px-3 py-2 text-xs transition-colors ${
               isActive
                 ? 'bg-neutral-900 text-neutral-100'
-                : 'text-neutral-500 hover:bg-neutral-900/60 hover:text-neutral-300'
+                : 'text-neutral-500 hover:bg-neutral-900/50 hover:text-neutral-300'
             }`}
           >
             {isActive && (
               <motion.div
                 layoutId="activeTabUnderline"
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-amber-500"
+                className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-amber-500"
                 transition={{ type: 'spring', stiffness: 380, damping: 30 }}
               />
             )}
-            {isActive && activeDirty && (
-              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-neutral-400 z-10" />
-            )}
+            {activeDirty && isActive ? (
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400 z-10" />
+            ) : null}
             <span className="min-w-0 flex-1 truncate z-10">{tab.note.title}</span>
             <button
               type="button"
@@ -74,7 +74,9 @@ function TabBar({
                 onClose(tab.note.id)
               }}
               aria-label={`Close ${tab.note.title}`}
-              className="shrink-0 rounded p-0.5 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-200 z-10"
+              className={`shrink-0 rounded p-0.5 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-200 z-10 ${
+                isActive ? 'inline' : 'hidden group-hover:inline'
+              }`}
             >
               <X size={12} />
             </button>

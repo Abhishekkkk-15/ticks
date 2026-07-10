@@ -224,10 +224,39 @@ the real app (not just unit-level checks) before moving on.
     - Redesigned Settings UI: premium tabbed layout with visual theme card
       previews, ranges/sliders for size/delay configuration, AI Tone samples
       editor, and keyboard shortcut settings.
-14. **UI polish** — premium cozy aesthetic improvements with rich micro-animations, glassmorphic styles, and rounded interfaces.
-    - Empty states: created a beautiful, animated `EmptyState` component with warm glowing ambient backdrops, action cards (New Note/Workspace, Open Whiteboard), and shortcut references.
-    - Transitions & Animations: integrated `framer-motion` for horizontal sliding sidebar lists, vertical panel expansion inside note editors, and smooth slide-down/fade-in transitions for the Command Palette overlay.
-    - Layout: styled items with consistent rounded corners, modern HSL color highlights, and glassmorphic blur designs.
+14. **UI polish** — premium cozy aesthetic with `framer-motion` transitions
+    (sliding sidebar lists, panel expansion in the note editor, command
+    palette fade/slide), a warm glowing `EmptyState` with action cards, and
+    glassmorphic/rounded surfaces throughout.
+
+    Redone in a follow-up pass into a single cohesive design system rather
+    than scattered spot-styling:
+    - Fixed invalid `border-neutral-750`/`neutral-850` utilities in
+      `EmptyState.tsx` (Tailwind's default neutral scale has no 750/850
+      step, so those classes were silently no-ops) and a stray empty
+      `mb-` class.
+    - Replaced every native `<select>` (note list folder/tag filters,
+      Settings' default-workspace picker) with a themed `Select`
+      component (`components/ui/Select.tsx`) matching the app's own
+      rounded/bordered input style instead of OS-default dropdown chrome.
+    - Styled the font-size/autosave-delay range sliders in Settings with
+      a custom thumb and an amber gradient fill (`.range-slider` in
+      `main.css`) instead of the unstyled browser default.
+    - Unified icon-button hover treatment (rounded + `hover:bg-neutral-800`)
+      across `NoteEditor`'s toolbar and `NoteDrawingEditor`'s Save/Close,
+      which previously had no hover background at all.
+    - `TabBar` tabs got rounded top corners, a real active-tab background
+      (not just the amber underline), and a hover-reveal close button.
+    - Replaced Settings' bare `<table>` shortcuts cheat-sheet with a card
+      list matching the rest of Settings' sections.
+    - Replaced bare `×` delete buttons (`NoteList`, `WorkspaceList`) with
+      a consistent `lucide-react` `X` icon.
+    - Settled on amber as the one consistent accent/brand color; emerald/
+      red/sky stay reserved for semantic success/danger/info states only.
+    - Verified against the real app across all three themes (Dark/Light/
+      Warm Cozy): empty state, note editor toolbar, tab bar with multiple
+      tabs, both Select dropdowns open, both range sliders, and the
+      shortcuts card list all screenshotted and confirmed coherent.
 
 ### Known follow-ups from completed milestones (not yet fixed)
 

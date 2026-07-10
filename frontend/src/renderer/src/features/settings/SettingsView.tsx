@@ -4,8 +4,16 @@ import { useSettings } from './SettingsContext'
 import { setMistralApiKey, setStyleExamples } from './api'
 import { useAiAction } from '../ai/useAiAction'
 import { useWorkspaces } from '../workspaces/useWorkspaces'
+import Select from '../../components/ui/Select'
 
 type SettingsTab = 'general' | 'editor' | 'ai' | 'shortcuts'
+
+function rangeFillStyle(value: number, min: number, max: number): React.CSSProperties {
+  const percent = ((value - min) / (max - min)) * 100
+  return {
+    background: `linear-gradient(to right, var(--color-amber-500) ${percent}%, var(--color-neutral-800) ${percent}%)`
+  }
+}
 
 function SettingsView(): React.JSX.Element {
   const { settings, updateSettings, loading: settingsLoading } = useSettings()
@@ -271,28 +279,22 @@ function SettingsView(): React.JSX.Element {
 
             {/* Launch Workspace */}
             <section className="space-y-2">
-              <label
-                htmlFor="defaultWorkspace"
-                className="block text-sm font-medium text-neutral-200"
-              >
+              <span className="block text-sm font-medium text-neutral-200">
                 Default Workspace on Startup
-              </label>
+              </span>
               <p className="text-xs text-neutral-500">
                 Automatically load this workspace when opening the app.
               </p>
-              <select
-                id="defaultWorkspace"
+              <Select
+                className="max-w-md"
+                size="md"
                 value={settings.default_workspace_id || ''}
-                onChange={(e) => updateSettings({ default_workspace_id: e.target.value || null })}
-                className="w-full max-w-md rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 focus:border-neutral-600 focus:outline-none"
-              >
-                <option value="">None (Show Workspace Selection)</option>
-                {workspaces.map((ws) => (
-                  <option key={ws.id} value={ws.id}>
-                    {ws.name}
-                  </option>
-                ))}
-              </select>
+                onChange={(value) => updateSettings({ default_workspace_id: value || null })}
+                options={[
+                  { value: '', label: 'None (Show Workspace Selection)' },
+                  ...workspaces.map((ws) => ({ value: ws.id, label: ws.name }))
+                ]}
+              />
             </section>
 
             {/* Markdown Preferences */}
@@ -382,7 +384,8 @@ function SettingsView(): React.JSX.Element {
                   step="1"
                   value={settings.font_size}
                   onChange={(e) => updateSettings({ font_size: parseInt(e.target.value, 10) })}
-                  className="h-1 flex-1 cursor-pointer appearance-none rounded-lg bg-neutral-800 accent-neutral-400"
+                  style={rangeFillStyle(settings.font_size, 12, 24)}
+                  className="range-slider flex-1"
                 />
                 <span className="text-xs text-neutral-500">24px</span>
               </div>
@@ -411,7 +414,8 @@ function SettingsView(): React.JSX.Element {
                   step="100"
                   value={settings.autosave_delay}
                   onChange={(e) => updateSettings({ autosave_delay: parseInt(e.target.value, 10) })}
-                  className="h-1 flex-1 cursor-pointer appearance-none rounded-lg bg-neutral-800 accent-neutral-400"
+                  style={rangeFillStyle(settings.autosave_delay, 200, 3000)}
+                  className="range-slider flex-1"
                 />
                 <span className="text-xs text-neutral-500">3s</span>
               </div>
@@ -646,65 +650,34 @@ function SettingsView(): React.JSX.Element {
             {/* Shortcuts Reference List */}
             <section className="space-y-3">
               <h3 className="text-sm font-medium text-neutral-200">General Cheat-sheet</h3>
-              <div className="max-w-lg overflow-hidden rounded-md border border-neutral-800">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="border-b border-neutral-800 bg-neutral-900/50 text-neutral-400">
-                      <th className="px-4 py-2 font-medium">Action</th>
-                      <th className="px-4 py-2 font-medium">Shortcut Key</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-neutral-850">
-                    <tr>
-                      <td className="px-4 py-2.5 text-neutral-300">Bold Selected Text</td>
-                      <td className="px-4 py-2.5">
-                        <kbd className="rounded bg-neutral-900 border border-neutral-800 px-1.5 py-0.5 font-mono text-[10px]">
-                          Ctrl+B
-                        </kbd>{' '}
-                        or{' '}
-                        <kbd className="rounded bg-neutral-900 border border-neutral-800 px-1.5 py-0.5 font-mono text-[10px]">
-                          Cmd+B
-                        </kbd>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="px-4 py-2.5 text-neutral-300">Italicize Selected Text</td>
-                      <td className="px-4 py-2.5">
-                        <kbd className="rounded bg-neutral-900 border border-neutral-800 px-1.5 py-0.5 font-mono text-[10px]">
-                          Ctrl+I
-                        </kbd>{' '}
-                        or{' '}
-                        <kbd className="rounded bg-neutral-900 border border-neutral-800 px-1.5 py-0.5 font-mono text-[10px]">
-                          Cmd+I
-                        </kbd>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="px-4 py-2.5 text-neutral-300">Trigger Command Palette</td>
-                      <td className="px-4 py-2.5">
-                        <kbd className="rounded bg-neutral-900 border border-neutral-800 px-1.5 py-0.5 font-mono text-[10px]">
-                          {settings.keyboard_shortcuts.command_palette || 'Ctrl+Shift+P'}
-                        </kbd>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="px-4 py-2.5 text-neutral-300">Global Text Capture</td>
-                      <td className="px-4 py-2.5">
-                        <kbd className="rounded bg-neutral-900 border border-neutral-800 px-1.5 py-0.5 font-mono text-[10px]">
-                          {settings.keyboard_shortcuts.global_capture || 'Ctrl+Alt+Shift+C'}
-                        </kbd>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="px-4 py-2.5 text-neutral-300">Cancel Palette / Focus</td>
-                      <td className="px-4 py-2.5">
-                        <kbd className="rounded bg-neutral-900 border border-neutral-800 px-1.5 py-0.5 font-mono text-[10px]">
-                          Esc
-                        </kbd>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+              <div className="max-w-lg divide-y divide-neutral-800 rounded-md border border-neutral-800 bg-neutral-900/30">
+                {[
+                  { action: 'Bold Selected Text', keys: ['Ctrl+B', 'Cmd+B'] },
+                  { action: 'Italicize Selected Text', keys: ['Ctrl+I', 'Cmd+I'] },
+                  {
+                    action: 'Trigger Command Palette',
+                    keys: [settings.keyboard_shortcuts.command_palette || 'Ctrl+Shift+P']
+                  },
+                  {
+                    action: 'Global Text Capture',
+                    keys: [settings.keyboard_shortcuts.global_capture || 'Ctrl+Alt+Shift+C']
+                  },
+                  { action: 'Cancel Palette / Focus', keys: ['Esc'] }
+                ].map((row) => (
+                  <div key={row.action} className="flex items-center justify-between px-4 py-2.5">
+                    <span className="text-xs text-neutral-300">{row.action}</span>
+                    <span className="flex items-center gap-1.5">
+                      {row.keys.map((key, index) => (
+                        <span key={key} className="flex items-center gap-1.5">
+                          {index > 0 && <span className="text-[10px] text-neutral-500">or</span>}
+                          <kbd className="rounded bg-neutral-900 border border-neutral-700 px-1.5 py-0.5 font-mono text-[10px] text-neutral-300">
+                            {key}
+                          </kbd>
+                        </span>
+                      ))}
+                    </span>
+                  </div>
+                ))}
               </div>
             </section>
           </div>

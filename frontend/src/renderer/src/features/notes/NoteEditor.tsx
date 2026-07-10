@@ -41,6 +41,10 @@ const saveStatusLabels: Record<string, string> = {
   error: 'Failed to save'
 }
 
+const TOOLBAR_BTN = 'rounded-md p-1.5 transition-colors'
+const TOOLBAR_BTN_IDLE = 'text-neutral-500 hover:bg-neutral-800 hover:text-neutral-300'
+const TOOLBAR_BTN_ACTIVE = 'bg-neutral-800 text-neutral-100'
+
 function NoteEditor({
   workspaceId,
   noteId,
@@ -181,13 +185,13 @@ function NoteEditor({
           </button>
         )}
 
-        <div className="flex shrink-0 items-center gap-2 text-neutral-500">
-          <span className="text-xs text-neutral-500">{saveStatusLabels[saveStatus]}</span>
+        <div className="flex shrink-0 items-center gap-1">
+          <span className="mr-1 text-xs text-neutral-500">{saveStatusLabels[saveStatus]}</span>
           <button
             type="button"
             onClick={toggleFavorite}
             title="Favorite"
-            className={meta.favorite ? 'text-amber-400' : 'hover:text-neutral-300'}
+            className={`${TOOLBAR_BTN} ${meta.favorite ? 'bg-amber-500/10 text-amber-400' : TOOLBAR_BTN_IDLE}`}
           >
             <Star size={16} fill={meta.favorite ? 'currentColor' : 'none'} />
           </button>
@@ -195,7 +199,7 @@ function NoteEditor({
             type="button"
             onClick={togglePin}
             title="Pin"
-            className={meta.pinned ? 'text-sky-400' : 'hover:text-neutral-300'}
+            className={`${TOOLBAR_BTN} ${meta.pinned ? 'bg-sky-500/10 text-sky-400' : TOOLBAR_BTN_IDLE}`}
           >
             {meta.pinned ? <PinOff size={16} /> : <Pin size={16} />}
           </button>
@@ -203,7 +207,7 @@ function NoteEditor({
             type="button"
             onClick={() => setRenaming(true)}
             title="Rename"
-            className="hover:text-neutral-300"
+            className={`${TOOLBAR_BTN} ${TOOLBAR_BTN_IDLE}`}
           >
             <Pencil size={16} />
           </button>
@@ -211,7 +215,7 @@ function NoteEditor({
             type="button"
             onClick={handleDuplicate}
             title="Duplicate"
-            className="hover:text-neutral-300"
+            className={`${TOOLBAR_BTN} ${TOOLBAR_BTN_IDLE}`}
           >
             <Copy size={16} />
           </button>
@@ -219,7 +223,7 @@ function NoteEditor({
             type="button"
             onClick={handleExport}
             title="Export as Markdown"
-            className="hover:text-neutral-300"
+            className={`${TOOLBAR_BTN} ${TOOLBAR_BTN_IDLE}`}
           >
             <Download size={16} />
           </button>
@@ -227,7 +231,7 @@ function NoteEditor({
             type="button"
             onClick={() => setActivePanel(activePanel === 'ai' ? null : 'ai')}
             title="AI"
-            className={activePanel === 'ai' ? 'text-neutral-200' : 'hover:text-neutral-300'}
+            className={`${TOOLBAR_BTN} ${activePanel === 'ai' ? TOOLBAR_BTN_ACTIVE : TOOLBAR_BTN_IDLE}`}
           >
             <Sparkles size={16} />
           </button>
@@ -235,7 +239,7 @@ function NoteEditor({
             type="button"
             onClick={() => setActivePanel(activePanel === 'organize' ? null : 'organize')}
             title="Organize (folder & tags)"
-            className={activePanel === 'organize' ? 'text-neutral-200' : 'hover:text-neutral-300'}
+            className={`${TOOLBAR_BTN} ${activePanel === 'organize' ? TOOLBAR_BTN_ACTIVE : TOOLBAR_BTN_IDLE}`}
           >
             <Tag size={16} />
           </button>
@@ -243,7 +247,7 @@ function NoteEditor({
             type="button"
             onClick={() => setActivePanel(activePanel === 'resources' ? null : 'resources')}
             title="Resources"
-            className={activePanel === 'resources' ? 'text-neutral-200' : 'hover:text-neutral-300'}
+            className={`${TOOLBAR_BTN} ${activePanel === 'resources' ? TOOLBAR_BTN_ACTIVE : TOOLBAR_BTN_IDLE}`}
           >
             <Paperclip size={16} />
           </button>
@@ -251,7 +255,7 @@ function NoteEditor({
             type="button"
             onClick={() => setActivePanel(activePanel === 'drawings' ? null : 'drawings')}
             title="Drawings"
-            className={activePanel === 'drawings' ? 'text-neutral-200' : 'hover:text-neutral-300'}
+            className={`${TOOLBAR_BTN} ${activePanel === 'drawings' ? TOOLBAR_BTN_ACTIVE : TOOLBAR_BTN_IDLE}`}
           >
             <Image size={16} />
           </button>
@@ -259,7 +263,7 @@ function NoteEditor({
             type="button"
             onClick={handleDelete}
             title="Delete"
-            className="hover:text-red-400"
+            className={`${TOOLBAR_BTN} text-neutral-500 hover:bg-red-500/10 hover:text-red-400`}
           >
             <Trash2 size={16} />
           </button>

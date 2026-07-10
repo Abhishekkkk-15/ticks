@@ -58,3 +58,41 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* Themed range slider: the filled portion is painted via an inline
+   background gradient (see rangeBackground() in SettingsView), this
+   handles just the track/thumb chrome. */
+.range-slider {
+  appearance: none;
+  height: 6px;
+  border-radius: 9999px;
+  cursor: pointer;
+  outline: none;
+}
+.range-slider::-webkit-slider-thumb {
+  appearance: none;
+  height: 14px;
+  width: 14px;
+  border-radius: 9999px;
+  background: var(--color-amber-500);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  transition: transform 0.15s ease;
+}
+.range-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+.range-slider::-moz-range-thumb {
+  height: 14px;
+  width: 14px;
+  border: 0;
+  border-radius: 9999px;
+  background: var(--color-amber-500);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  transition: transform 0.15s ease;
+}
+.range-slider::-moz-range-thumb:hover {
+  transform: scale(1.15);
+}
+.range-slider::-moz-range-track {
+  background: transparent;
+}

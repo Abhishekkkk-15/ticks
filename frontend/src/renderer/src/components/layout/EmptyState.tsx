@@ -30,7 +30,7 @@ export function EmptyState({
         className="z-10 flex max-w-md flex-col items-center"
       >
         {/* Animated Icon Ring */}
-        <div className="relative mb- flex h-16 w-16 items-center justify-center rounded-2xl border border-neutral-800 bg-neutral-900 shadow-xl shadow-neutral-950/50">
+        <div className="relative mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-neutral-800 bg-neutral-900 shadow-xl shadow-neutral-950/50">
           <Sparkles size={28} className="text-amber-500 animate-pulse" />
           <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 opacity-20 blur-sm" />
         </div>
@@ -88,7 +88,7 @@ export function EmptyState({
         <button
           type="button"
           onClick={onOpenCommandPalette}
-          className="flex items-center gap-2.5 rounded-full border border-neutral-850 bg-neutral-900/60 px-4 py-2 text-[10px] font-medium text-neutral-400 hover:border-neutral-750 hover:bg-neutral-850 hover:text-neutral-200 transition-all shadow-md"
+          className="flex items-center gap-2.5 rounded-full border border-neutral-800 bg-neutral-900/60 px-4 py-2 text-[10px] font-medium text-neutral-400 hover:border-neutral-700 hover:bg-neutral-800 hover:text-neutral-200 transition-all shadow-md"
         >
           <Command size={11} className="text-neutral-500" />
           <span>Press</span>

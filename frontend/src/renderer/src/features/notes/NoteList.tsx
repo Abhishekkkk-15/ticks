@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { ArrowLeft, Clock, List, Pin, RotateCcw, Star, Trash2, Upload } from 'lucide-react'
+import { ArrowLeft, Clock, List, Pin, RotateCcw, Star, Trash2, Upload, X } from 'lucide-react'
 import { useNotes } from './useNotes'
 import type { NoteView } from './useNotes'
 import { highlightMatch } from './highlightMatch'
 import type { Note } from './types'
+import Select from '../../components/ui/Select'
 
 interface NoteListProps {
   workspaceId: string
@@ -133,34 +134,28 @@ function NoteList({
       )}
 
       {(folders.length > 0 || tags.length > 0) && (
-        <div className="flex items-center gap-1 px-2 pt-2">
+        <div className="flex items-center gap-1.5 px-2 pt-2">
           {folders.length > 0 && (
-            <select
+            <Select
+              className="min-w-0 flex-1"
               value={folderFilter ?? ''}
-              onChange={(event) => setFolderFilter(event.target.value || null)}
-              className="min-w-0 flex-1 rounded-md border border-neutral-700 bg-neutral-800 px-1.5 py-1 text-xs text-neutral-300 focus:outline-none focus:ring-1 focus:ring-neutral-500"
-            >
-              <option value="">All folders</option>
-              {folders.map((folder) => (
-                <option key={folder} value={folder}>
-                  {folder}
-                </option>
-              ))}
-            </select>
+              onChange={(value) => setFolderFilter(value || null)}
+              options={[
+                { value: '', label: 'All folders' },
+                ...folders.map((folder) => ({ value: folder, label: folder }))
+              ]}
+            />
           )}
           {tags.length > 0 && (
-            <select
+            <Select
+              className="min-w-0 flex-1"
               value={tagFilter ?? ''}
-              onChange={(event) => setTagFilter(event.target.value || null)}
-              className="min-w-0 flex-1 rounded-md border border-neutral-700 bg-neutral-800 px-1.5 py-1 text-xs text-neutral-300 focus:outline-none focus:ring-1 focus:ring-neutral-500"
-            >
-              <option value="">All tags</option>
-              {tags.map((tag) => (
-                <option key={tag} value={tag}>
-                  #{tag}
-                </option>
-              ))}
-            </select>
+              onChange={(value) => setTagFilter(value || null)}
+              options={[
+                { value: '', label: 'All tags' },
+                ...tags.map((tag) => ({ value: tag, label: `#${tag}` }))
+              ]}
+            />
           )}
         </div>
       )}
@@ -240,7 +235,7 @@ function NoteList({
                         aria-label={`Delete ${note.title}`}
                         className="hidden text-neutral-500 hover:text-red-400 group-hover:inline"
                       >
-                        ×
+                        <X size={13} />
                       </button>
                     </>
                   )}
