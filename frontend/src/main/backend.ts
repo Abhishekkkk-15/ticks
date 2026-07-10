@@ -18,26 +18,21 @@ function resolvePythonExecutable(backendDir: string): string | null {
       ? join(backendDir, '.venv', 'Scripts', 'python.exe')
       : join(backendDir, '.venv', 'bin', 'python')
 
-  return existsSync(venvPython) ? venvPython : null
+  if (existsSync(venvPython)) return venvPython
+  return process.platform === 'win32' ? 'python.exe' : 'python3'
 }
 
-// Dev-only: spawns the backend from its local .venv next to this repo's
-// frontend/ folder. Packaged builds will need a bundled interpreter — left
-// for the packaging milestone rather than guessed at here.
+// Dev and Packaged: spawns the backend from its local or packaged folder
 export function startBackend(): void {
-  if (!is.dev) {
-    console.warn('[backend] Auto-start is only wired up for development builds so far.')
-    return
-  }
-
-  const backendDir = join(__dirname, '../../../backend')
+  const backendDir = is.dev
+    ? join(__dirname, '../../../backend')
+    : join(process.resourcesPath, 'backend')
   const pythonExecutable = resolvePythonExecutable(backendDir)
 
   if (!pythonExecutable) {
     console.error(
-      `[backend] No virtualenv found at ${backendDir}/.venv. ` +
-        'Run `python3 -m venv .venv && pip install -r requirements.txt -r requirements-dev.txt` in backend/, ' +
-        'or start it manually.'
+      `[backend] No virtualenv or system python found for ${backendDir}. ` +
+        'Please start the backend manually.'
     )
     return
   }
