@@ -21,7 +21,7 @@ function AppShell({
   onSelectWorkspace
 }: AppShellProps): React.JSX.Element {
   return (
-    <div className="flex h-screen bg-neutral-950 text-neutral-100">
+    <div className="flex h-screen bg-neutral-950 text-neutral-100 overflow-hidden">
       <Sidebar
         selectedNoteId={selectedNoteId}
         onOpenNote={onOpenNote}
@@ -29,7 +29,11 @@ function AppShell({
         selectedWorkspace={selectedWorkspace}
         onSelectWorkspace={onSelectWorkspace}
       />
-      <main className="flex-1 overflow-auto">{children}</main>
+      <main className="flex-1 overflow-hidden p-2.5 flex flex-col min-w-0 bg-neutral-950">
+        <div className="flex-1 rounded-xl border border-neutral-800/70 bg-neutral-900 shadow-2xl overflow-hidden flex flex-col">
+          {children}
+        </div>
+      </main>
     </div>
   )
 }

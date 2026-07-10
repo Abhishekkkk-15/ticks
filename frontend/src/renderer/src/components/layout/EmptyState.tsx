@@ -18,7 +18,7 @@ export function EmptyState({
   onOpenWhiteboard
 }: EmptyStateProps): React.JSX.Element {
   return (
-    <div className="flex h-full flex-col items-center justify-center bg-neutral-950/20 px-6 text-center select-none">
+    <div className="relative flex h-full flex-col items-center justify-center bg-neutral-950/20 px-6 text-center select-none overflow-hidden">
       {/* Decorative ambient glowing backdrops */}
       <div className="absolute top-1/4 left-1/2 h-64 w-64 -translate-x-1/2 rounded-full bg-amber-500/5 blur-[80px] pointer-events-none" />
       <div className="absolute bottom-1/4 left-1/2 h-48 w-48 -translate-x-1/2 rounded-full bg-orange-500/5 blur-[60px] pointer-events-none" />

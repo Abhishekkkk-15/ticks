@@ -39,10 +39,17 @@ function MarkdownEditor({
     const size = settings?.font_size || 14
     return EditorView.theme({
       '&.cm-editor': {
-        fontSize: `${size}px`
+        fontSize: `${size}px`,
+        height: '100%'
       },
-      '.cm-content, .cm-gutters': {
-        fontFamily: font
+      '.cm-content': {
+        fontFamily: font,
+        padding: '16px 20px'
+      },
+      '.cm-gutters': {
+        fontFamily: font,
+        border: 'none',
+        backgroundColor: 'transparent'
       }
     })
   }, [settings?.editor_font, settings?.font_size])

@@ -36,7 +36,7 @@ function Sidebar({
   const status = useBackendStatus()
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col border-r border-neutral-800 bg-neutral-900">
+    <aside className="flex w-64 shrink-0 flex-col border-r border-neutral-800/60 bg-neutral-950">
       <div className="px-4 py-4 text-sm font-medium text-neutral-200">AI Learning Workspace</div>
       <div className="flex-1 flex flex-col min-h-0 relative">
         <AnimatePresence mode="wait">
