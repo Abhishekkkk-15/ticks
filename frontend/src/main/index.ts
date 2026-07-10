@@ -6,7 +6,7 @@ import { getApiBaseUrl, startBackend, stopBackend } from './backend'
 import { exportNoteFile, importNoteFile, pickResourceFile } from './files'
 import fs from 'fs'
 import os from 'os'
-import { exec } from 'child_process'
+import { exec, execFile } from 'child_process'
 
 function readKeyboardShortcut(key: string, fallback: string): string {
   const settingsPath = join(os.homedir(), 'AILearningWorkspace', 'settings.json')
@@ -73,18 +73,37 @@ function simulateCopyAndRead(oldClipboard: string): Promise<string> {
     const READ_DELAY = 350 // ms – wait for the OS copy to land in the clipboard
 
     setTimeout(() => {
-      let copyCmd = ''
+      let command: string
+      let args: string[]
+
       if (process.platform === 'darwin') {
-        copyCmd = `osascript -e 'tell application "System Events" to keystroke "c" using {command down}'`
+        command = 'osascript'
+        args = ['-e', 'tell application "System Events" to keystroke "c" using {command down}']
       } else if (process.platform === 'win32') {
-        // Use PowerShell + SendKeys (most reliable way without extra deps)
-        copyCmd = `powershell -NonInteractive -WindowStyle Hidden -Command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('^c')"`
+        // Use PowerShell + SendKeys (most reliable way without extra deps).
+        // execFile with an args array (not exec with a shell string) is load-
+        // bearing here: exec on Windows routes through cmd.exe /c, and the
+        // nested double quotes between cmd.exe's parsing and PowerShell's own
+        // -Command "..." parsing silently mangle the command — execFile
+        // passes args straight to CreateProcess, no shell quoting involved.
+        command = 'powershell.exe'
+        args = [
+          '-NonInteractive',
+          '-WindowStyle',
+          'Hidden',
+          '-Command',
+          "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('^c')"
+        ]
       } else {
         // Linux fallback (xdotool) – should rarely reach here
-        copyCmd = 'xdotool key --clearmodifiers ctrl+c'
+        command = 'xdotool'
+        args = ['key', '--clearmodifiers', 'ctrl+c']
       }
 
-      exec(copyCmd, () => {
+      execFile(command, args, (error, _stdout, stderr) => {
+        if (error) {
+          console.error('[global-capture] Failed to simulate copy:', error.message, stderr)
+        }
         setTimeout(() => {
           const newText = clipboard.readText().trim()
           // Restore the original clipboard immediately after reading
@@ -100,6 +119,38 @@ function simulateCopyAndRead(oldClipboard: string): Promise<string> {
   })
 }
 
+async function performGlobalCapture(): Promise<void> {
+  let capturedText = ''
+
+  // ── Linux: read highlighted text directly from the primary selection
+  //    (X11 stores mouse-highlight in the "primary" buffer without Ctrl+C)
+  if (process.platform === 'linux') {
+    capturedText = await getLinuxPrimarySelection()
+  }
+
+  // ── macOS / Windows (or Linux without xclip/wl-paste):
+  //    back up clipboard, simulate Ctrl/Cmd+C, read new clipboard, restore.
+  if (!capturedText) {
+    const oldClipboard = clipboard.readText()
+    const newClipboard = await simulateCopyAndRead(oldClipboard)
+    // Only use it if it actually changed – otherwise the copy simulation
+    // failed (nothing selected) and we'd just re-capture stale clipboard data.
+    if (newClipboard && newClipboard !== oldClipboard.trim()) {
+      capturedText = newClipboard
+    }
+  }
+
+  if (!capturedText) return
+
+  // Send text to the main window renderer
+  const [mainWindow] = BrowserWindow.getAllWindows()
+  if (mainWindow) {
+    mainWindow.webContents.send('shortcut:capture-text', capturedText)
+    if (mainWindow.isMinimized()) mainWindow.restore()
+    mainWindow.focus()
+  }
+}
+
 let activeCaptureShortcut = ''
 
 function registerGlobalCapture(): void {
@@ -112,37 +163,7 @@ function registerGlobalCapture(): void {
   activeCaptureShortcut = accelerator
 
   try {
-    const success = globalShortcut.register(accelerator, async () => {
-      let capturedText = ''
-
-      // ── Linux: read highlighted text directly from the primary selection
-      //    (X11 stores mouse-highlight in the "primary" buffer without Ctrl+C)
-      if (process.platform === 'linux') {
-        capturedText = await getLinuxPrimarySelection()
-      }
-
-      // ── macOS / Windows (or Linux without xclip/wl-paste):
-      //    back up clipboard, simulate Ctrl/Cmd+C, read new clipboard, restore.
-      if (!capturedText) {
-        const oldClipboard = clipboard.readText()
-        const newClipboard = await simulateCopyAndRead(oldClipboard)
-        // Only use it if it actually changed – otherwise the copy simulation
-        // failed (nothing selected) and we'd just re-capture stale clipboard data.
-        if (newClipboard && newClipboard !== oldClipboard.trim()) {
-          capturedText = newClipboard
-        }
-      }
-
-      if (!capturedText) return
-
-      // Send text to the main window renderer
-      const [mainWindow] = BrowserWindow.getAllWindows()
-      if (mainWindow) {
-        mainWindow.webContents.send('shortcut:capture-text', capturedText)
-        if (mainWindow.isMinimized()) mainWindow.restore()
-        mainWindow.focus()
-      }
-    })
+    const success = globalShortcut.register(accelerator, performGlobalCapture)
 
     if (!success) {
       console.error(`Failed to register global capture hotkey: ${accelerator}`)
