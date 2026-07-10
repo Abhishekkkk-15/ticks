@@ -258,6 +258,22 @@ the real app (not just unit-level checks) before moving on.
       tabs, both Select dropdowns open, both range sliders, and the
       shortcuts card list all screenshotted and confirmed coherent.
 
+    Second follow-up, root-causing a "sections feel too close together"
+    report: `main.css`'s `*, *::before, *::after { margin: 0 }` reset sat
+    *outside* any `@layer` block. Per the CSS cascade-layers spec,
+    unlayered rules always beat layered rules regardless of specificity —
+    and Tailwind v4's utilities (including every `space-y-*`/`mb-*`/`mt-*`
+    class) live inside `@layer utilities`. That reset was silently
+    nullifying every margin utility in the app (confirmed via
+    `getComputedStyle` showing `margin-top: 0px` even with `space-y-12`
+    applied), not just in Settings — this is almost certainly why an
+    earlier commit's "increase bottom margins in EmptyState" fix never
+    visibly helped. Fixed by wrapping the reset in `@layer base { ... }`,
+    then bumped Settings' per-tab section spacing from `space-y-8` to
+    `space-y-12` now that it actually renders. Verified via
+    `getBoundingClientRect()` diffs between sections (0px before the fix,
+    48px after) and re-screenshotted Settings and the empty state.
+
 ### Known follow-ups from completed milestones (not yet fixed)
 
 - `useWorkspaces` has no retry on its initial fetch — if the backend is

@@ -201,7 +201,7 @@ function SettingsView(): React.JSX.Element {
       {/* Settings Content Pane */}
       <main className="flex-1 overflow-y-auto px-10 py-8 max-w-3xl">
         {activeTab === 'general' && (
-          <div className="space-y-8">
+          <div className="space-y-12">
             <div>
               <h2 className="mb-1 text-base font-semibold text-neutral-100">General Settings</h2>
               <p className="text-xs text-neutral-400">
@@ -329,7 +329,7 @@ function SettingsView(): React.JSX.Element {
         )}
 
         {activeTab === 'editor' && (
-          <div className="space-y-8">
+          <div className="space-y-12">
             <div>
               <h2 className="mb-1 text-base font-semibold text-neutral-100">Editor Settings</h2>
               <p className="text-xs text-neutral-400">
@@ -439,7 +439,7 @@ function SettingsView(): React.JSX.Element {
         )}
 
         {activeTab === 'ai' && (
-          <div className="space-y-8">
+          <div className="space-y-12">
             <div>
               <h2 className="mb-1 text-base font-semibold text-neutral-100">AI & Writing Style</h2>
               <p className="text-xs text-neutral-400">
@@ -571,7 +571,7 @@ function SettingsView(): React.JSX.Element {
         )}
 
         {activeTab === 'shortcuts' && (
-          <div className="space-y-8">
+          <div className="space-y-12">
             <div>
               <h2 className="mb-1 text-base font-semibold text-neutral-100">Keyboard Shortcuts</h2>
               <p className="text-xs text-neutral-400">

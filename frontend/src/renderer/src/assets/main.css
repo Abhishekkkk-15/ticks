@@ -38,11 +38,16 @@
   --color-neutral-100: #fafaf9; /* stone-50 */
 }
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
+/* Layered so Tailwind's utilities (space-y-*, mb-*, mt-*, etc.) can still
+   override this reset — unlayered rules always win over @layer rules
+   regardless of specificity, which silently ate every margin utility. */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+    margin: 0;
+  }
 }
 
 body {
