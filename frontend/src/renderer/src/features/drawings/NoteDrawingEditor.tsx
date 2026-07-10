@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { restore } from '@excalidraw/excalidraw'
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types'
 import DrawingCanvas from './DrawingCanvas'
 import { getNoteDrawing, saveDrawingScene } from './noteDrawingsApi'
@@ -35,12 +36,32 @@ function NoteDrawingEditor({
       const drawing = await getNoteDrawing(workspaceId, noteId, drawingId)
       if (cancelled || !api) return
 
-      const files = Object.values(drawing.scene.files ?? {}) as unknown as BinaryFileList
+      // Persisted scenes come back as plain JSON — appState.collaborators in
+      // particular needs to be a real Map (JSON round-trips it to a plain
+      // object), or Excalidraw throws trying to call .forEach on it during
+      // mount. restore() reconstructs a valid runtime scene from raw JSON,
+      // but only defaults collaborators to a Map when the field is entirely
+      // absent — a previously-saved appState always HAS the key (as a
+      // JSON-serialized plain object), so restore() leaves it untouched.
+      // Collaborators are live-session-only state anyway (this app has no
+      // real-time collaboration), so force a fresh Map unconditionally.
+      const restored = restore(
+        {
+          elements: drawing.scene.elements ?? [],
+          appState: drawing.scene.appState ?? {},
+          files: drawing.scene.files ?? {}
+        } as Parameters<typeof restore>[0],
+        null,
+        null
+      )
+      restored.appState.collaborators = new Map()
+
+      const files = Object.values(restored.files) as unknown as BinaryFileList
       if (files.length > 0) api.addFiles(files)
 
       api.updateScene({
-        elements: (drawing.scene.elements ?? []) as unknown as SceneElements,
-        appState: (drawing.scene.appState ?? {}) as unknown as SceneAppState
+        elements: restored.elements as unknown as SceneElements,
+        appState: restored.appState as unknown as SceneAppState
       })
       setLoaded(true)
     }
