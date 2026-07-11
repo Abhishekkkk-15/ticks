@@ -31,8 +31,16 @@ function EditorView({
 }: EditorViewProps): React.JSX.Element {
   const { settings } = useSettings()
   const [mode, setMode] = useState<EditorMode>('edit')
-  const [toolbarVisible, setToolbarVisible] = useState(false)
+  const [toolbarVisible, setToolbarVisible] = useState(true)
   const editorRef = useRef<ReactCodeMirrorRef>(null)
+
+  useEffect(() => {
+    function handleToggle(): void {
+      setToolbarVisible((visible) => !visible)
+    }
+    window.addEventListener('editor:toggle-bars', handleToggle)
+    return () => window.removeEventListener('editor:toggle-bars', handleToggle)
+  }, [])
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent): void {
@@ -41,7 +49,7 @@ function EditorView({
       const key = event.key.toLowerCase()
       if (event.shiftKey && key === 't') {
         event.preventDefault()
-        setToolbarVisible((visible) => !visible)
+        window.dispatchEvent(new CustomEvent('editor:toggle-bars'))
       } else if (event.shiftKey && key === 'e') {
         event.preventDefault()
         setMode('edit')

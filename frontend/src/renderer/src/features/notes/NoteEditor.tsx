@@ -89,6 +89,15 @@ function NoteEditor({
   const editorAreaRef = useRef<HTMLDivElement>(null)
   const mediaInputRef = useRef<HTMLInputElement>(null)
   const [mediaUploading, setMediaUploading] = useState(false)
+  const [barsVisible, setBarsVisible] = useState(true)
+
+  useEffect(() => {
+    function handleToggle(): void {
+      setBarsVisible((visible) => !visible)
+    }
+    window.addEventListener('editor:toggle-bars', handleToggle)
+    return () => window.removeEventListener('editor:toggle-bars', handleToggle)
+  }, [])
 
   // Reset local draft state when a different note finishes loading, without
   // the extra render + flicker an effect-based sync would cause.
@@ -585,16 +594,18 @@ function NoteEditor({
       </div>
 
       {/* Bottom Status Bar */}
-      <div className="flex shrink-0 items-center justify-between border-t border-neutral-800 bg-neutral-900/10 px-3 py-1 text-[10px] text-neutral-500 font-medium">
-        <div className="flex items-center gap-3">
-          <span>{wordCount} words</span>
-          <span>{charCount} characters</span>
-          <span>{readTime} min read</span>
+      {barsVisible && (
+        <div className="flex shrink-0 items-center justify-between border-t border-neutral-800 bg-neutral-900/10 px-3 py-1 text-[10px] text-neutral-500 font-medium">
+          <div className="flex items-center gap-3">
+            <span>{wordCount} words</span>
+            <span>{charCount} characters</span>
+            <span>{readTime} min read</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span>{saveStatusLabels[saveStatus] || 'Draft saved'}</span>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span>{saveStatusLabels[saveStatus] || 'Draft saved'}</span>
-        </div>
-      </div>
+      )}
 
 
       <AiContextMenu
