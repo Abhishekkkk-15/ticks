@@ -3,6 +3,11 @@ import { restore } from '@excalidraw/excalidraw'
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types'
 import DrawingCanvas from './DrawingCanvas'
 import { getNoteDrawing, saveDrawingScene } from './noteDrawingsApi'
+import {
+  exportDrawingAsExcalidrawFile,
+  exportDrawingAsPng,
+  exportDrawingAsSvg
+} from './exportDrawing'
 
 type SceneElements = ReturnType<ExcalidrawImperativeAPI['getSceneElements']>
 type SceneAppState = ReturnType<ExcalidrawImperativeAPI['getAppState']>
@@ -10,10 +15,13 @@ type BinaryFileList = Parameters<ExcalidrawImperativeAPI['addFiles']>[0]
 
 interface NoteDrawingEditorProps {
   workspaceId: string
-  noteId: string
+  noteId: string | null
   drawingId: string
   title: string
   onClose: () => void
+  // Only the standalone workspace-level whiteboard needs export/fullscreen —
+  // per-note embedded drawings stay minimal (Save/Close only), unchanged.
+  showExportTools?: boolean
 }
 
 function NoteDrawingEditor({
@@ -21,11 +29,17 @@ function NoteDrawingEditor({
   noteId,
   drawingId,
   title,
-  onClose
+  onClose,
+  showExportTools = false
 }: NoteDrawingEditorProps): React.JSX.Element {
   const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null)
   const [loaded, setLoaded] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+
+  useEffect(() => {
+    if (showExportTools) api?.updateScene({ appState: { zenModeEnabled: isFullscreen } })
+  }, [api, isFullscreen, showExportTools])
 
   useEffect(() => {
     if (!api) return
@@ -95,6 +109,43 @@ function NoteDrawingEditor({
       <div className="flex shrink-0 items-center justify-between border-b border-neutral-800 px-3 py-2">
         <span className="text-sm font-medium text-neutral-200">{title}</span>
         <div className="flex items-center gap-2">
+          {showExportTools && !isFullscreen && (
+            <>
+              <button
+                type="button"
+                onClick={() => api && exportDrawingAsPng(api)}
+                disabled={!api}
+                className="rounded-md px-2.5 py-1 text-xs font-medium text-neutral-400 transition-colors hover:bg-neutral-800 hover:text-neutral-200 disabled:opacity-40"
+              >
+                Export PNG
+              </button>
+              <button
+                type="button"
+                onClick={() => api && exportDrawingAsSvg(api)}
+                disabled={!api}
+                className="rounded-md px-2.5 py-1 text-xs font-medium text-neutral-400 transition-colors hover:bg-neutral-800 hover:text-neutral-200 disabled:opacity-40"
+              >
+                Export SVG
+              </button>
+              <button
+                type="button"
+                onClick={() => api && exportDrawingAsExcalidrawFile(api)}
+                disabled={!api}
+                className="rounded-md px-2.5 py-1 text-xs font-medium text-neutral-400 transition-colors hover:bg-neutral-800 hover:text-neutral-200 disabled:opacity-40"
+              >
+                Export Excalidraw
+              </button>
+            </>
+          )}
+          {showExportTools && (
+            <button
+              type="button"
+              onClick={() => setIsFullscreen(!isFullscreen)}
+              className="rounded-md px-2.5 py-1 text-xs font-medium text-neutral-400 transition-colors hover:bg-neutral-800 hover:text-neutral-200"
+            >
+              {isFullscreen ? 'Exit full screen' : 'Full screen'}
+            </button>
+          )}
           <button
             type="button"
             onClick={handleSave}

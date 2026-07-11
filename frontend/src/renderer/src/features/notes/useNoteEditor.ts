@@ -105,5 +105,25 @@ export function useNoteEditor(workspaceId: string, noteId: string): UseNoteEdito
     }
   }, [content, onChange])
 
+  // A quick-capture AI action (App.tsx) saves its result straight through the
+  // API rather than this hook's own onChange, since the note that received
+  // the capture isn't necessarily the one currently open here — but if it IS
+  // this note, the open editor needs to pick up the change too, or it'd keep
+  // showing stale content until the note is reloaded. Sets local state
+  // directly (not onChange) since the content was already persisted.
+  useEffect(() => {
+    function handleExternalUpdate(event: Event): void {
+      const customEvent = event as CustomEvent<{ noteId: string; content: string }>
+      if (customEvent.detail.noteId === noteId) {
+        setContent(customEvent.detail.content)
+      }
+    }
+
+    window.addEventListener('note:content-updated', handleExternalUpdate)
+    return () => {
+      window.removeEventListener('note:content-updated', handleExternalUpdate)
+    }
+  }, [noteId])
+
   return { note, content, onChange, loading, error, saveStatus }
 }

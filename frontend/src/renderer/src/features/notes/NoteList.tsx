@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, Clock, List, Pin, RotateCcw, Star, Trash2, Upload, X } from 'lucide-react'
 import { useNotes } from './useNotes'
 import type { NoteView } from './useNotes'
@@ -59,9 +59,18 @@ function NoteList({
     importNote
   } = useNotes(workspaceId)
   const [newTitle, setNewTitle] = useState('')
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
   const canCreate = view !== 'recent' && view !== 'trash'
   const canSearch = view !== 'recent' && view !== 'trash'
+
+  useEffect(() => {
+    function handleFocusSearch(): void {
+      searchInputRef.current?.focus()
+    }
+    window.addEventListener('sidebar:focus-search', handleFocusSearch)
+    return () => window.removeEventListener('sidebar:focus-search', handleFocusSearch)
+  }, [])
 
   async function handleCreate(event: React.FormEvent): Promise<void> {
     event.preventDefault()
@@ -125,6 +134,7 @@ function NoteList({
       {canSearch && (
         <div className="px-2 pt-2">
           <input
+            ref={searchInputRef}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search notes…"

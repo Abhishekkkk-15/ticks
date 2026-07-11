@@ -52,10 +52,11 @@ def _require_note(workspace_id: str, note_id: str) -> None:
         raise HTTPException(status_code=404, detail="Note not found")
 
 
-def list_drawings(workspace_id: str, note_id: str) -> list[Drawing]:
-    _require_note(workspace_id, note_id)
+def list_drawings(workspace_id: str, note_id: str | None) -> list[Drawing]:
+    if note_id is not None:
+        _require_note(workspace_id, note_id)
     workspace_dir = get_workspace_dir(workspace_id)
-    entries = [e for e in _read_all(workspace_dir) if e["note_id"] == note_id]
+    entries = [e for e in _read_all(workspace_dir) if e.get("note_id") == note_id]
     entries.sort(key=lambda e: e["updated_at"], reverse=True)
     return [_to_drawing(e) for e in entries]
 
@@ -67,8 +68,9 @@ def get_drawing(workspace_id: str, drawing_id: str) -> DrawingScene:
     return DrawingScene(**entry, scene=scene)
 
 
-def create_drawing(workspace_id: str, note_id: str, title: str) -> DrawingScene:
-    _require_note(workspace_id, note_id)
+def create_drawing(workspace_id: str, note_id: str | None, title: str) -> DrawingScene:
+    if note_id is not None:
+        _require_note(workspace_id, note_id)
     title = title.strip()
     if not title:
         raise HTTPException(status_code=422, detail="Drawing title cannot be empty")

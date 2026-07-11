@@ -28,6 +28,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import type { Drawing } from '../drawings/types'
 import type { Note } from './types'
 import { uploadFileResource } from '../resources/api'
+import { getClipboardImageFile, uploadPastedImage } from './pasteImage'
+import { matchShortcut } from '../../lib/shortcuts'
 
 interface NoteEditorProps {
   workspaceId: string
@@ -101,6 +103,25 @@ function NoteEditor({
     }
   }, [content])
 
+  // Ctrl+Shift+Backspace (not a plain Ctrl+Backspace) for delete is a
+  // deliberately awkward two-hand combo — an extra guard against a stray
+  // keystroke, not a hard blocker, since the delete itself is soft/recoverable.
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent): void {
+      if (matchShortcut(event, 'Ctrl+D')) {
+        event.preventDefault()
+        handleDuplicate()
+        return
+      }
+      if (matchShortcut(event, 'Ctrl+Shift+Backspace')) {
+        event.preventDefault()
+        handleDelete()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  })
+
   async function commitRename(): Promise<void> {
     setRenaming(false)
     const title = titleDraft.trim()
@@ -172,6 +193,20 @@ function NoteEditor({
       console.error('Media upload failed:', err)
     } finally {
       setMediaUploading(false)
+    }
+  }
+
+  async function handlePasteImage(event: React.ClipboardEvent): Promise<void> {
+    if (!meta) return
+    const file = getClipboardImageFile(event.clipboardData)
+    if (!file) return // no image on the clipboard — let normal text paste proceed
+    event.preventDefault()
+    try {
+      const embed = await uploadPastedImage(workspaceId, meta.id, file)
+      const insertAt = selection?.from ?? content.length
+      onChange(content.slice(0, insertAt) + embed + content.slice(insertAt))
+    } catch (err) {
+      console.error('Image paste failed:', err)
     }
   }
 
@@ -406,7 +441,12 @@ function NoteEditor({
         )}
       </AnimatePresence>
 
-      <div ref={editorAreaRef} className="min-h-0 flex-1" onContextMenu={handleContextMenu}>
+      <div
+        ref={editorAreaRef}
+        className="min-h-0 flex-1"
+        onContextMenu={handleContextMenu}
+        onPaste={handlePasteImage}
+      >
         <EditorView
           value={content}
           onChange={onChange}

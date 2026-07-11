@@ -19,6 +19,14 @@ import { createNote } from './features/notes/api'
 import { EmptyState } from './components/layout/EmptyState'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useIsMaximized } from './lib/useIsMaximized'
+import { streamAiAction } from './features/ai/api'
+import type { AiAction } from './features/ai/api'
+
+const QUICK_CAPTURE_ACTIONS: { id: AiAction; label: string }[] = [
+  { id: 'summarize', label: 'Summarize' },
+  { id: 'explain', label: 'Explain' },
+  { id: 'key-points', label: 'Key Points' }
+]
 
 type MainView = 'notes' | 'whiteboard' | 'settings'
 
@@ -31,6 +39,11 @@ function App(): React.JSX.Element {
   const [view, setView] = useState<MainView>('notes')
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [captureNotification, setCaptureNotification] = useState<string | null>(null)
+  const [captureTargetNote, setCaptureTargetNote] = useState<{
+    workspaceId: string
+    noteId: string
+  } | null>(null)
+  const [captureRunningAction, setCaptureRunningAction] = useState<string | null>(null)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   const { settings } = useSettings()
@@ -70,12 +83,18 @@ function App(): React.JSX.Element {
 
     const unsubscribe = window.api.onCaptureText(async (text) => {
       setCaptureNotification(text)
+      setCaptureRunningAction(null)
       clearTimeout(timeoutId)
       timeoutId = setTimeout(() => {
         setCaptureNotification(null)
+        setCaptureTargetNote(null)
       }, 7000)
 
       if (activeTabId) {
+        const currentTab = tabs.find((t) => t.note.id === activeTabId)
+        if (currentTab) {
+          setCaptureTargetNote({ workspaceId: currentTab.workspaceId, noteId: activeTabId })
+        }
         window.dispatchEvent(new CustomEvent('shortcut:captured', { detail: { text } }))
         return
       }
@@ -111,6 +130,7 @@ function App(): React.JSX.Element {
         // Propagate content update inside detail
         noteDetail.content = updatedContent
 
+        setCaptureTargetNote({ workspaceId: activeWorkspace.id, noteId: targetNoteId })
         openNote(activeWorkspace.id, noteDetail)
       } catch (err) {
         console.error('Failed to append global capture to recent note:', err)
@@ -121,7 +141,48 @@ function App(): React.JSX.Element {
       unsubscribe()
       clearTimeout(timeoutId)
     }
-  }, [selectedWorkspace, activeTabId, workspacesApi.workspaces, openNote])
+  }, [selectedWorkspace, activeTabId, tabs, workspacesApi.workspaces, openNote])
+
+  const runQuickCaptureAction = useCallback(
+    async (action: AiAction) => {
+      if (!captureNotification || !captureTargetNote || captureRunningAction) return
+      setCaptureRunningAction(action)
+      try {
+        let resultText = ''
+        await streamAiAction(
+          action,
+          captureNotification,
+          (chunk) => (resultText += chunk),
+          undefined,
+          {
+            workspaceId: captureTargetNote.workspaceId,
+            noteId: captureTargetNote.noteId
+          }
+        )
+        const { getNote, updateNoteContent } = await import('./features/notes/api')
+        const detail = await getNote(captureTargetNote.workspaceId, captureTargetNote.noteId)
+        const label = QUICK_CAPTURE_ACTIONS.find((a) => a.id === action)?.label ?? action
+        const separator = detail.content.endsWith('\n') || detail.content === '' ? '' : '\n\n'
+        const updated = `${detail.content}${separator}**${label}:**\n${resultText}\n`
+        await updateNoteContent(captureTargetNote.workspaceId, captureTargetNote.noteId, updated)
+        // If this note is currently open, its editor's own local state
+        // wouldn't otherwise pick up a change saved through this direct API
+        // call — sync it the same way the raw-capture path already does.
+        window.dispatchEvent(
+          new CustomEvent('note:content-updated', {
+            detail: { noteId: captureTargetNote.noteId, content: updated }
+          })
+        )
+        setCaptureNotification(null)
+        setCaptureTargetNote(null)
+      } catch (err) {
+        console.error('Quick capture AI action failed:', err)
+      } finally {
+        setCaptureRunningAction(null)
+      }
+    },
+    [captureNotification, captureTargetNote, captureRunningAction]
+  )
 
   const handleCreateNote = useCallback(async () => {
     if (!selectedWorkspace) return
@@ -186,6 +247,48 @@ function App(): React.JSX.Element {
       activeTab ? { workspaceId: activeTab.workspaceId, noteId: activeTab.note.id } : null
     )
   }, [activeTab])
+
+  // More discrete shortcuts for actions that were previously click-only.
+  // Hardcoded (not settings-driven) — same precedent as Ctrl+E and the
+  // CodeMirror keymap. `Ctrl+Shift+W` (not bare Ctrl+W) deliberately dodges
+  // Electron's default-menu window-close accelerator.
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent): void {
+      if (matchShortcut(event, 'Ctrl+N')) {
+        event.preventDefault()
+        handleCreateNote()
+        return
+      }
+      if (matchShortcut(event, 'Ctrl+Shift+W')) {
+        if (activeTabId) {
+          event.preventDefault()
+          closeTab(activeTabId)
+        }
+        return
+      }
+      if (matchShortcut(event, 'Ctrl+Tab') || matchShortcut(event, 'Ctrl+Shift+Tab')) {
+        if (tabs.length > 1) {
+          event.preventDefault()
+          const index = tabs.findIndex((t) => t.note.id === activeTabId)
+          const delta = event.shiftKey ? -1 : 1
+          const next = tabs[(index + delta + tabs.length) % tabs.length]
+          setActiveTabId(next.note.id)
+        }
+        return
+      }
+      if (matchShortcut(event, 'Ctrl+\\')) {
+        event.preventDefault()
+        setSidebarCollapsed((collapsed) => !collapsed)
+        return
+      }
+      if (matchShortcut(event, 'Ctrl+Shift+F')) {
+        event.preventDefault()
+        window.dispatchEvent(new CustomEvent('sidebar:focus-search'))
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [activeTabId, tabs, closeTab, handleCreateNote])
 
   // Frameless windows (Windows/Linux) are rendered with a transparent
   // BrowserWindow so these CSS corners actually show through to the desktop;
@@ -263,7 +366,9 @@ function App(): React.JSX.Element {
               {view === 'settings' ? (
                 <SettingsView />
               ) : view === 'whiteboard' ? (
-                <DrawingView />
+                <DrawingView
+                  workspaceId={selectedWorkspace?.id ?? activeTab?.workspaceId ?? null}
+                />
               ) : activeTab ? (
                 <NoteEditor
                   key={activeTab.note.id}
@@ -307,18 +412,40 @@ function App(): React.JSX.Element {
                 className="fixed bottom-4 right-4 z-50 flex items-center gap-3 rounded-lg border border-neutral-800 bg-neutral-900/95 px-4 py-3 shadow-2xl backdrop-blur-md"
               >
                 <span className="text-xs text-neutral-300">Text captured to note!</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const text = captureNotification
-                    setCaptureNotification(null)
-                    setView('notes')
-                    window.dispatchEvent(new CustomEvent('editor:open-ai', { detail: { text } }))
-                  }}
-                  className="rounded bg-amber-500 hover:bg-amber-600 px-2 py-1 text-[10px] font-medium text-neutral-950 transition-colors"
-                >
-                  Enhance with AI
-                </button>
+                {captureRunningAction ? (
+                  <span className="text-[10px] text-neutral-500">
+                    Generating{' '}
+                    {QUICK_CAPTURE_ACTIONS.find((a) => a.id === captureRunningAction)?.label}…
+                  </span>
+                ) : (
+                  <>
+                    {QUICK_CAPTURE_ACTIONS.map((action) => (
+                      <button
+                        key={action.id}
+                        type="button"
+                        disabled={!captureTargetNote}
+                        onClick={() => runQuickCaptureAction(action.id)}
+                        className="rounded bg-neutral-800 hover:bg-neutral-700 px-2 py-1 text-[10px] font-medium text-neutral-200 transition-colors disabled:opacity-40"
+                      >
+                        {action.label}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const text = captureNotification
+                        setCaptureNotification(null)
+                        setView('notes')
+                        window.dispatchEvent(
+                          new CustomEvent('editor:open-ai', { detail: { text } })
+                        )
+                      }}
+                      className="rounded bg-amber-500 hover:bg-amber-600 px-2 py-1 text-[10px] font-medium text-neutral-950 transition-colors"
+                    >
+                      Enhance with AI
+                    </button>
+                  </>
+                )}
                 <button
                   type="button"
                   onClick={() => setCaptureNotification(null)}

@@ -8,19 +8,28 @@ import fs from 'fs'
 import os from 'os'
 import { exec, execFile } from 'child_process'
 
-function readKeyboardShortcut(key: string, fallback: string): string {
+function readSettingsFile(): Record<string, unknown> | null {
   const settingsPath = join(os.homedir(), 'AILearningWorkspace', 'settings.json')
   try {
     if (fs.existsSync(settingsPath)) {
-      const data = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'))
-      if (data.keyboard_shortcuts && data.keyboard_shortcuts[key]) {
-        return data.keyboard_shortcuts[key]
-      }
+      return JSON.parse(fs.readFileSync(settingsPath, 'utf-8'))
     }
   } catch (err) {
-    console.error(`Failed to read settings for ${key} shortcut:`, err)
+    console.error('Failed to read settings.json:', err)
   }
-  return fallback
+  return null
+}
+
+function readKeyboardShortcut(key: string, fallback: string): string {
+  const data = readSettingsFile()
+  const shortcuts = data?.keyboard_shortcuts as Record<string, string> | undefined
+  return shortcuts?.[key] || fallback
+}
+
+function readSetting(key: string, fallback: string): string {
+  const data = readSettingsFile()
+  const value = data?.[key]
+  return typeof value === 'string' && value ? value : fallback
 }
 
 function getGlobalCaptureShortcut(): string {
@@ -29,6 +38,10 @@ function getGlobalCaptureShortcut(): string {
 
 function getMiniTrayShortcut(): string {
   return readKeyboardShortcut('mini_tray_toggle', 'Ctrl+Alt+Shift+M')
+}
+
+function getMiniTraySize(): string {
+  return readSetting('mini_tray_size', 'default')
 }
 
 function mapShortcutToAccelerator(shortcut: string): string {
@@ -67,10 +80,17 @@ function getLinuxPrimarySelection(): Promise<string> {
 // On macOS/Windows we simulate Ctrl/Cmd+C to copy the selected text.
 // We wait 500ms for the user to release the shortcut keys before sending the
 // synthetic copy so modifier keys don't corrupt it.
+//
+// The clipboard read that follows is a short POLL rather than one fixed-delay
+// read: a single read after a flat 350ms silently missed captures whenever the
+// source app was slower than that to actually place text on the clipboard.
+// Polling resolves the instant a change is observed (fast path for the common
+// case) and only falls through to the timeout after genuinely waiting.
 function simulateCopyAndRead(oldClipboard: string): Promise<string> {
   return new Promise((resolve) => {
     const RELEASE_DELAY = 500 // ms – wait for shortcut keys to be physically released
-    const READ_DELAY = 350 // ms – wait for the OS copy to land in the clipboard
+    const POLL_INTERVAL = 50 // ms – how often to re-check the clipboard
+    const POLL_TIMEOUT = 600 // ms – give up waiting for a change after this long
 
     setTimeout(() => {
       let command: string
@@ -104,16 +124,41 @@ function simulateCopyAndRead(oldClipboard: string): Promise<string> {
         if (error) {
           console.error('[global-capture] Failed to simulate copy:', error.message, stderr)
         }
-        setTimeout(() => {
-          const newText = clipboard.readText().trim()
+
+        const finish = (text: string): void => {
           // Restore the original clipboard immediately after reading
           if (oldClipboard) {
             clipboard.writeText(oldClipboard)
           } else {
             clipboard.clear()
           }
-          resolve(newText)
-        }, READ_DELAY)
+          resolve(text)
+        }
+
+        const startedAt = Date.now()
+        const poll = (): void => {
+          const current = clipboard.readText().trim()
+          if (current && current !== oldClipboard.trim()) {
+            console.log(`[global-capture] clipboard changed after ${Date.now() - startedAt}ms`)
+            finish(current)
+            return
+          }
+          if (Date.now() - startedAt >= POLL_TIMEOUT) {
+            // No observed change within the window — still use whatever is on
+            // the clipboard now rather than discarding it. String equality
+            // can't reliably tell "copy failed" apart from "copy succeeded
+            // with text identical to what was already there" (e.g. capturing
+            // the same passage twice in a row), and silently dropping a valid
+            // repeat capture was the main source of "sometimes doesn't work."
+            console.log(
+              `[global-capture] no clipboard change detected within ${POLL_TIMEOUT}ms, using current value (${current ? 'non-empty' : 'empty'})`
+            )
+            finish(current)
+            return
+          }
+          setTimeout(poll, POLL_INTERVAL)
+        }
+        poll()
       })
     }, RELEASE_DELAY)
   })
@@ -126,21 +171,24 @@ async function performGlobalCapture(): Promise<void> {
   //    (X11 stores mouse-highlight in the "primary" buffer without Ctrl+C)
   if (process.platform === 'linux') {
     capturedText = await getLinuxPrimarySelection()
+    console.log(
+      capturedText
+        ? '[global-capture] captured via Linux primary selection'
+        : '[global-capture] Linux primary selection empty, falling back to copy-simulation'
+    )
   }
 
   // ── macOS / Windows (or Linux without xclip/wl-paste):
   //    back up clipboard, simulate Ctrl/Cmd+C, read new clipboard, restore.
   if (!capturedText) {
     const oldClipboard = clipboard.readText()
-    const newClipboard = await simulateCopyAndRead(oldClipboard)
-    // Only use it if it actually changed – otherwise the copy simulation
-    // failed (nothing selected) and we'd just re-capture stale clipboard data.
-    if (newClipboard && newClipboard !== oldClipboard.trim()) {
-      capturedText = newClipboard
-    }
+    capturedText = await simulateCopyAndRead(oldClipboard)
   }
 
-  if (!capturedText) return
+  if (!capturedText) {
+    console.log('[global-capture] nothing captured (no selection found via any method)')
+    return
+  }
 
   // Send text to the main window renderer
   const [mainWindow] = BrowserWindow.getAllWindows()
@@ -173,22 +221,31 @@ function registerGlobalCapture(): void {
   }
 }
 
-const MINI_TRAY_WIDTH = 353
-const MINI_TRAY_HEIGHT = 743
+const MINI_TRAY_SIZES: Record<string, { width: number; height: number }> = {
+  compact: { width: 300, height: 420 },
+  default: { width: 353, height: 743 },
+  tall: { width: 400, height: 900 }
+}
 const MINI_TRAY_MARGIN = 24
+
+function getMiniTrayBounds(): { width: number; height: number; x: number; y: number } {
+  const { width: displayWidth, height: displayHeight } = screen.getPrimaryDisplay().workAreaSize
+  const { width, height } = MINI_TRAY_SIZES[getMiniTraySize()] ?? MINI_TRAY_SIZES.default
+  return {
+    width,
+    height,
+    x: displayWidth - width - MINI_TRAY_MARGIN,
+    y: displayHeight - height - MINI_TRAY_MARGIN
+  }
+}
 
 let miniWindow: BrowserWindow | null = null
 let lastActiveNote: { workspaceId: string; noteId: string } | null = null
 let isQuitting = false
 
 function createMiniWindow(): BrowserWindow {
-  const { width: displayWidth, height: displayHeight } = screen.getPrimaryDisplay().workAreaSize
-
   const win = new BrowserWindow({
-    width: MINI_TRAY_WIDTH,
-    height: MINI_TRAY_HEIGHT,
-    x: displayWidth - MINI_TRAY_WIDTH - MINI_TRAY_MARGIN,
-    y: displayHeight - MINI_TRAY_HEIGHT - MINI_TRAY_MARGIN,
+    ...getMiniTrayBounds(),
     resizable: false,
     frame: false,
     transparent: true,
@@ -234,6 +291,11 @@ function toggleMiniTray(): void {
   miniWindow.show()
   miniWindow.focus()
   miniWindow.webContents.send('mini:focus-requested')
+}
+
+function resizeMiniTray(): void {
+  if (!miniWindow || miniWindow.isDestroyed()) return
+  miniWindow.setBounds(getMiniTrayBounds())
 }
 
 let activeMiniTrayShortcut = ''
@@ -362,6 +424,7 @@ if (!gotSingleInstanceLock) {
     ipcMain.on('settings:updated', () => {
       registerGlobalCapture()
       registerMiniTrayShortcut()
+      resizeMiniTray()
     })
 
     ipcMain.on('window:minimize', (event) => {

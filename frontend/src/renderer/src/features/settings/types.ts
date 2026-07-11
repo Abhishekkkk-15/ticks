@@ -7,6 +7,7 @@ export interface SettingsInfo {
   autosave_delay: number
   default_workspace_id: string | null
   default_editor_mode: 'edit' | 'preview' | 'split'
+  mini_tray_size: 'compact' | 'default' | 'tall'
   keyboard_shortcuts: Record<string, string>
 }
 
@@ -17,5 +18,6 @@ export interface SettingsUpdate {
   autosave_delay?: number
   default_workspace_id?: string | null
   default_editor_mode?: 'edit' | 'preview' | 'split'
+  mini_tray_size?: 'compact' | 'default' | 'tall'
   keyboard_shortcuts?: Record<string, string>
 }

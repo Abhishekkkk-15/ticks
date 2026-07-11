@@ -433,6 +433,32 @@ function SettingsView(): React.JSX.Element {
                 ))}
               </div>
             </section>
+
+            {/* Mini-Tray Size */}
+            <section className="space-y-2">
+              <label htmlFor="miniTraySize" className="block text-sm font-medium text-neutral-200">
+                Mini-Tray Size
+              </label>
+              <p className="text-xs text-neutral-500">
+                Size of the always-on-top quick-note window.
+              </p>
+              <div className="flex gap-2">
+                {(['compact', 'default', 'tall'] as const).map((size) => (
+                  <button
+                    key={size}
+                    type="button"
+                    onClick={() => updateSettings({ mini_tray_size: size })}
+                    className={`rounded-md border px-4 py-2 text-xs font-medium capitalize transition-colors ${
+                      settings.mini_tray_size === size
+                        ? 'border-neutral-400 bg-neutral-800 text-neutral-100'
+                        : 'border-neutral-800 bg-neutral-900 text-neutral-400 hover:text-neutral-200'
+                    }`}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
+            </section>
           </div>
         )}
 
@@ -801,6 +827,13 @@ function SettingsView(): React.JSX.Element {
                     action: 'Toggle Mini-Tray',
                     keys: [settings.keyboard_shortcuts.mini_tray_toggle || 'Ctrl+Alt+Shift+M']
                   },
+                  { action: 'New Note', keys: ['Ctrl+N'] },
+                  { action: 'Close Active Tab', keys: ['Ctrl+Shift+W'] },
+                  { action: 'Next / Previous Tab', keys: ['Ctrl+Tab', 'Ctrl+Shift+Tab'] },
+                  { action: 'Toggle Sidebar', keys: ['Ctrl+\\'] },
+                  { action: 'Focus Search', keys: ['Ctrl+Shift+F'] },
+                  { action: 'Duplicate Note', keys: ['Ctrl+D'] },
+                  { action: 'Delete Note (to Trash)', keys: ['Ctrl+Shift+Backspace'] },
                   { action: 'Cancel Palette / Focus', keys: ['Esc'] }
                 ].map((row) => (
                   <div key={row.action} className="flex items-center justify-between px-4 py-2.5">

@@ -12,6 +12,7 @@ DEFAULT_DATA: dict[str, Any] = {
     "autosave_delay": 800,
     "default_workspace_id": None,
     "default_editor_mode": "split",
+    "mini_tray_size": "default",
     "keyboard_shortcuts": {
         "command_palette": "Ctrl+Shift+P",
         "global_capture": "Ctrl+Alt+Shift+C",
@@ -77,6 +78,7 @@ def get_settings_info() -> dict[str, Any]:
         "autosave_delay": data["autosave_delay"],
         "default_workspace_id": data["default_workspace_id"],
         "default_editor_mode": data["default_editor_mode"],
+        "mini_tray_size": data["mini_tray_size"],
         "keyboard_shortcuts": data["keyboard_shortcuts"],
     }
 

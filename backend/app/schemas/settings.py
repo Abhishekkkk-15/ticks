@@ -10,6 +10,7 @@ class SettingsInfo(BaseModel):
     autosave_delay: int
     default_workspace_id: str | None = None
     default_editor_mode: str
+    mini_tray_size: str
     keyboard_shortcuts: dict[str, str]
 
 
@@ -20,6 +21,7 @@ class SettingsUpdate(BaseModel):
     autosave_delay: int | None = None
     default_workspace_id: str | None = None
     default_editor_mode: str | None = None
+    mini_tray_size: str | None = None
     keyboard_shortcuts: dict[str, str] | None = None
 
 

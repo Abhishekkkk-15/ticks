@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { ReactCodeMirrorRef } from '@uiw/react-codemirror'
 import MarkdownEditor from '../editor/MarkdownEditor'
 import { useNoteEditor } from '../notes/useNoteEditor'
+import { getClipboardImageFile, uploadPastedImage } from '../notes/pasteImage'
 
 interface ActiveNote {
   workspaceId: string
@@ -21,8 +22,23 @@ function MiniNoteEditor({ workspaceId, noteId }: ActiveNote): React.JSX.Element 
     })
   }, [])
 
+  async function handlePasteImage(event: React.ClipboardEvent): Promise<void> {
+    const file = getClipboardImageFile(event.clipboardData)
+    if (!file) return
+    event.preventDefault()
+    try {
+      // The mini editor doesn't track cursor position, so pasted images
+      // just append to the end — acceptable for this lightweight widget.
+      const embed = await uploadPastedImage(workspaceId, noteId, file)
+      const separator = content.endsWith('\n') || content === '' ? '' : '\n\n'
+      onChange(`${content}${separator}${embed}\n`)
+    } catch (err) {
+      console.error('Image paste failed:', err)
+    }
+  }
+
   return (
-    <div className="min-h-0 flex-1" style={NO_DRAG_REGION}>
+    <div className="min-h-0 flex-1" style={NO_DRAG_REGION} onPaste={handlePasteImage}>
       <MarkdownEditor value={content} onChange={onChange} editorRef={editorRef} />
     </div>
   )

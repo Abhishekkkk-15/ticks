@@ -356,6 +356,89 @@ the real app (not just unit-level checks) before moving on.
   `workspace_id`/`note_id` were sent, was correctly absent otherwise: a
   note with zero resources behaved identically to before, and a bogus
   `note_id` logged an error but still returned a normal 200 response.
+- **Six follow-up items** (clipboard image paste, more mini-tray sizes, a
+  global-capture bug fix, AI quick-actions on captured text, more
+  keyboard shortcuts, and a persisted workspace-level whiteboard):
+  - **Clipboard image paste**: reuses the existing image-upload plumbing
+    end-to-end (`uploadFileResource` → generic resource file URL →
+    Markdown embed) via a new shared `features/notes/pasteImage.ts`, now
+    also triggered from a paste event (`NoteEditor.tsx`'s
+    `editorAreaRef`, and `MiniEditorApp.tsx`'s mini editor) instead of
+    only the file-picker button. Inserts at the live cursor position in
+    the main editor (falling back to append when there's no selection,
+    e.g. Preview mode); the mini editor always appends, since it doesn't
+    track cursor position.
+  - **More mini-tray sizes**: `compact`/`default`/`tall` presets
+    (`MINI_TRAY_SIZES` in `main/index.ts`), backed by a new top-level
+    `mini_tray_size` setting. Changing it live-resizes an already-open
+    mini window (`resizeMiniTray()`, hooked into the existing
+    `settings:updated` handler) rather than only applying on next
+    creation. Settings UI mirrors the existing "Default Note View Mode"
+    button-group pattern.
+  - **Global capture bug fix**: root-caused two real bugs in
+    `simulateCopyAndRead()`/`performGlobalCapture()` — a single
+    fixed-350ms clipboard read (no retry, missed slow source apps), and
+    a strict equality check that silently discarded a valid capture
+    whenever the newly-copied text happened to match what was already on
+    the clipboard (e.g. capturing the same passage twice). Replaced the
+    fixed read with a short poll that resolves the instant a change is
+    observed, and dropped the equality rejection entirely — after the
+    copy simulation, non-empty clipboard content is accepted regardless.
+    Added logging at every branch (previously there was none on any
+    empty-result path). Verified directly against the fixed
+    `simulateCopyAndRead()`: two calls with identical clipboard content
+    both returned the text instead of the second being dropped.
+  - **AI quick-actions in the capture toast**: Summarize/Explain/Key
+    Points buttons run immediately via the existing `streamAiAction`,
+    appending the result to whichever note received the capture (tracked
+    via new `captureTargetNote` state in `App.tsx`) — automatically
+    picking up the resource-context feature above since it's the same
+    call path. Surfaced a real gap while verifying: if the note that
+    received the capture is also the one currently open, saving the
+    quick-action's result straight through the API (bypassing the open
+    editor's own state) left the visible editor showing stale content.
+    Fixed with a new `note:content-updated` event, mirroring the
+    existing `shortcut:captured` sync pattern, that `useNoteEditor.ts`
+    listens for to refresh its local state when its note is the target.
+  - **More keyboard shortcuts**: `Ctrl+N` (new note), `Ctrl+Shift+W`
+    (close tab — not bare `Ctrl+W`, to dodge Electron's default-menu
+    window-close accelerator), `Ctrl+Tab`/`Ctrl+Shift+Tab` (next/prev
+    tab), `` Ctrl+\ `` (toggle sidebar), `Ctrl+Shift+F` (focus search,
+    via a new `sidebar:focus-search` event `NoteList.tsx` listens for),
+    `Ctrl+D` (duplicate), `Ctrl+Shift+Backspace` (delete, deliberately
+    awkward given it's otherwise one keystroke from trashing a note).
+    Hardcoded, not settings-driven, matching existing precedent (`Ctrl+E`
+    and the CodeMirror keymap); documented in Settings' existing General
+    Cheat-sheet.
+  - **Workspace-level whiteboard**: the "Whiteboard" tab was previously a
+    single throwaway Excalidraw canvas with zero persistence. The
+    note-scoped drawings backend was already 90% reusable —
+    `get_drawing`/`save_scene`/`rename_drawing`/`delete_drawing` were
+    already id-only (their `note_id` path param was accepted but never
+    used); only `list_drawings`/`create_drawing` were genuinely
+    note-scoped. Widened `Drawing.note_id` to nullable and those two
+    functions to accept `note_id: str | None`, added a parallel
+    `workspace_router` in `drawings.py` mounted at
+    `/workspaces/{workspace_id}/drawings` (no note segment, existing
+    note-scoped routes untouched), and a new `WorkspaceDrawingsList.tsx`
+    (list/create/delete, mirroring `NoteDrawingsPanel.tsx`'s styling)
+    that `DrawingView.tsx` now renders instead of the old bare canvas —
+    going straight into a new drawing when the workspace has none yet,
+    per the request. Ported the old `DrawingView`'s export-to-PNG/SVG/
+    Excalidraw-file and fullscreen toggle into `NoteDrawingEditor.tsx`
+    behind a new opt-in `showExportTools` prop (used only by the
+    workspace-level list) so the per-note embedded-drawing editor stays
+    unchanged.
+  - Verified end-to-end against the real running app: pasted a real
+    clipboard image and confirmed the embed renders; switched mini-tray
+    size and confirmed the already-open mini window resized immediately;
+    confirmed two identical-text captures both land instead of the
+    second being dropped; captured text and clicked Summarize, confirmed
+    a real streamed result landed in the (visibly refreshed) open note;
+    exercised every new shortcut without any accidentally hitting a
+    default window action; opened Whiteboard on an empty workspace
+    (auto-created a new drawing), saved, closed, and confirmed the list
+    then showed it.
 
 ### Known follow-ups from completed milestones (not yet fixed)
 
