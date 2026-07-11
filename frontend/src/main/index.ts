@@ -44,6 +44,66 @@ function getMiniTraySize(): string {
   return readSetting('mini_tray_size', 'default')
 }
 
+// Main-window size/position — kept in its own file rather than
+// settings.json since it's a pure Electron/native concern (not something
+// the backend needs to know about) and gets written far more often
+// (debounced on every resize/move) than an actual settings change.
+interface WindowState {
+  width: number
+  height: number
+  x?: number
+  y?: number
+  isMaximized: boolean
+}
+
+const DEFAULT_WINDOW_STATE: WindowState = { width: 1200, height: 800, isMaximized: false }
+
+function getWindowStatePath(): string {
+  return join(os.homedir(), 'AILearningWorkspace', 'window-state.json')
+}
+
+function loadWindowState(): WindowState {
+  try {
+    const raw = fs.readFileSync(getWindowStatePath(), 'utf-8')
+    const state = JSON.parse(raw) as Partial<WindowState>
+    if (typeof state.width !== 'number' || typeof state.height !== 'number') {
+      return DEFAULT_WINDOW_STATE
+    }
+    // If the saved position no longer falls on any connected display (e.g. an
+    // external monitor got unplugged), drop x/y and let Electron re-center
+    // the window instead of restoring it off-screen and unreachable.
+    if (typeof state.x === 'number' && typeof state.y === 'number') {
+      const onScreen = screen.getAllDisplays().some((display) => {
+        const { x, y, width, height } = display.workArea
+        return state.x! >= x && state.y! >= y && state.x! < x + width && state.y! < y + height
+      })
+      if (!onScreen) {
+        delete state.x
+        delete state.y
+      }
+    }
+    return { ...DEFAULT_WINDOW_STATE, ...state }
+  } catch {
+    return DEFAULT_WINDOW_STATE
+  }
+}
+
+function saveWindowState(win: BrowserWindow): void {
+  try {
+    const isMaximized = win.isMaximized()
+    // getBounds() while maximized returns the maximized bounds, not the
+    // user's actual resized size — save the pre-maximize (or last-restored)
+    // bounds instead so un-maximizing on the next launch lands back on the
+    // size the user actually chose, not whatever the maximized bounds were.
+    const bounds = isMaximized ? win.getNormalBounds() : win.getBounds()
+    const state: WindowState = { ...bounds, isMaximized }
+    fs.mkdirSync(join(os.homedir(), 'AILearningWorkspace'), { recursive: true })
+    fs.writeFileSync(getWindowStatePath(), JSON.stringify(state))
+  } catch (err) {
+    console.error('Failed to save window state:', err)
+  }
+}
+
 function mapShortcutToAccelerator(shortcut: string): string {
   return shortcut
     .split('+')
@@ -324,10 +384,15 @@ const ZOOM_STEP = 0.5
 const ZOOM_LIMIT = 4
 
 function createWindow(): void {
+  const savedState = loadWindowState()
+
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    width: savedState.width,
+    height: savedState.height,
+    ...(savedState.x !== undefined && savedState.y !== undefined
+      ? { x: savedState.x, y: savedState.y }
+      : {}),
     minWidth: 800,
     minHeight: 600,
     show: false,
@@ -342,6 +407,22 @@ function createWindow(): void {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: true
     }
+  })
+
+  if (savedState.isMaximized) mainWindow.maximize()
+
+  // Debounced so a drag-resize doesn't write on every intermediate frame;
+  // 'close' below guarantees a final save even if the debounce never fires.
+  let saveStateTimer: ReturnType<typeof setTimeout> | undefined
+  const scheduleSaveState = (): void => {
+    clearTimeout(saveStateTimer)
+    saveStateTimer = setTimeout(() => saveWindowState(mainWindow), 500)
+  }
+  mainWindow.on('resize', scheduleSaveState)
+  mainWindow.on('move', scheduleSaveState)
+  mainWindow.on('close', () => {
+    clearTimeout(saveStateTimer)
+    saveWindowState(mainWindow)
   })
 
   mainWindow.on('ready-to-show', () => {

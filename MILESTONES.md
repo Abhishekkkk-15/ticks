@@ -439,6 +439,24 @@ the real app (not just unit-level checks) before moving on.
     default window action; opened Whiteboard on an empty workspace
     (auto-created a new drawing), saved, closed, and confirmed the list
     then showed it.
+- **Fix: main window size/position now persists across restarts.**
+  Previously always reopened at the hardcoded 1200×800 regardless of how
+  the user had resized it. Saved to a new `window-state.json` (kept
+  separate from `settings.json` since it's a pure Electron/native
+  concern with much higher write frequency — debounced 500ms on every
+  `resize`/`move`, plus a final save on `close` as a backstop). Restoring
+  a saved position that no longer falls on any connected display (e.g.
+  an external monitor was unplugged) drops the saved x/y and lets
+  Electron re-center the window instead of placing it off-screen and
+  unreachable — `x`/`y` are validated against `screen.getAllDisplays()`
+  on load. While maximized, `getNormalBounds()` (not `getBounds()`) is
+  saved, so un-maximizing on the next launch restores the size the user
+  actually chose rather than the maximized dimensions. Verified against
+  the real app across two separate launches: resized to 900×650 at
+  (100, 80), quit, relaunched — reopened at exactly that size and
+  position; then repeated with a deliberately off-screen saved position
+  (9999, 9999) and confirmed it fell back to an on-screen position while
+  keeping the saved 900×650 size.
 
 ### Known follow-ups from completed milestones (not yet fixed)
 
