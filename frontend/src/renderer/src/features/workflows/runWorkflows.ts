@@ -65,7 +65,9 @@ export interface WorkflowReviewPayload {
   result: string
   /** The note content at the moment the workflow ran (to build diffs against). */
   originalContent: string
+  selectionRange?: { from: number; to: number } | null
 }
+
 
 /**
  * localStorage key for the per-workflow-per-note content snapshot.
@@ -213,3 +215,45 @@ export async function runWorkflow(workflow: Workflow, context: RunWorkflowsConte
     localStorage.setItem(snapshotKey(workflow.id, context.noteId), updated)
   }
 }
+
+export async function runDirectAiAction(
+  actionId: string,
+  actionLabel: string,
+  text: string,
+  context: {
+    workspaceId: string
+    noteId: string
+    selectionRange?: { from: number; to: number } | null
+  }
+): Promise<void> {
+  const noteContext = { workspaceId: context.workspaceId, noteId: context.noteId }
+
+  let resultText = ''
+  const onChunk = (chunk: string): void => {
+    resultText += chunk
+  }
+  if (isRewriteMode(actionId)) {
+    await streamAiRewrite(text, actionId, onChunk, undefined, noteContext)
+  } else {
+    await streamAiAction(actionId as AiAction, text, onChunk, undefined, noteContext)
+  }
+
+  const finalResult = stripMarkdownWrappers(resultText)
+
+  // Trigger Review Panel
+  window.dispatchEvent(
+    new CustomEvent<WorkflowReviewPayload>('workflow:review-pending', {
+      detail: {
+        workflowId: `direct-${actionId}`,
+        workflowName: actionLabel,
+        chainLabel: actionLabel,
+        noteId: context.noteId,
+        workspaceId: context.workspaceId,
+        result: finalResult,
+        originalContent: text,
+        selectionRange: context.selectionRange
+      }
+    })
+  )
+}
+

@@ -33,7 +33,7 @@ import { uploadFileResource } from '../resources/api'
 import { getClipboardImageFile, uploadPastedImage } from './pasteImage'
 import { matchShortcut } from '../../lib/shortcuts'
 import { useSettings } from '../settings/SettingsContext'
-import { runWorkflows } from '../workflows/runWorkflows'
+import { runWorkflows, WORKFLOW_ACTIONS, runDirectAiAction } from '../workflows/runWorkflows'
 import type { WorkflowReviewPayload } from '../workflows/runWorkflows'
 
 interface NoteEditorProps {
@@ -154,6 +154,22 @@ function NoteEditor({
         event.preventDefault()
         setActivePanel((prev) => (prev === 'ai' ? null : 'ai'))
         return
+      }
+      for (const action of WORKFLOW_ACTIONS) {
+        const customShortcut = settings?.keyboard_shortcuts?.[`ai_${action.id}`]
+        if (customShortcut && matchShortcut(event, customShortcut)) {
+          event.preventDefault()
+          if (meta) {
+            const targetText = selection?.text || content
+            const isSelection = !!selection?.text
+            runDirectAiAction(action.id, action.label, targetText, {
+              workspaceId,
+              noteId: meta.id,
+              selectionRange: isSelection ? { from: selection.from, to: selection.to } : null
+            }).catch(() => {})
+          }
+          return
+        }
       }
       for (const workflow of workflows) {
         if (
@@ -323,10 +339,15 @@ function NoteEditor({
 
   function handleApplyReview(mode: 'append' | 'replace'): void {
     if (!pendingReview || !meta) return
-    const { result, chainLabel, workflowName } = pendingReview
+    const { result, chainLabel, workflowName, selectionRange } = pendingReview
     let updated: string
     if (mode === 'replace') {
-      updated = result.endsWith('\n') ? result : result + '\n'
+      if (selectionRange) {
+        const { from, to } = selectionRange
+        updated = content.slice(0, from) + result + content.slice(to)
+      } else {
+        updated = result.endsWith('\n') ? result : result + '\n'
+      }
     } else {
       const separator = content.endsWith('\n') || content === '' ? '' : '\n\n'
       updated = `${content}${separator}**${chainLabel} (${workflowName}):**\n${result}\n`

@@ -991,6 +991,45 @@ function SettingsView(): React.JSX.Element {
                     </div>
                   )}
                 </div>
+
+                {/* Specific AI Actions */}
+                {WORKFLOW_ACTIONS.map((action) => {
+                  const key = `ai_${action.id}`
+                  return (
+                    <div
+                      key={action.id}
+                      className="flex items-center justify-between border-t border-neutral-800/40 pt-4"
+                    >
+                      <div>
+                        <h4 className="text-xs font-semibold text-neutral-200">AI: {action.label}</h4>
+                        <p className="text-[10px] text-neutral-500">
+                          Trigger '{action.label}' on selected text.
+                        </p>
+                      </div>
+                      {recordingShortcut === key ? (
+                        <input
+                          autoFocus
+                          placeholder="Press shortcut keys…"
+                          onKeyDown={handleRecordShortcutKeyDown}
+                          className="w-36 rounded-md border border-amber-500 bg-neutral-950 px-2.5 py-1 text-center text-xs text-amber-400 placeholder:text-amber-500/70 focus:outline-none"
+                        />
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <kbd className="rounded bg-neutral-800 px-2 py-1 text-xs font-mono text-neutral-300 border border-neutral-700">
+                            {settings.keyboard_shortcuts[key] || 'Not assigned'}
+                          </kbd>
+                          <button
+                            type="button"
+                            onClick={() => setRecordingShortcut(key)}
+                            className="rounded border border-neutral-800 bg-neutral-900 px-2.5 py-1 text-[10px] font-medium text-neutral-400 hover:text-neutral-200"
+                          >
+                            Edit
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             </section>
 
@@ -1017,6 +1056,10 @@ function SettingsView(): React.JSX.Element {
                     action: 'Toggle AI Panel',
                     keys: [settings.keyboard_shortcuts.trigger_ai || 'Ctrl+Shift+A']
                   },
+                  ...WORKFLOW_ACTIONS.filter((action) => settings.keyboard_shortcuts[`ai_${action.id}`]).map((action) => ({
+                    action: `AI: ${action.label}`,
+                    keys: [settings.keyboard_shortcuts[`ai_${action.id}`]]
+                  })),
                   { action: 'New Note', keys: ['Ctrl+N'] },
                   { action: 'Close Active Tab', keys: ['Ctrl+Shift+W'] },
                   { action: 'Next / Previous Tab', keys: ['Ctrl+Tab', 'Ctrl+Shift+Tab'] },
