@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Image as ImageIcon, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useNoteDrawings } from './useNoteDrawings'
 import NoteDrawingEditor from './NoteDrawingEditor'
 import type { Drawing } from './types'
+import { listWorkspaceDrawings } from './noteDrawingsApi'
 
 interface NoteDrawingsPanelProps {
   workspaceId: string
@@ -18,6 +19,19 @@ function NoteDrawingsPanel({
   const { drawings, loading, error, create, remove, refresh } = useNoteDrawings(workspaceId, noteId)
   const [newTitle, setNewTitle] = useState('')
   const [editingDrawing, setEditingDrawing] = useState<Drawing | null>(null)
+  const [workspaceDrawings, setWorkspaceDrawings] = useState<Drawing[]>([])
+
+  const loadWorkspaceDrawings = useCallback(async () => {
+    try {
+      const data = await listWorkspaceDrawings(workspaceId, true)
+      const noteDrawingIds = new Set(drawings.map((d) => d.id))
+      setWorkspaceDrawings(data.filter((d) => !noteDrawingIds.has(d.id)))
+    } catch {}
+  }, [workspaceId, drawings])
+
+  useEffect(() => {
+    loadWorkspaceDrawings()
+  }, [loadWorkspaceDrawings])
 
   async function handleCreate(event: React.FormEvent): Promise<void> {
     event.preventDefault()
@@ -96,15 +110,60 @@ function NoteDrawingsPanel({
 
       {error && <div className="mt-2 text-xs text-red-400">{error}</div>}
 
+      {workspaceDrawings.length > 0 && (
+        <div className="mt-4 border-t border-neutral-800/60 pt-3">
+          <span className="text-[10px] font-semibold tracking-wide text-neutral-500 uppercase block mb-2">
+            Other Drawings & Whiteboards
+          </span>
+          <ul className="space-y-1">
+            {workspaceDrawings.map((drawing) => (
+              <li
+                key={drawing.id}
+                className="group flex items-center gap-2 rounded-md px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
+              >
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="truncate font-medium text-neutral-200">{drawing.title}</span>
+                  {drawing.note_id && drawing.note_title && (
+                    <span className="truncate text-[9px] text-neutral-500">
+                      Note: {drawing.note_title}
+                    </span>
+                  )}
+                  {!drawing.note_id && (
+                    <span className="truncate text-[9px] text-neutral-500">
+                      Standalone Whiteboard
+                    </span>
+                  )}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => onInsertEmbed(drawing)}
+                  className="hidden shrink-0 text-neutral-500 hover:text-neutral-300 group-hover:inline font-medium"
+                >
+                  Insert
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingDrawing(drawing)}
+                  className="shrink-0 text-neutral-500 hover:text-neutral-300"
+                >
+                  <Pencil size={12} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {editingDrawing && (
         <NoteDrawingEditor
           workspaceId={workspaceId}
-          noteId={noteId}
+          noteId={editingDrawing.note_id}
           drawingId={editingDrawing.id}
           title={editingDrawing.title}
           onClose={() => {
             setEditingDrawing(null)
             refresh()
+            loadWorkspaceDrawings()
           }}
         />
       )}
