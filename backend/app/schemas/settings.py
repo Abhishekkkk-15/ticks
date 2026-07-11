@@ -5,6 +5,7 @@ class Workflow(BaseModel):
     id: str
     name: str
     trigger: str
+    scope: str = 'full_note'  # full_note | selection | clipboard
     shortcut: str | None = None
     actions: list[str]
 

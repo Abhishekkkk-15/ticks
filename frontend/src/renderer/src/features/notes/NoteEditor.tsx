@@ -139,9 +139,12 @@ function NoteEditor({
         ) {
           event.preventDefault()
           if (meta) {
-            runWorkflows('shortcut', [workflow], { workspaceId, noteId: meta.id, content }).catch(
-              () => {}
-            )
+            runWorkflows('shortcut', [workflow], {
+              workspaceId,
+              noteId: meta.id,
+              content,
+              selectedText: selection?.text ?? ''
+            }).catch(() => {})
           }
           return
         }
@@ -252,13 +255,25 @@ function NoteEditor({
 
   function handleCopy(): void {
     if (!meta || !workflows.some((w) => w.trigger === 'on_copy')) return
-    runWorkflows('on_copy', workflows, { workspaceId, noteId: meta.id, content }).catch(() => {})
+    const copied = selection?.text ?? window.getSelection()?.toString() ?? ''
+    runWorkflows('on_copy', workflows, {
+      workspaceId,
+      noteId: meta.id,
+      content,
+      clipboardText: copied
+    }).catch(() => {})
   }
 
   async function handlePaste(event: React.ClipboardEvent): Promise<void> {
     await handlePasteImage(event)
     if (!meta || !workflows.some((w) => w.trigger === 'on_paste')) return
-    runWorkflows('on_paste', workflows, { workspaceId, noteId: meta.id, content }).catch(() => {})
+    const pasted = event.clipboardData.getData('text/plain')
+    runWorkflows('on_paste', workflows, {
+      workspaceId,
+      noteId: meta.id,
+      content,
+      clipboardText: pasted
+    }).catch(() => {})
   }
 
   function handleContextMenu(e: React.MouseEvent): void {

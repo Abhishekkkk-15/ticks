@@ -6,8 +6,12 @@ import { useAiAction } from '../ai/useAiAction'
 import { useWorkspaces } from '../workspaces/useWorkspaces'
 import Select from '../../components/ui/Select'
 import FontPicker from './FontPicker'
-import { WORKFLOW_ACTIONS } from '../workflows/runWorkflows'
-import type { Workflow, WorkflowTrigger } from './types'
+import {
+  WORKFLOW_ACTIONS,
+  WORKFLOW_SCOPE_LABELS,
+  DEFAULT_SCOPE_FOR_TRIGGER
+} from '../workflows/runWorkflows'
+import type { Workflow, WorkflowTrigger, WorkflowScope } from './types'
 
 type SettingsTab = 'general' | 'editor' | 'ai' | 'shortcuts' | 'workflows'
 
@@ -61,6 +65,7 @@ function SettingsView(): React.JSX.Element {
   const [workflowShortcut, setWorkflowShortcut] = useState('')
   const [workflowActions, setWorkflowActions] = useState<string[]>([])
   const [nextWorkflowAction, setNextWorkflowAction] = useState(WORKFLOW_ACTIONS[0].id)
+  const [workflowScope, setWorkflowScope] = useState<WorkflowScope>('full_note')
   const [recordingWorkflowShortcut, setRecordingWorkflowShortcut] = useState(false)
 
   useEffect(() => {
@@ -223,6 +228,7 @@ function SettingsView(): React.JSX.Element {
       id: crypto.randomUUID(),
       name,
       trigger: workflowTrigger,
+      scope: workflowScope,
       shortcut: workflowTrigger === 'shortcut' ? workflowShortcut : null,
       actions: workflowActions
     }
@@ -231,6 +237,7 @@ function SettingsView(): React.JSX.Element {
     setWorkflowTrigger('on_save')
     setWorkflowShortcut('')
     setWorkflowActions([])
+    setWorkflowScope('full_note')
     setNextWorkflowAction(WORKFLOW_ACTIONS[0].id)
   }
 
@@ -1077,12 +1084,29 @@ function SettingsView(): React.JSX.Element {
                     <label className="text-xs font-medium text-neutral-400">Trigger</label>
                     <Select
                       value={workflowTrigger}
-                      onChange={(value) => setWorkflowTrigger(value as WorkflowTrigger)}
+                      onChange={(value) => {
+                        const t = value as WorkflowTrigger
+                        setWorkflowTrigger(t)
+                        // Auto-set the most sensible scope for this trigger
+                        setWorkflowScope(DEFAULT_SCOPE_FOR_TRIGGER[t])
+                      }}
                       options={TRIGGER_OPTIONS.map((t) => ({ value: t.value, label: t.label }))}
                       size="md"
                     />
                   </div>
                   <div className="flex-1 space-y-1.5">
+                    <label className="text-xs font-medium text-neutral-400">Run on</label>
+                    <Select
+                      value={workflowScope}
+                      onChange={(value) => setWorkflowScope(value as WorkflowScope)}
+                      options={(Object.entries(WORKFLOW_SCOPE_LABELS) as [WorkflowScope, string][]).map(
+                        ([value, label]) => ({ value, label })
+                      )}
+                      size="md"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
                     <label className="text-xs font-medium text-neutral-400">Actions</label>
                     {/* Ordered list of chained actions */}
                     {workflowActions.length > 0 && (
@@ -1139,7 +1163,6 @@ function SettingsView(): React.JSX.Element {
                       </button>
                     </div>
                   </div>
-                </div>
 
                 {workflowTrigger === 'shortcut' && (
                   <div className="space-y-1.5">
