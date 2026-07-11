@@ -1,7 +1,7 @@
 import { getNote, updateNoteContent } from '../notes/api'
-import { streamAiAction, streamAiRewrite, isRewriteMode } from '../ai/api'
+import { streamAiAction, streamAiRewrite, isRewriteMode, stripMarkdownWrappers } from '../ai/api'
 import type { AiAction } from '../ai/api'
-import type { Workflow, WorkflowScope, WorkflowTrigger } from '../settings/types'
+import type { Workflow, WorkflowOutputMode, WorkflowScope, WorkflowTrigger } from '../settings/types'
 
 export const WORKFLOW_ACTIONS: { id: string; label: string }[] = [
   { id: 'summarize', label: 'Summarize' },
@@ -23,6 +23,12 @@ export const WORKFLOW_SCOPE_LABELS: Record<WorkflowScope, string> = {
   selection: 'Selected text (fallback: full note)',
   clipboard: 'Copied / pasted text',
   new_text: 'New text only (since last run)'
+}
+
+export const WORKFLOW_OUTPUT_MODE_LABELS: Record<WorkflowOutputMode, string> = {
+  append: 'Append to note',
+  replace: 'Replace note content',
+  review: 'Review before applying'
 }
 
 // Default scopes that make sense per trigger — used to pre-fill the UI picker.
@@ -48,6 +54,19 @@ interface RunWorkflowsContext {
   clipboardText?: string
 }
 
+/** Payload sent with the workflow:review-pending event. */
+export interface WorkflowReviewPayload {
+  workflowId: string
+  workflowName: string
+  chainLabel: string
+  noteId: string
+  workspaceId: string
+  /** The AI-generated result text. */
+  result: string
+  /** The note content at the moment the workflow ran (to build diffs against). */
+  originalContent: string
+}
+
 /**
  * localStorage key for the per-workflow-per-note content snapshot.
  * Stored after each successful run so the next run can diff against it.
@@ -63,7 +82,6 @@ function snapshotKey(workflowId: string, noteId: string): string {
  */
 function extractNewText(previous: string, current: string): string {
   if (!previous) return current // first run
-  // Find the common prefix length (character-level)
   let i = 0
   const minLen = Math.min(previous.length, current.length)
   while (i < minLen && previous[i] === current[i]) i++
@@ -91,6 +109,20 @@ function resolveInput(workflow: Workflow, ctx: RunWorkflowsContext): string {
   }
 }
 
+/** Persist content to the note and fire the sync event for open editors. */
+async function commitToNote(
+  workspaceId: string,
+  noteId: string,
+  updatedContent: string
+): Promise<void> {
+  await updateNoteContent(workspaceId, noteId, updatedContent)
+  window.dispatchEvent(
+    new CustomEvent('note:content-updated', {
+      detail: { noteId, content: updatedContent }
+    })
+  )
+}
+
 export async function runWorkflows(
   trigger: WorkflowTrigger,
   workflows: Workflow[],
@@ -116,11 +148,11 @@ async function runSingleAction(
   } else {
     await streamAiAction(action as AiAction, text, onChunk, undefined, noteContext)
   }
-  return resultText
+  return stripMarkdownWrappers(resultText)
 }
 
 // Chains the workflow's actions like n8n: each step's output becomes the
-// next step's input, and only the final step's result gets appended to the note.
+// next step's input, and only the final step's result is applied to the note.
 export async function runWorkflow(workflow: Workflow, context: RunWorkflowsContext): Promise<void> {
   const noteContext = { workspaceId: context.workspaceId, noteId: context.noteId }
 
@@ -133,8 +165,29 @@ export async function runWorkflow(workflow: Workflow, context: RunWorkflowsConte
   }
   const finalResult = stepInput
 
-  const detail = await getNote(context.workspaceId, context.noteId)
   const chainLabel = workflow.actions.map((a) => ACTION_LABELS[a] ?? a).join(' → ')
+  const outputMode: WorkflowOutputMode = workflow.output_mode ?? 'append'
+
+  if (outputMode === 'review') {
+    // Don't write anything — fire an event for the NoteEditor to show the review panel.
+    window.dispatchEvent(
+      new CustomEvent<WorkflowReviewPayload>('workflow:review-pending', {
+        detail: {
+          workflowId: workflow.id,
+          workflowName: workflow.name,
+          chainLabel,
+          noteId: context.noteId,
+          workspaceId: context.workspaceId,
+          result: finalResult,
+          originalContent: context.content
+        }
+      })
+    )
+    return
+  }
+
+  // Build the updated note content for append / replace modes.
+  const detail = await getNote(context.workspaceId, context.noteId)
   const scopeNote =
     workflow.scope === 'selection' && context.selectedText?.trim()
       ? ' [selection]'
@@ -143,19 +196,20 @@ export async function runWorkflow(workflow: Workflow, context: RunWorkflowsConte
         : workflow.scope === 'new_text'
           ? ' [new text]'
           : ''
-  const separator = detail.content.endsWith('\n') || detail.content === '' ? '' : '\n\n'
-  const updated = `${detail.content}${separator}**${chainLabel}${scopeNote} (${workflow.name}):**\n${finalResult}\n`
-  await updateNoteContent(context.workspaceId, context.noteId, updated)
 
-  // Snapshot the current content so the next run can diff against it.
+  let updated: string
+  if (outputMode === 'replace') {
+    updated = finalResult.endsWith('\n') ? finalResult : finalResult + '\n'
+  } else {
+    // append (default)
+    const separator = detail.content.endsWith('\n') || detail.content === '' ? '' : '\n\n'
+    updated = `${detail.content}${separator}**${chainLabel}${scopeNote} (${workflow.name}):**\n${finalResult}\n`
+  }
+
+  await commitToNote(context.workspaceId, context.noteId, updated)
+
+  // Snapshot the current content so the next new_text run can diff against it.
   if (workflow.scope === 'new_text') {
     localStorage.setItem(snapshotKey(workflow.id, context.noteId), updated)
   }
-
-  window.dispatchEvent(
-    new CustomEvent('note:content-updated', {
-      detail: { noteId: context.noteId, content: updated }
-    })
-  )
 }
-

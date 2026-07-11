@@ -9,9 +9,10 @@ import FontPicker from './FontPicker'
 import {
   WORKFLOW_ACTIONS,
   WORKFLOW_SCOPE_LABELS,
+  WORKFLOW_OUTPUT_MODE_LABELS,
   DEFAULT_SCOPE_FOR_TRIGGER
 } from '../workflows/runWorkflows'
-import type { Workflow, WorkflowTrigger, WorkflowScope } from './types'
+import type { Workflow, WorkflowTrigger, WorkflowScope, WorkflowOutputMode } from './types'
 
 type SettingsTab = 'general' | 'editor' | 'ai' | 'shortcuts' | 'workflows'
 
@@ -66,7 +67,9 @@ function SettingsView(): React.JSX.Element {
   const [workflowActions, setWorkflowActions] = useState<string[]>([])
   const [nextWorkflowAction, setNextWorkflowAction] = useState(WORKFLOW_ACTIONS[0].id)
   const [workflowScope, setWorkflowScope] = useState<WorkflowScope>('full_note')
+  const [workflowOutputMode, setWorkflowOutputMode] = useState<WorkflowOutputMode>('append')
   const [recordingWorkflowShortcut, setRecordingWorkflowShortcut] = useState(false)
+
 
   useEffect(() => {
     function handleNavigate(event: Event): void {
@@ -229,6 +232,7 @@ function SettingsView(): React.JSX.Element {
       name,
       trigger: workflowTrigger,
       scope: workflowScope,
+      output_mode: workflowOutputMode,
       shortcut: workflowTrigger === 'shortcut' ? workflowShortcut : null,
       actions: workflowActions
     }
@@ -238,6 +242,7 @@ function SettingsView(): React.JSX.Element {
     setWorkflowShortcut('')
     setWorkflowActions([])
     setWorkflowScope('full_note')
+    setWorkflowOutputMode('append')
     setNextWorkflowAction(WORKFLOW_ACTIONS[0].id)
   }
 
@@ -1041,6 +1046,7 @@ function SettingsView(): React.JSX.Element {
                           {workflow.trigger === 'shortcut' && workflow.shortcut
                             ? ` (${workflow.shortcut})`
                             : ''}
+                          {` (${WORKFLOW_OUTPUT_MODE_LABELS[workflow.output_mode ?? 'append']})`}
                           {' → '}
                           {workflow.actions
                             .map(
@@ -1106,6 +1112,19 @@ function SettingsView(): React.JSX.Element {
                     />
                   </div>
                 </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-neutral-400">Output Action</label>
+                  <Select
+                    value={workflowOutputMode}
+                    onChange={(value) => setWorkflowOutputMode(value as WorkflowOutputMode)}
+                    options={(Object.entries(WORKFLOW_OUTPUT_MODE_LABELS) as [WorkflowOutputMode, string][]).map(
+                      ([value, label]) => ({ value, label })
+                    )}
+                    size="md"
+                  />
+                </div>
+
                 <div className="space-y-1.5">
                     <label className="text-xs font-medium text-neutral-400">Actions</label>
                     {/* Ordered list of chained actions */}

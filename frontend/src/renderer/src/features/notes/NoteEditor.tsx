@@ -11,7 +11,9 @@ import {
   Sparkles,
   Star,
   Tag,
-  Trash2
+  Trash2,
+  X,
+  Check
 } from 'lucide-react'
 import EditorView from '../editor/EditorView'
 import type { EditorSelection } from '../editor/MarkdownEditor'
@@ -32,6 +34,7 @@ import { getClipboardImageFile, uploadPastedImage } from './pasteImage'
 import { matchShortcut } from '../../lib/shortcuts'
 import { useSettings } from '../settings/SettingsContext'
 import { runWorkflows } from '../workflows/runWorkflows'
+import type { WorkflowReviewPayload } from '../workflows/runWorkflows'
 
 interface NoteEditorProps {
   workspaceId: string
@@ -75,6 +78,7 @@ function NoteEditor({
   const [meta, setMeta] = useState<Note | null>(null)
   const [renaming, setRenaming] = useState(false)
   const [titleDraft, setTitleDraft] = useState('')
+  const [pendingReview, setPendingReview] = useState<WorkflowReviewPayload | null>(null)
   const [loadedNoteId, setLoadedNoteId] = useState<string | null>(null)
   const [activePanel, setActivePanel] = useState<
     'resources' | 'drawings' | 'organize' | 'ai' | null
@@ -93,6 +97,7 @@ function NoteEditor({
     setMeta(note)
     setTitleDraft(note.title)
     setRenaming(false)
+    setPendingReview(null)
   }
 
   useEffect(() => {
@@ -110,6 +115,19 @@ function NoteEditor({
       window.removeEventListener('editor:open-ai', handleOpenAi)
     }
   }, [content])
+
+  useEffect(() => {
+    function handleReviewPending(event: Event): void {
+      const customEvent = event as CustomEvent<WorkflowReviewPayload>
+      if (customEvent.detail.noteId === meta?.id) {
+        setPendingReview(customEvent.detail)
+      }
+    }
+    window.addEventListener('workflow:review-pending', handleReviewPending)
+    return () => {
+      window.removeEventListener('workflow:review-pending', handleReviewPending)
+    }
+  }, [meta?.id])
 
   // Ctrl+Shift+Backspace (not a plain Ctrl+Backspace) for delete is a
   // deliberately awkward two-hand combo — an extra guard against a stray
@@ -297,6 +315,29 @@ function NoteEditor({
     setContextMenu(null)
   }, [])
 
+  function handleApplyReview(mode: 'append' | 'replace'): void {
+    if (!pendingReview || !meta) return
+    const { result, chainLabel, workflowName } = pendingReview
+    let updated: string
+    if (mode === 'replace') {
+      updated = result.endsWith('\n') ? result : result + '\n'
+    } else {
+      const separator = content.endsWith('\n') || content === '' ? '' : '\n\n'
+      updated = `${content}${separator}**${chainLabel} (${workflowName}):**\n${result}\n`
+    }
+    onChange(updated)
+    // Force immediate save using useNoteEditor's save helper
+    setTimeout(() => {
+      save()
+    }, 50)
+    setPendingReview(null)
+  }
+
+  function handleDiscardReview(): void {
+    setPendingReview(null)
+  }
+
+
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-neutral-500">
@@ -314,7 +355,7 @@ function NoteEditor({
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="relative flex h-full flex-col">
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-neutral-800 px-3 py-2">
         {renaming ? (
           <input
@@ -518,6 +559,71 @@ function NoteEditor({
         onAction={handleContextMenuAction}
         onClose={handleCloseContextMenu}
       />
+
+      <AnimatePresence>
+        {pendingReview && (
+          <motion.div
+            initial={{ y: '100%', opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: '100%', opacity: 0 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="absolute bottom-0 left-0 right-0 z-45 bg-neutral-905 border-t border-neutral-800 shadow-2xl p-4 flex flex-col gap-3 rounded-t-xl backdrop-blur-md"
+            style={{ backgroundColor: 'rgba(23, 23, 23, 0.98)' }}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-[10px] font-semibold uppercase tracking-wider text-amber-500">
+                  Workflow Review
+                </h4>
+                <p className="text-xs font-medium text-neutral-200">
+                  {pendingReview.workflowName} ({pendingReview.chainLabel})
+                </p>
+              </div>
+              <button
+                onClick={handleDiscardReview}
+                className="rounded-full p-1 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200 transition-colors"
+                title="Discard"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-1.5 min-h-[100px] max-h-[200px]">
+              <label className="text-[9px] font-medium text-neutral-500 uppercase tracking-wider">
+                Proposed Output
+              </label>
+              <div className="flex-1 overflow-y-auto rounded-md border border-neutral-850 bg-neutral-950 p-2.5 text-xs text-neutral-300 font-mono whitespace-pre-wrap select-text selection:bg-neutral-800">
+                {pendingReview.result}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-0.5">
+              <button
+                type="button"
+                onClick={handleDiscardReview}
+                className="rounded-md border border-neutral-800 bg-transparent px-2.5 py-1.5 text-xs font-medium text-neutral-400 hover:text-neutral-200 transition-colors"
+              >
+                Discard
+              </button>
+              <button
+                type="button"
+                onClick={() => handleApplyReview('append')}
+                className="flex items-center gap-1 rounded-md border border-neutral-850 bg-neutral-900 px-2.5 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-800 transition-colors"
+              >
+                <Check size={12} />
+                Append
+              </button>
+              <button
+                type="button"
+                onClick={() => handleApplyReview('replace')}
+                className="flex items-center gap-1 rounded-md bg-amber-600 px-3 py-1.5 text-xs font-semibold text-neutral-950 hover:bg-amber-500 transition-colors"
+              >
+                Replace Note
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

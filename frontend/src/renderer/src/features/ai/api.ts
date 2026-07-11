@@ -52,3 +52,17 @@ export function streamAiRewrite(
     signal
   )
 }
+
+export function stripMarkdownWrappers(text: string): string {
+  const cleaned = text.trim()
+  const match = cleaned.match(/^```markdown\s*([\s\S]*?)\s*```$/i)
+  if (match) {
+    return match[1].trim()
+  }
+  const generalMatch = cleaned.match(/^```(?:[a-z]+)?\s*([\s\S]*?)\s*```$/i)
+  if (generalMatch) {
+    return generalMatch[1].trim()
+  }
+  return cleaned
+}
+

@@ -5,11 +5,17 @@ export type WorkflowTrigger = 'on_save' | 'on_copy' | 'on_paste' | 'shortcut'
 // new_text   — run only on content added since the last time this workflow ran on this note
 export type WorkflowScope = 'full_note' | 'selection' | 'clipboard' | 'new_text'
 
+// append      — append result to the end of the note (safe, non-destructive)
+// replace     — replace the entire note content with the result
+// review      — hold the result for user review before applying (shows a diff panel)
+export type WorkflowOutputMode = 'append' | 'replace' | 'review'
+
 export interface Workflow {
   id: string
   name: string
   trigger: WorkflowTrigger
   scope: WorkflowScope
+  output_mode: WorkflowOutputMode
   shortcut: string | null
   actions: string[]
 }

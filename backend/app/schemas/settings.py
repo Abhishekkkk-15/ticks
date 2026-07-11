@@ -5,7 +5,8 @@ class Workflow(BaseModel):
     id: str
     name: str
     trigger: str
-    scope: str = 'full_note'  # full_note | selection | clipboard
+    scope: str = 'full_note'  # full_note | selection | clipboard | new_text
+    output_mode: str = 'append'  # append | replace | review
     shortcut: str | None = None
     actions: list[str]
 

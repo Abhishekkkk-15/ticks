@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import { isRewriteMode, streamAiAction, streamAiRewrite } from './api'
+import { isRewriteMode, streamAiAction, streamAiRewrite, stripMarkdownWrappers } from './api'
 import type { AiAction, AiNoteContext } from './api'
 
 interface UseAiActionResult {
@@ -35,6 +35,7 @@ export function useAiAction(): UseAiActionResult {
         } else {
           await streamAiAction(action as AiAction, text, onChunk, controller.signal, context)
         }
+        setResult((prev) => stripMarkdownWrappers(prev))
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') return
         setError(err instanceof Error ? err.message : 'AI request failed')
