@@ -34,6 +34,14 @@ _FAITHFULNESS_RULE = (
     "missing, say so instead of guessing."
 )
 
+_SYSTEM_CONTEXT = (
+    "You are the AI companion inside Ticks, a modern, local-first markdown "
+    "note-taking and knowledge management desktop application. Ticks helps users learn "
+    "from docs, blogs, PDFs, and technical articles by letting them capture text, organize "
+    "material, and use AI utilities to edit and process notes."
+)
+
+
 PROMPTS: dict[str, str] = {
     "summarize": f"Summarize the following text concisely. {_FAITHFULNESS_RULE}",
     "explain": (
@@ -152,10 +160,12 @@ async def _open_stream(
 
 def _resolve_prompt(action: str, style_examples: list[str] | None) -> str:
     if action == "style":
-        return _style_prompt(style_examples or [])
-    if action in PROMPTS:
-        return PROMPTS[action]
-    raise ValueError(f"Unknown AI action: {action}")
+        prompt = _style_prompt(style_examples or [])
+    elif action in PROMPTS:
+        prompt = PROMPTS[action]
+    else:
+        raise ValueError(f"Unknown AI action: {action}")
+    return f"{_SYSTEM_CONTEXT}\n\nTask:\n{prompt}"
 
 
 async def open_action_stream(
