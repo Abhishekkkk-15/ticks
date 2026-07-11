@@ -71,6 +71,39 @@ def list_resources(workspace_id: str, note_id: str) -> list[Resource]:
     return [_to_resource(e) for e in entries]
 
 
+RESOURCE_CONTEXT_CHAR_LIMIT = 3000
+
+
+def get_resource_context(workspace_id: str, note_id: str) -> str:
+    """Formats a note's completed resources as grounding context for AI
+    actions, so answers can reference the source material the user
+    actually attached instead of just the note text.
+
+    Prefers each resource's AI-generated summary.txt (already condensed)
+    and falls back to the raw content.txt. Local file resources (pdf/doc)
+    have neither yet since their text isn't extracted on upload, so they're
+    silently skipped rather than treated as an error.
+    """
+    resources = [r for r in list_resources(workspace_id, note_id) if r.status == "completed"]
+    if not resources:
+        return ""
+
+    workspace_dir = get_workspace_dir(workspace_id)
+    blocks: list[str] = []
+    for resource in resources:
+        resource_dir = _resource_dir(workspace_dir, resource.id)
+        text_path = resource_dir / "summary.txt"
+        if not text_path.exists():
+            text_path = resource_dir / "content.txt"
+        if not text_path.exists():
+            continue
+        text = text_path.read_text().strip()[:RESOURCE_CONTEXT_CHAR_LIMIT]
+        if text:
+            blocks.append(f"### {resource.title}\n{text}")
+
+    return "\n\n".join(blocks)
+
+
 def create_url_resource(workspace_id: str, note_id: str, data: ResourceCreate) -> Resource:
     _require_note(workspace_id, note_id)
     title = data.title.strip()

@@ -9,6 +9,8 @@ interface AiPanelProps {
   onInsert: (result: string) => void
   autoTriggerAction?: string | null
   onClearAutoTrigger?: () => void
+  workspaceId: string
+  noteId: string
 }
 
 const ACTIONS: { id: AiAction | RewriteMode; label: string }[] = [
@@ -32,7 +34,9 @@ function AiPanel({
   onReplaceSelection,
   onInsert,
   autoTriggerAction,
-  onClearAutoTrigger
+  onClearAutoTrigger,
+  workspaceId,
+  noteId
 }: AiPanelProps): React.JSX.Element {
   const { result, loading, error, run, reset, cancel } = useAiAction()
   const [copied, setCopied] = useState(false)
@@ -42,14 +46,14 @@ function AiPanel({
 
   useEffect(() => {
     if (autoTriggerAction && inputText.trim()) {
-      run(autoTriggerAction, inputText)
+      run(autoTriggerAction, inputText, { workspaceId, noteId })
       onClearAutoTrigger?.()
     }
-  }, [autoTriggerAction, inputText, run, onClearAutoTrigger])
+  }, [autoTriggerAction, inputText, run, onClearAutoTrigger, workspaceId, noteId])
 
   function handleRun(action: string): void {
     if (!inputText.trim()) return
-    run(action, inputText)
+    run(action, inputText, { workspaceId, noteId })
   }
 
   async function handleCopy(): Promise<void> {

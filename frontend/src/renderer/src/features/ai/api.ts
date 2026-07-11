@@ -18,20 +18,37 @@ export function isRewriteMode(action: string): action is RewriteMode {
   return REWRITE_MODES.has(action)
 }
 
+export interface AiNoteContext {
+  workspaceId: string
+  noteId: string
+}
+
 export function streamAiAction(
   action: AiAction,
   text: string,
   onChunk: (chunk: string) => void,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  context?: AiNoteContext
 ): Promise<void> {
-  return streamText(`/ai/${action}`, { text }, onChunk, signal)
+  return streamText(
+    `/ai/${action}`,
+    { text, workspace_id: context?.workspaceId, note_id: context?.noteId },
+    onChunk,
+    signal
+  )
 }
 
 export function streamAiRewrite(
   text: string,
   mode: RewriteMode,
   onChunk: (chunk: string) => void,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  context?: AiNoteContext
 ): Promise<void> {
-  return streamText('/ai/rewrite', { text, mode }, onChunk, signal)
+  return streamText(
+    '/ai/rewrite',
+    { text, mode, workspace_id: context?.workspaceId, note_id: context?.noteId },
+    onChunk,
+    signal
+  )
 }

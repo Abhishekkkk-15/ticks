@@ -327,6 +327,35 @@ the real app (not just unit-level checks) before moving on.
   238 on the anti-aliased curve, 255 just past the 8px radius and at
   the content center — confirming the corner is a genuine transparent
   hole through to the desktop, not merely dark-colored content.
+- **Attached resources feed AI actions as grounding context.** All 9 AI
+  endpoints funnel through one `_stream()` helper in
+  `backend/app/routers/ai.py`, so this was a single choke-point change
+  rather than 9 separate ones. `AiTextRequest`/`AiRewriteRequest` gained
+  optional `workspace_id`/`note_id`; when both are present, a new
+  `resource_service.get_resource_context()` reads each of the note's
+  *completed* resources (preferring the AI-generated `summary.txt`,
+  falling back to raw `content.txt`; local file resources with neither
+  yet are silently skipped), caps each at 3000 chars, and
+  `ai_service.open_action_stream` folds the result in as a clearly
+  separate "Attached reference material (context only)" block — with a
+  system-prompt line telling the model the task still applies only to
+  the primary text — rather than mixing it into the note text itself.
+  Resource lookup is wrapped in a try/except in the router (same
+  best-effort reasoning as the existing resource-summary AI call): a
+  bad/stale note id logs a warning but never breaks the underlying AI
+  action. `AiPanel.tsx` now requires `workspaceId`/`noteId` props
+  (passed from `NoteEditor.tsx`, both already in scope there) and
+  threads them through `useAiAction`/`streamAiAction`/`streamAiRewrite`
+  to every action — including ones triggered via the right-click
+  `AiContextMenu`, since that goes through the same `AiPanel.run()`
+  call. Settings' style-tone preview has no note in scope, so it simply
+  omits the context and gets no resources — correctly unchanged.
+  Verified end-to-end against the real backend (not just typecheck): a
+  note with a resource containing a fabricated, distinctive fact
+  correctly surfaced that fact in the AI's answer *only* when
+  `workspace_id`/`note_id` were sent, was correctly absent otherwise: a
+  note with zero resources behaved identically to before, and a bogus
+  `note_id` logged an error but still returned a normal 200 response.
 
 ### Known follow-ups from completed milestones (not yet fixed)
 

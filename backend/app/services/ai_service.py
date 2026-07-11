@@ -159,18 +159,40 @@ def _resolve_prompt(action: str, style_examples: list[str] | None) -> str:
 
 
 async def open_action_stream(
-    action: str, text: str, style_examples: list[str] | None = None
+    action: str,
+    text: str,
+    style_examples: list[str] | None = None,
+    resource_context: str | None = None,
 ) -> tuple[httpx.AsyncClient, httpx.Response]:
     """Opens the Mistral connection and confirms a successful status before
     any content streams — so callers (the router) can turn connection-level
     failures (rate limit, 5xx, missing key) into a normal HTTP error
     response instead of a mid-stream one. The caller owns closing both the
     response and the client once done consuming (see iter_content_deltas).
+
+    `resource_context`, when given, is the note's attached resources'
+    fetched/summarized text (see resource_service.get_resource_context). It's
+    grounding material only — the action still applies solely to `text` — so
+    it's kept in a clearly separate block rather than mixed into the primary
+    text, and the system prompt is told the same thing explicitly.
     """
     system_prompt = _resolve_prompt(action, style_examples)
+    user_content = text
+    if resource_context:
+        system_prompt = (
+            f"{system_prompt} The user has attached reference material below for "
+            "additional context and accuracy — use it to inform your answer where "
+            "relevant, but perform the task only on the primary text, not on the "
+            "reference material itself."
+        )
+        user_content = (
+            f"Primary text:\n{text}\n\n---\n"
+            f"Attached reference material (context only):\n{resource_context}"
+        )
+
     client = httpx.AsyncClient(timeout=REQUEST_TIMEOUT_SECONDS)
     try:
-        response = await _open_stream(client, system_prompt, text)
+        response = await _open_stream(client, system_prompt, user_content)
     except Exception:
         await client.aclose()
         raise

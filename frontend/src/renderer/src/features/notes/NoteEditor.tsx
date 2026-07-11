@@ -365,6 +365,8 @@ function NoteEditor({
               onInsert={handleInsertResult}
               autoTriggerAction={autoTriggerAction}
               onClearAutoTrigger={() => setAutoTriggerAction(null)}
+              workspaceId={workspaceId}
+              noteId={meta.id}
             />
           </motion.div>
         )}
