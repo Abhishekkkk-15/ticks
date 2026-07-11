@@ -5,7 +5,7 @@ export interface Workflow {
   name: string
   trigger: WorkflowTrigger
   shortcut: string | null
-  action: string
+  actions: string[]
 }
 
 export interface SettingsInfo {

@@ -6,7 +6,7 @@ class Workflow(BaseModel):
     name: str
     trigger: str
     shortcut: str | None = None
-    action: str
+    actions: list[str]
 
 
 class SettingsInfo(BaseModel):

@@ -42,29 +42,39 @@ export async function runWorkflows(
   }
 }
 
-export async function runWorkflow(workflow: Workflow, context: RunWorkflowsContext): Promise<void> {
+async function runSingleAction(
+  action: string,
+  text: string,
+  noteContext: { workspaceId: string; noteId: string }
+): Promise<string> {
   let resultText = ''
   const onChunk = (chunk: string): void => {
     resultText += chunk
   }
+  if (isRewriteMode(action)) {
+    await streamAiRewrite(text, action, onChunk, undefined, noteContext)
+  } else {
+    await streamAiAction(action as AiAction, text, onChunk, undefined, noteContext)
+  }
+  return resultText
+}
+
+// Chains the workflow's actions like n8n: each step's output becomes the
+// next step's input, and only the final step's result gets appended to the
+// note (matching a single-action workflow's existing append behavior).
+export async function runWorkflow(workflow: Workflow, context: RunWorkflowsContext): Promise<void> {
   const noteContext = { workspaceId: context.workspaceId, noteId: context.noteId }
 
-  if (isRewriteMode(workflow.action)) {
-    await streamAiRewrite(context.content, workflow.action, onChunk, undefined, noteContext)
-  } else {
-    await streamAiAction(
-      workflow.action as AiAction,
-      context.content,
-      onChunk,
-      undefined,
-      noteContext
-    )
+  let stepInput = context.content
+  for (const action of workflow.actions) {
+    stepInput = await runSingleAction(action, stepInput, noteContext)
   }
+  const finalResult = stepInput
 
   const detail = await getNote(context.workspaceId, context.noteId)
-  const label = ACTION_LABELS[workflow.action] ?? workflow.action
+  const chainLabel = workflow.actions.map((a) => ACTION_LABELS[a] ?? a).join(' → ')
   const separator = detail.content.endsWith('\n') || detail.content === '' ? '' : '\n\n'
-  const updated = `${detail.content}${separator}**${label} (${workflow.name}):**\n${resultText}\n`
+  const updated = `${detail.content}${separator}**${chainLabel} (${workflow.name}):**\n${finalResult}\n`
   await updateNoteContent(context.workspaceId, context.noteId, updated)
 
   window.dispatchEvent(

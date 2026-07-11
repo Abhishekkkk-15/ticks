@@ -59,7 +59,8 @@ function SettingsView(): React.JSX.Element {
   const [workflowName, setWorkflowName] = useState('')
   const [workflowTrigger, setWorkflowTrigger] = useState<WorkflowTrigger>('on_save')
   const [workflowShortcut, setWorkflowShortcut] = useState('')
-  const [workflowAction, setWorkflowAction] = useState(WORKFLOW_ACTIONS[0].id)
+  const [workflowActions, setWorkflowActions] = useState<string[]>([])
+  const [nextWorkflowAction, setNextWorkflowAction] = useState(WORKFLOW_ACTIONS[0].id)
   const [recordingWorkflowShortcut, setRecordingWorkflowShortcut] = useState(false)
 
   useEffect(() => {
@@ -192,25 +193,45 @@ function SettingsView(): React.JSX.Element {
     setRecordingWorkflowShortcut(false)
   }
 
+  function handleAddWorkflowAction(): void {
+    setWorkflowActions((actions) => [...actions, nextWorkflowAction])
+  }
+
+  function handleRemoveWorkflowAction(index: number): void {
+    setWorkflowActions((actions) => actions.filter((_, i) => i !== index))
+  }
+
+  function handleMoveWorkflowAction(index: number, direction: -1 | 1): void {
+    setWorkflowActions((actions) => {
+      const target = index + direction
+      if (target < 0 || target >= actions.length) return actions
+      const copy = [...actions]
+      ;[copy[index], copy[target]] = [copy[target], copy[index]]
+      return copy
+    })
+  }
+
   function handleCreateWorkflow(event: React.FormEvent): void {
     event.preventDefault()
     if (!settings) return
     const name = workflowName.trim()
     if (!name) return
     if (workflowTrigger === 'shortcut' && !workflowShortcut) return
+    if (workflowActions.length === 0) return
 
     const workflow: Workflow = {
       id: crypto.randomUUID(),
       name,
       trigger: workflowTrigger,
       shortcut: workflowTrigger === 'shortcut' ? workflowShortcut : null,
-      action: workflowAction
+      actions: workflowActions
     }
     updateSettings({ workflows: [...settings.workflows, workflow] })
     setWorkflowName('')
     setWorkflowTrigger('on_save')
     setWorkflowShortcut('')
-    setWorkflowAction(WORKFLOW_ACTIONS[0].id)
+    setWorkflowActions([])
+    setNextWorkflowAction(WORKFLOW_ACTIONS[0].id)
   }
 
   function handleDeleteWorkflow(id: string): void {
@@ -1014,8 +1035,11 @@ function SettingsView(): React.JSX.Element {
                             ? ` (${workflow.shortcut})`
                             : ''}
                           {' → '}
-                          {WORKFLOW_ACTIONS.find((a) => a.id === workflow.action)?.label ??
-                            workflow.action}
+                          {workflow.actions
+                            .map(
+                              (a) => WORKFLOW_ACTIONS.find((wa) => wa.id === a)?.label ?? a
+                            )
+                            .join(' → ')}
                         </div>
                       </div>
                       <button
@@ -1059,13 +1083,61 @@ function SettingsView(): React.JSX.Element {
                     />
                   </div>
                   <div className="flex-1 space-y-1.5">
-                    <label className="text-xs font-medium text-neutral-400">Action</label>
-                    <Select
-                      value={workflowAction}
-                      onChange={setWorkflowAction}
-                      options={WORKFLOW_ACTIONS.map((a) => ({ value: a.id, label: a.label }))}
-                      size="md"
-                    />
+                    <label className="text-xs font-medium text-neutral-400">Actions</label>
+                    {/* Ordered list of chained actions */}
+                    {workflowActions.length > 0 && (
+                      <div className="mb-2 space-y-1">
+                        {workflowActions.map((actionId, i) => (
+                          <div
+                            key={`${actionId}-${i}`}
+                            className="flex items-center gap-1 rounded-md border border-neutral-700 bg-neutral-800/60 px-2 py-1"
+                          >
+                            <span className="flex-1 truncate text-xs text-neutral-300">
+                              {i + 1}. {WORKFLOW_ACTIONS.find((a) => a.id === actionId)?.label ?? actionId}
+                            </span>
+                            <button
+                              type="button"
+                              disabled={i === 0}
+                              onClick={() => handleMoveWorkflowAction(i, -1)}
+                              className="p-0.5 text-neutral-500 hover:text-neutral-300 disabled:opacity-30"
+                              title="Move up"
+                            >↑</button>
+                            <button
+                              type="button"
+                              disabled={i === workflowActions.length - 1}
+                              onClick={() => handleMoveWorkflowAction(i, 1)}
+                              className="p-0.5 text-neutral-500 hover:text-neutral-300 disabled:opacity-30"
+                              title="Move down"
+                            >↓</button>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveWorkflowAction(i)}
+                              className="p-0.5 text-neutral-500 hover:text-red-400"
+                              title="Remove"
+                            >
+                              <X size={11} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {/* Add next action */}
+                    <div className="flex gap-2">
+                      <Select
+                        value={nextWorkflowAction}
+                        onChange={setNextWorkflowAction}
+                        options={WORKFLOW_ACTIONS.map((a) => ({ value: a.id, label: a.label }))}
+                        size="md"
+                        className="flex-1"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddWorkflowAction}
+                        className="rounded-md border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-300 hover:border-neutral-600 hover:text-neutral-100"
+                      >
+                        + Add
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -1095,7 +1167,9 @@ function SettingsView(): React.JSX.Element {
                 <button
                   type="submit"
                   disabled={
-                    !workflowName.trim() || (workflowTrigger === 'shortcut' && !workflowShortcut)
+                    !workflowName.trim() ||
+                    (workflowTrigger === 'shortcut' && !workflowShortcut) ||
+                    workflowActions.length === 0
                   }
                   className="w-full rounded-md bg-amber-600 px-3 py-2 text-sm font-medium text-neutral-950 transition-colors hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-40"
                 >
