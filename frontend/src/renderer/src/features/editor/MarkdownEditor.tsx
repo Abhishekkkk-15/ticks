@@ -4,6 +4,7 @@ import CodeMirror, { EditorView } from '@uiw/react-codemirror'
 import type { ReactCodeMirrorRef } from '@uiw/react-codemirror'
 import { markdown } from '@codemirror/lang-markdown'
 import { languages } from '@codemirror/language-data'
+import { autocompletion } from '@codemirror/autocomplete'
 import { markdownKeymapExtension } from './markdownShortcuts'
 import { useSettings } from '../settings/SettingsContext'
 import { isLightTheme } from '../settings/themeUtils'
@@ -27,6 +28,7 @@ interface MarkdownEditorProps {
   onChange: (value: string) => void
   onSelectionChange?: (selection: EditorSelection) => void
   editorRef?: Ref<ReactCodeMirrorRef>
+  notes?: { id: string; title: string }[]
 }
 
 const baseExtensions = [
@@ -68,7 +70,8 @@ function MarkdownEditor({
   value,
   onChange,
   onSelectionChange,
-  editorRef
+  editorRef,
+  notes = []
 }: MarkdownEditorProps): React.JSX.Element {
   const { settings } = useSettings()
 
@@ -94,9 +97,30 @@ function MarkdownEditor({
     })
   }, [settings?.editor_font, settings?.font_size])
 
+  const autocompleteExtension = useMemo(() => {
+    if (!notes || notes.length === 0) return []
+    return autocompletion({
+      override: [
+        (context) => {
+          const word = context.matchBefore(/\[\[[^\]]*$/)
+          if (!word) return null
+          return {
+            from: word.from,
+            options: notes.map((note) => ({
+              label: note.title,
+              displayLabel: note.title,
+              type: 'keyword',
+              apply: `[${note.title}](note://${note.id})`
+            }))
+          }
+        }
+      ]
+    })
+  }, [notes])
+
   const extensions = useMemo(() => {
-    return [...baseExtensions, fontTheme, chromeTheme]
-  }, [fontTheme])
+    return [...baseExtensions, fontTheme, chromeTheme, autocompleteExtension]
+  }, [fontTheme, autocompleteExtension])
 
   function handleUpdate(viewUpdate: MinimalViewUpdate): void {
     if (!onSelectionChange || !viewUpdate.selectionSet) return

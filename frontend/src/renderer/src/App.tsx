@@ -79,6 +79,22 @@ function App(): React.JSX.Element {
   }, [])
 
   useEffect(() => {
+    async function handleOpenNoteEvent(event: Event): Promise<void> {
+      const customEvent = event as CustomEvent<{ workspaceId: string; noteId: string }>
+      const { workspaceId, noteId } = customEvent.detail
+      const { getNote } = await import('./features/notes/api')
+      try {
+        const noteDetail = await getNote(workspaceId, noteId)
+        openNote(workspaceId, noteDetail)
+      } catch (e) {
+        console.error(e)
+      }
+    }
+    window.addEventListener('note:open', handleOpenNoteEvent)
+    return () => window.removeEventListener('note:open', handleOpenNoteEvent)
+  }, [openNote])
+
+  useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout> | undefined
 
     const unsubscribe = window.api.onCaptureText(async (text) => {

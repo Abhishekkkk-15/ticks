@@ -19,7 +19,7 @@ import EditorView from '../editor/EditorView'
 import type { EditorSelection } from '../editor/MarkdownEditor'
 import { useNoteEditor } from './useNoteEditor'
 import type { SaveStatus } from './useNoteEditor'
-import { deleteNote, duplicateNote, renameNote, setNoteFlags } from './api'
+import { deleteNote, duplicateNote, renameNote, setNoteFlags, listNotes } from './api'
 import ResourcesPanel from '../resources/ResourcesPanel'
 import NoteDrawingsPanel from '../drawings/NoteDrawingsPanel'
 import NoteOrganizePanel from './NoteOrganizePanel'
@@ -90,6 +90,7 @@ function NoteEditor({
   const mediaInputRef = useRef<HTMLInputElement>(null)
   const [mediaUploading, setMediaUploading] = useState(false)
   const [barsVisible, setBarsVisible] = useState(true)
+  const [notesList, setNotesList] = useState<{ id: string; title: string }[]>([])
 
   useEffect(() => {
     function handleToggle(): void {
@@ -98,6 +99,14 @@ function NoteEditor({
     window.addEventListener('editor:toggle-bars', handleToggle)
     return () => window.removeEventListener('editor:toggle-bars', handleToggle)
   }, [])
+
+  useEffect(() => {
+    listNotes(workspaceId)
+      .then((data) => {
+        setNotesList(data.map((n) => ({ id: n.id, title: n.title })))
+      })
+      .catch(() => {})
+  }, [workspaceId])
 
   // Reset local draft state when a different note finishes loading, without
   // the extra render + flicker an effect-based sync would cause.
@@ -590,6 +599,7 @@ function NoteEditor({
           workspaceId={workspaceId}
           noteId={meta.id}
           onSelectionChange={setSelection}
+          notes={notesList}
         />
       </div>
 

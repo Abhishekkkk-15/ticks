@@ -15,6 +15,7 @@ interface EditorViewProps {
   workspaceId: string
   noteId: string
   onSelectionChange?: (selection: EditorSelection) => void
+  notes?: { id: string; title: string }[]
 }
 
 const modes: { id: EditorMode; label: string }[] = [
@@ -27,7 +28,8 @@ function EditorView({
   onChange,
   workspaceId,
   noteId,
-  onSelectionChange
+  onSelectionChange,
+  notes = []
 }: EditorViewProps): React.JSX.Element {
   const { settings } = useSettings()
   const [mode, setMode] = useState<EditorMode>('edit')
@@ -119,6 +121,7 @@ function EditorView({
               onChange={onChange}
               onSelectionChange={onSelectionChange}
               editorRef={editorRef}
+              notes={notes}
             />
           </div>
         ) : (
