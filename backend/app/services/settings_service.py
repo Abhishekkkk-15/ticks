@@ -18,6 +18,7 @@ DEFAULT_DATA: dict[str, Any] = {
         "command_palette": "Ctrl+Shift+P",
         "global_capture": "Ctrl+Alt+Shift+C",
         "mini_tray_toggle": "Ctrl+Alt+Shift+M",
+        "trigger_ai": "Ctrl+Shift+A",
     },
     "workflows": [],
 }

@@ -960,6 +960,37 @@ function SettingsView(): React.JSX.Element {
                     </div>
                   )}
                 </div>
+
+                {/* AI Assistant */}
+                <div className="flex items-center justify-between border-t border-neutral-800/40 pt-4">
+                  <div>
+                    <h4 className="text-xs font-semibold text-neutral-200">AI Assistant Panel</h4>
+                    <p className="text-[10px] text-neutral-500">
+                      Shortcut to trigger AI Panel inside the editor.
+                    </p>
+                  </div>
+                  {recordingShortcut === 'trigger_ai' ? (
+                    <input
+                      autoFocus
+                      placeholder="Press shortcut keys…"
+                      onKeyDown={handleRecordShortcutKeyDown}
+                      className="w-36 rounded-md border border-amber-500 bg-neutral-950 px-2.5 py-1 text-center text-xs text-amber-400 placeholder:text-amber-500/70 focus:outline-none"
+                    />
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <kbd className="rounded bg-neutral-800 px-2 py-1 text-xs font-mono text-neutral-300 border border-neutral-700">
+                        {settings.keyboard_shortcuts.trigger_ai || 'Ctrl+Shift+A'}
+                      </kbd>
+                      <button
+                        type="button"
+                        onClick={() => setRecordingShortcut('trigger_ai')}
+                        className="rounded border border-neutral-800 bg-neutral-900 px-2.5 py-1 text-[10px] font-medium text-neutral-400 hover:text-neutral-200"
+                      >
+                        Edit
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </section>
 
@@ -981,6 +1012,10 @@ function SettingsView(): React.JSX.Element {
                   {
                     action: 'Toggle Mini-Tray',
                     keys: [settings.keyboard_shortcuts.mini_tray_toggle || 'Ctrl+Alt+Shift+M']
+                  },
+                  {
+                    action: 'Toggle AI Panel',
+                    keys: [settings.keyboard_shortcuts.trigger_ai || 'Ctrl+Shift+A']
                   },
                   { action: 'New Note', keys: ['Ctrl+N'] },
                   { action: 'Close Active Tab', keys: ['Ctrl+Shift+W'] },

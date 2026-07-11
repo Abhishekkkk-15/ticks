@@ -149,6 +149,12 @@ function NoteEditor({
         save()
         return
       }
+      const aiShortcut = settings?.keyboard_shortcuts?.trigger_ai || 'Ctrl+Shift+A'
+      if (matchShortcut(event, aiShortcut)) {
+        event.preventDefault()
+        setActivePanel((prev) => (prev === 'ai' ? null : 'ai'))
+        return
+      }
       for (const workflow of workflows) {
         if (
           workflow.trigger === 'shortcut' &&
