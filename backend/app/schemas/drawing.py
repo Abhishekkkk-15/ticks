@@ -19,6 +19,7 @@ class DrawingSceneUpdate(BaseModel):
 class Drawing(BaseModel):
     id: str
     note_id: str | None = None
+    note_title: str | None = None
     title: str
     created_at: datetime
     updated_at: datetime

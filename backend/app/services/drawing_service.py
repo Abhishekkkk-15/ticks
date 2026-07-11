@@ -52,11 +52,28 @@ def _require_note(workspace_id: str, note_id: str) -> None:
         raise HTTPException(status_code=404, detail="Note not found")
 
 
-def list_drawings(workspace_id: str, note_id: str | None) -> list[Drawing]:
+def list_drawings(workspace_id: str, note_id: str | None, include_all: bool = False) -> list[Drawing]:
     if note_id is not None:
         _require_note(workspace_id, note_id)
     workspace_dir = get_workspace_dir(workspace_id)
-    entries = [e for e in _read_all(workspace_dir) if e.get("note_id") == note_id]
+    raw_entries = _read_all(workspace_dir)
+    if include_all:
+        entries = raw_entries
+    else:
+        entries = [e for e in raw_entries if e.get("note_id") == note_id]
+
+    # Map note titles for note-level drawings
+    from app.services.note_service import _read_all as read_all_notes
+    note_titles = {}
+    try:
+        note_titles = {n["id"]: n["title"] for n in read_all_notes(workspace_dir)}
+    except Exception:
+        pass
+
+    for e in entries:
+        if e.get("note_id"):
+            e["note_title"] = note_titles.get(e["note_id"])
+
     entries.sort(key=lambda e: e["updated_at"], reverse=True)
     return [_to_drawing(e) for e in entries]
 

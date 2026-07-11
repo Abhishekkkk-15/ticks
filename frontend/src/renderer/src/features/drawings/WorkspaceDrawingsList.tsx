@@ -37,7 +37,7 @@ function WorkspaceDrawingsList({ workspaceId }: WorkspaceDrawingsListProps): Rea
     return (
       <NoteDrawingEditor
         workspaceId={workspaceId}
-        noteId={null}
+        noteId={editingDrawing.note_id}
         drawingId={editingDrawing.id}
         title={editingDrawing.title}
         onClose={() => {
@@ -84,7 +84,14 @@ function WorkspaceDrawingsList({ workspaceId }: WorkspaceDrawingsListProps): Rea
                 className="flex min-w-0 flex-1 items-center gap-2 text-left"
               >
                 <ImageIcon size={14} className="shrink-0 text-neutral-500" />
-                <span className="truncate">{drawing.title}</span>
+                <div className="flex flex-col min-w-0">
+                  <span className="truncate text-xs font-medium text-neutral-200">{drawing.title}</span>
+                  {drawing.note_id && drawing.note_title && (
+                    <span className="truncate text-[10px] text-neutral-500">
+                      Inside note: {drawing.note_title}
+                    </span>
+                  )}
+                </div>
               </button>
               <button
                 type="button"

@@ -18,7 +18,7 @@ export function useWorkspaceDrawings(workspaceId: string): UseWorkspaceDrawingsR
 
   const refresh = useCallback(async () => {
     try {
-      setDrawings(await listWorkspaceDrawings(workspaceId))
+      setDrawings(await listWorkspaceDrawings(workspaceId, true))
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load drawings')
@@ -31,7 +31,7 @@ export function useWorkspaceDrawings(workspaceId: string): UseWorkspaceDrawingsR
     async function load(): Promise<void> {
       setLoading(true)
       try {
-        const data = await listWorkspaceDrawings(workspaceId)
+        const data = await listWorkspaceDrawings(workspaceId, true)
         if (!cancelled) {
           setDrawings(data)
           setError(null)

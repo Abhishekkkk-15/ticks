@@ -54,8 +54,8 @@ workspace_router = APIRouter(prefix="/workspaces/{workspace_id}/drawings", tags=
 
 
 @workspace_router.get("", response_model=list[Drawing])
-def list_workspace_drawings(workspace_id: str) -> list[Drawing]:
-    return drawing_service.list_drawings(workspace_id, None)
+def list_workspace_drawings(workspace_id: str, include_all: bool = False) -> list[Drawing]:
+    return drawing_service.list_drawings(workspace_id, None, include_all)
 
 
 @workspace_router.post("", response_model=DrawingScene, status_code=201)

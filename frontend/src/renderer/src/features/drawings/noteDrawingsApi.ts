@@ -72,8 +72,9 @@ export function deleteDrawing(
   })
 }
 
-export function listWorkspaceDrawings(workspaceId: string): Promise<Drawing[]> {
-  return apiFetch<Drawing[]>(`/workspaces/${workspaceId}/drawings`)
+export function listWorkspaceDrawings(workspaceId: string, includeAll: boolean = false): Promise<Drawing[]> {
+  const query = includeAll ? '?include_all=true' : ''
+  return apiFetch<Drawing[]>(`/workspaces/${workspaceId}/drawings${query}`)
 }
 
 export function createWorkspaceDrawing(

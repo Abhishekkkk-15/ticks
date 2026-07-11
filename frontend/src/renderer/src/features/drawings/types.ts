@@ -1,6 +1,7 @@
 export interface Drawing {
   id: string
   note_id: string | null
+  note_title?: string | null
   title: string
   created_at: string
   updated_at: string
