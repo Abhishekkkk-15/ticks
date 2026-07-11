@@ -29,7 +29,15 @@ interface MarkdownEditorProps {
   editorRef?: Ref<ReactCodeMirrorRef>
 }
 
-const baseExtensions = [markdown({ codeLanguages: languages }), markdownKeymapExtension]
+const baseExtensions = [
+  markdown({ codeLanguages: languages }),
+  markdownKeymapExtension,
+  EditorView.contentAttributes.of({
+    spellcheck: 'true',
+    autocorrect: 'on',
+    autocapitalize: 'sentences'
+  })
+]
 
 // Overrides CodeMirror's built-in 'light'/'dark' chrome (background, gutters,
 // selection, cursor) with our theme's actual CSS variables, so all 7 app
@@ -105,7 +113,17 @@ function MarkdownEditor({
       theme={isLightTheme(settings?.theme) ? 'light' : 'dark'}
       height="100%"
       extensions={extensions}
-      basicSetup={{ foldGutter: false }}
+      basicSetup={{
+        foldGutter: false,
+        dropCursor: true,
+        allowMultipleSelections: true,
+        indentOnInput: true,
+        bracketMatching: true,
+        closeBrackets: true,
+        autocompletion: true,
+        highlightActiveLine: true,
+        highlightSelectionMatches: true
+      }}
       className="h-full"
     />
   )

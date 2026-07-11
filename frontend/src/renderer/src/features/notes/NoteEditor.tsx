@@ -354,6 +354,10 @@ function NoteEditor({
     )
   }
 
+  const charCount = content.length
+  const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0
+  const readTime = Math.max(1, Math.ceil(wordCount / 200))
+
   return (
     <div className="relative flex h-full flex-col">
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-neutral-800 px-3 py-2">
@@ -552,6 +556,19 @@ function NoteEditor({
           onSelectionChange={setSelection}
         />
       </div>
+
+      {/* Bottom Status Bar */}
+      <div className="flex shrink-0 items-center justify-between border-t border-neutral-800 bg-neutral-900/10 px-3 py-1 text-[10px] text-neutral-500 font-medium">
+        <div className="flex items-center gap-3">
+          <span>{wordCount} words</span>
+          <span>{charCount} characters</span>
+          <span>{readTime} min read</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span>{saveStatusLabels[saveStatus] || 'Draft saved'}</span>
+        </div>
+      </div>
+
 
       <AiContextMenu
         position={contextMenu}
