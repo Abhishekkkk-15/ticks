@@ -3,8 +3,9 @@ import { getNote, updateNoteContent } from './api'
 import type { NoteDetail } from './types'
 
 import { useSettings } from '../settings/SettingsContext'
+import { runWorkflows } from '../workflows/runWorkflows'
 
-export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
+export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error' | 'unsaved'
 
 interface UseNoteEditorResult {
   note: NoteDetail | null
@@ -13,6 +14,7 @@ interface UseNoteEditorResult {
   loading: boolean
   error: string | null
   saveStatus: SaveStatus
+  save: () => void
 }
 
 interface PendingSave {
@@ -24,6 +26,7 @@ interface PendingSave {
 export function useNoteEditor(workspaceId: string, noteId: string): UseNoteEditorResult {
   const { settings } = useSettings()
   const autosaveDelay = settings?.autosave_delay ?? 800
+  const autosaveEnabled = settings?.autosave_enabled ?? true
 
   const [note, setNote] = useState<NoteDetail | null>(null)
   const [content, setContent] = useState('')
@@ -41,6 +44,23 @@ export function useNoteEditor(workspaceId: string, noteId: string): UseNoteEdito
     clearTimeout(saveTimerRef.current)
     updateNoteContent(pending.workspaceId, pending.noteId, pending.content).catch(() => {})
   }, [])
+
+  const save = useCallback(() => {
+    const pending = pendingSaveRef.current
+    if (!pending) return
+    pendingSaveRef.current = null
+    clearTimeout(saveTimerRef.current)
+    setSaveStatus('saving')
+    updateNoteContent(pending.workspaceId, pending.noteId, pending.content)
+      .then(() => {
+        setSaveStatus('saved')
+        const workflows = settings?.workflows ?? []
+        if (workflows.some((w) => w.trigger === 'on_save')) {
+          runWorkflows('on_save', workflows, pending).catch(() => {})
+        }
+      })
+      .catch(() => setSaveStatus('error'))
+  }, [settings])
 
   useEffect(() => {
     let cancelled = false
@@ -73,8 +93,14 @@ export function useNoteEditor(workspaceId: string, noteId: string): UseNoteEdito
     (value: string) => {
       setContent(value)
       pendingSaveRef.current = { workspaceId, noteId, content: value }
-      setSaveStatus('saving')
       clearTimeout(saveTimerRef.current)
+
+      if (!autosaveEnabled) {
+        setSaveStatus('unsaved')
+        return
+      }
+
+      setSaveStatus('saving')
       saveTimerRef.current = setTimeout(async () => {
         const pending = pendingSaveRef.current
         if (!pending) return
@@ -82,12 +108,16 @@ export function useNoteEditor(workspaceId: string, noteId: string): UseNoteEdito
         try {
           await updateNoteContent(pending.workspaceId, pending.noteId, pending.content)
           setSaveStatus('saved')
+          const workflows = settings?.workflows ?? []
+          if (workflows.some((w) => w.trigger === 'on_save')) {
+            runWorkflows('on_save', workflows, pending).catch(() => {})
+          }
         } catch {
           setSaveStatus('error')
         }
       }, autosaveDelay)
     },
-    [workspaceId, noteId, autosaveDelay]
+    [workspaceId, noteId, autosaveDelay, autosaveEnabled, settings]
   )
 
   useEffect(() => {
@@ -125,5 +155,5 @@ export function useNoteEditor(workspaceId: string, noteId: string): UseNoteEdito
     }
   }, [noteId])
 
-  return { note, content, onChange, loading, error, saveStatus }
+  return { note, content, onChange, loading, error, saveStatus, save }
 }

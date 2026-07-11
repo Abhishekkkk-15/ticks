@@ -1,13 +1,22 @@
 import { useEffect, useState } from 'react'
-import { Check, Keyboard, Monitor, Sparkles, Sliders, X } from 'lucide-react'
+import { Check, Keyboard, Monitor, Sparkles, Sliders, Trash2, X, Zap } from 'lucide-react'
 import { useSettings } from './SettingsContext'
 import { setMistralApiKey, setStyleExamples } from './api'
 import { useAiAction } from '../ai/useAiAction'
 import { useWorkspaces } from '../workspaces/useWorkspaces'
 import Select from '../../components/ui/Select'
 import FontPicker from './FontPicker'
+import { WORKFLOW_ACTIONS } from '../workflows/runWorkflows'
+import type { Workflow, WorkflowTrigger } from './types'
 
-type SettingsTab = 'general' | 'editor' | 'ai' | 'shortcuts'
+type SettingsTab = 'general' | 'editor' | 'ai' | 'shortcuts' | 'workflows'
+
+const TRIGGER_OPTIONS: { value: WorkflowTrigger; label: string }[] = [
+  { value: 'on_save', label: 'On save' },
+  { value: 'on_copy', label: 'On copy' },
+  { value: 'on_paste', label: 'On paste' },
+  { value: 'shortcut', label: 'Keyboard shortcut' }
+]
 
 function rangeFillStyle(value: number, min: number, max: number): React.CSSProperties {
   const percent = ((value - min) / (max - min)) * 100
@@ -45,6 +54,22 @@ function SettingsView(): React.JSX.Element {
 
   // Shortcut Recording state
   const [recordingShortcut, setRecordingShortcut] = useState<string | null>(null)
+
+  // Workflow draft state
+  const [workflowName, setWorkflowName] = useState('')
+  const [workflowTrigger, setWorkflowTrigger] = useState<WorkflowTrigger>('on_save')
+  const [workflowShortcut, setWorkflowShortcut] = useState('')
+  const [workflowAction, setWorkflowAction] = useState(WORKFLOW_ACTIONS[0].id)
+  const [recordingWorkflowShortcut, setRecordingWorkflowShortcut] = useState(false)
+
+  useEffect(() => {
+    function handleNavigate(event: Event): void {
+      const customEvent = event as CustomEvent<{ tab: SettingsTab }>
+      setActiveTab(customEvent.detail.tab)
+    }
+    window.addEventListener('settings:navigate', handleNavigate)
+    return () => window.removeEventListener('settings:navigate', handleNavigate)
+  }, [])
 
   useEffect(() => {
     if (settings) {
@@ -140,6 +165,59 @@ function SettingsView(): React.JSX.Element {
     setRecordingShortcut(null)
   }
 
+  function handleRecordWorkflowShortcutKeyDown(event: React.KeyboardEvent): void {
+    if (!recordingWorkflowShortcut) return
+    event.preventDefault()
+    event.stopPropagation()
+
+    if (event.key === 'Escape') {
+      setRecordingWorkflowShortcut(false)
+      return
+    }
+
+    if (['control', 'shift', 'alt', 'meta'].includes(event.key.toLowerCase())) {
+      return
+    }
+
+    const parts: string[] = []
+    if (event.ctrlKey) parts.push('Ctrl')
+    if (event.metaKey) parts.push('Cmd')
+    if (event.altKey) parts.push('Alt')
+    if (event.shiftKey) parts.push('Shift')
+
+    const key = event.key.length === 1 ? event.key.toUpperCase() : event.key
+    parts.push(key)
+
+    setWorkflowShortcut(parts.join('+'))
+    setRecordingWorkflowShortcut(false)
+  }
+
+  function handleCreateWorkflow(event: React.FormEvent): void {
+    event.preventDefault()
+    if (!settings) return
+    const name = workflowName.trim()
+    if (!name) return
+    if (workflowTrigger === 'shortcut' && !workflowShortcut) return
+
+    const workflow: Workflow = {
+      id: crypto.randomUUID(),
+      name,
+      trigger: workflowTrigger,
+      shortcut: workflowTrigger === 'shortcut' ? workflowShortcut : null,
+      action: workflowAction
+    }
+    updateSettings({ workflows: [...settings.workflows, workflow] })
+    setWorkflowName('')
+    setWorkflowTrigger('on_save')
+    setWorkflowShortcut('')
+    setWorkflowAction(WORKFLOW_ACTIONS[0].id)
+  }
+
+  function handleDeleteWorkflow(id: string): void {
+    if (!settings) return
+    updateSettings({ workflows: settings.workflows.filter((w) => w.id !== id) })
+  }
+
   return (
     <div className="flex h-full bg-neutral-950 text-neutral-100">
       {/* Settings Navigation Sidebar */}
@@ -195,6 +273,18 @@ function SettingsView(): React.JSX.Element {
           >
             <Keyboard size={16} />
             Shortcuts
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('workflows')}
+            className={`flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+              activeTab === 'workflows'
+                ? 'bg-neutral-800 text-neutral-100'
+                : 'text-neutral-400 hover:bg-neutral-800/40 hover:text-neutral-200'
+            }`}
+          >
+            <Zap size={16} />
+            Workflows
           </button>
         </nav>
       </aside>
@@ -524,6 +614,33 @@ function SettingsView(): React.JSX.Element {
             {/* Autosave behavior */}
             <section className="space-y-2">
               <div className="flex items-center justify-between max-w-md">
+                <div>
+                  <label htmlFor="autosaveEnabled" className="text-sm font-medium text-neutral-200">
+                    Autosave
+                  </label>
+                  <p className="text-xs text-neutral-500">When off, save manually with Ctrl+S.</p>
+                </div>
+                <button
+                  id="autosaveEnabled"
+                  type="button"
+                  role="switch"
+                  aria-checked={settings.autosave_enabled}
+                  onClick={() => updateSettings({ autosave_enabled: !settings.autosave_enabled })}
+                  className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
+                    settings.autosave_enabled ? 'bg-emerald-600' : 'bg-neutral-700'
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+                      settings.autosave_enabled ? 'translate-x-4' : 'translate-x-0.5'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <div
+                className={`flex items-center justify-between max-w-md ${!settings.autosave_enabled ? 'opacity-40' : ''}`}
+              >
                 <label htmlFor="autosaveDelay" className="text-sm font-medium text-neutral-200">
                   Autosave Debounce Delay
                 </label>
@@ -531,10 +648,14 @@ function SettingsView(): React.JSX.Element {
                   {settings.autosave_delay}ms
                 </span>
               </div>
-              <p className="text-xs text-neutral-500">
+              <p
+                className={`text-xs text-neutral-500 ${!settings.autosave_enabled ? 'opacity-40' : ''}`}
+              >
                 Number of milliseconds to wait after the last keypress before saving changes.
               </p>
-              <div className="flex items-center gap-3 max-w-md mt-1">
+              <div
+                className={`flex items-center gap-3 max-w-md mt-1 ${!settings.autosave_enabled ? 'opacity-40' : ''}`}
+              >
                 <span className="text-xs text-neutral-500">200ms</span>
                 <input
                   id="autosaveDelay"
@@ -542,6 +663,7 @@ function SettingsView(): React.JSX.Element {
                   min="200"
                   max="3000"
                   step="100"
+                  disabled={!settings.autosave_enabled}
                   value={settings.autosave_delay}
                   onChange={(e) => updateSettings({ autosave_delay: parseInt(e.target.value, 10) })}
                   style={rangeFillStyle(settings.autosave_delay, 200, 3000)}
@@ -834,6 +956,11 @@ function SettingsView(): React.JSX.Element {
                   { action: 'Focus Search', keys: ['Ctrl+Shift+F'] },
                   { action: 'Duplicate Note', keys: ['Ctrl+D'] },
                   { action: 'Delete Note (to Trash)', keys: ['Ctrl+Shift+Backspace'] },
+                  { action: 'Save Note Now', keys: ['Ctrl+S'] },
+                  { action: 'Toggle Edit / Preview', keys: ['Ctrl+E', 'Cmd+E'] },
+                  { action: 'Toggle Formatting Toolbar', keys: ['Ctrl+Shift+T'] },
+                  { action: 'Focus Editor', keys: ['Ctrl+Shift+E'] },
+                  { action: 'Open Settings', keys: ['Ctrl+,'] },
                   { action: 'Cancel Palette / Focus', keys: ['Esc'] }
                 ].map((row) => (
                   <div key={row.action} className="flex items-center justify-between px-4 py-2.5">
@@ -851,6 +978,130 @@ function SettingsView(): React.JSX.Element {
                   </div>
                 ))}
               </div>
+            </section>
+          </div>
+        )}
+
+        {activeTab === 'workflows' && (
+          <div className="space-y-12">
+            <div>
+              <h2 className="mb-1 text-base font-semibold text-neutral-100">Workflows</h2>
+              <p className="text-xs text-neutral-400">
+                Automate AI actions to run on save, copy, paste, or a shortcut of your choosing.
+              </p>
+            </div>
+
+            <section className="space-y-3">
+              <h3 className="text-sm font-medium text-neutral-200">Configured Workflows</h3>
+              {settings.workflows.length === 0 ? (
+                <p className="max-w-lg rounded-md border border-neutral-800 bg-neutral-900/30 px-4 py-6 text-center text-xs text-neutral-500">
+                  No workflows yet. Create one below.
+                </p>
+              ) : (
+                <div className="max-w-lg divide-y divide-neutral-800 rounded-md border border-neutral-800 bg-neutral-900/30">
+                  {settings.workflows.map((workflow) => (
+                    <div
+                      key={workflow.id}
+                      className="flex items-center justify-between px-4 py-2.5"
+                    >
+                      <div className="min-w-0">
+                        <div className="truncate text-xs font-medium text-neutral-200">
+                          {workflow.name}
+                        </div>
+                        <div className="truncate text-[10px] text-neutral-500">
+                          {TRIGGER_OPTIONS.find((t) => t.value === workflow.trigger)?.label}
+                          {workflow.trigger === 'shortcut' && workflow.shortcut
+                            ? ` (${workflow.shortcut})`
+                            : ''}
+                          {' → '}
+                          {WORKFLOW_ACTIONS.find((a) => a.id === workflow.action)?.label ??
+                            workflow.action}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteWorkflow(workflow.id)}
+                        className="rounded p-1.5 text-neutral-500 hover:bg-neutral-800 hover:text-red-400"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section className="max-w-lg space-y-3 rounded-lg border border-neutral-800 bg-neutral-900/40 p-4">
+              <h3 className="text-sm font-medium text-neutral-200">New Workflow</h3>
+              <form onSubmit={handleCreateWorkflow} className="space-y-3">
+                <div className="space-y-1.5">
+                  <label htmlFor="workflowName" className="text-xs font-medium text-neutral-400">
+                    Name
+                  </label>
+                  <input
+                    id="workflowName"
+                    type="text"
+                    value={workflowName}
+                    onChange={(e) => setWorkflowName(e.target.value)}
+                    placeholder="e.g. Auto-summarize on save"
+                    className="w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500"
+                  />
+                </div>
+
+                <div className="flex gap-3">
+                  <div className="flex-1 space-y-1.5">
+                    <label className="text-xs font-medium text-neutral-400">Trigger</label>
+                    <Select
+                      value={workflowTrigger}
+                      onChange={(value) => setWorkflowTrigger(value as WorkflowTrigger)}
+                      options={TRIGGER_OPTIONS.map((t) => ({ value: t.value, label: t.label }))}
+                      size="md"
+                    />
+                  </div>
+                  <div className="flex-1 space-y-1.5">
+                    <label className="text-xs font-medium text-neutral-400">Action</label>
+                    <Select
+                      value={workflowAction}
+                      onChange={setWorkflowAction}
+                      options={WORKFLOW_ACTIONS.map((a) => ({ value: a.id, label: a.label }))}
+                      size="md"
+                    />
+                  </div>
+                </div>
+
+                {workflowTrigger === 'shortcut' && (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-neutral-400">Shortcut</label>
+                    {recordingWorkflowShortcut ? (
+                      <input
+                        autoFocus
+                        placeholder="Press shortcut keys…"
+                        onKeyDown={handleRecordWorkflowShortcutKeyDown}
+                        onBlur={() => setRecordingWorkflowShortcut(false)}
+                        className="w-full rounded-md border border-amber-500 bg-neutral-950 px-3 py-2 text-center text-xs text-amber-400 placeholder:text-amber-500/70 focus:outline-none"
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setRecordingWorkflowShortcut(true)}
+                        className="w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-center text-xs text-neutral-300 hover:border-neutral-600"
+                      >
+                        {workflowShortcut || 'Click to record shortcut'}
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={
+                    !workflowName.trim() || (workflowTrigger === 'shortcut' && !workflowShortcut)
+                  }
+                  className="w-full rounded-md bg-amber-600 px-3 py-2 text-sm font-medium text-neutral-950 transition-colors hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Create Workflow
+                </button>
+              </form>
             </section>
           </div>
         )}

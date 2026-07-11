@@ -10,6 +10,7 @@ DEFAULT_DATA: dict[str, Any] = {
     "font_size": 14,
     "editor_font": "monospace",
     "autosave_delay": 800,
+    "autosave_enabled": True,
     "default_workspace_id": None,
     "default_editor_mode": "split",
     "mini_tray_size": "default",
@@ -18,6 +19,7 @@ DEFAULT_DATA: dict[str, Any] = {
         "global_capture": "Ctrl+Alt+Shift+C",
         "mini_tray_toggle": "Ctrl+Alt+Shift+M",
     },
+    "workflows": [],
 }
 
 
@@ -76,10 +78,12 @@ def get_settings_info() -> dict[str, Any]:
         "font_size": data["font_size"],
         "editor_font": data["editor_font"],
         "autosave_delay": data["autosave_delay"],
+        "autosave_enabled": data["autosave_enabled"],
         "default_workspace_id": data["default_workspace_id"],
         "default_editor_mode": data["default_editor_mode"],
         "mini_tray_size": data["mini_tray_size"],
         "keyboard_shortcuts": data["keyboard_shortcuts"],
+        "workflows": data["workflows"],
     }
 
 

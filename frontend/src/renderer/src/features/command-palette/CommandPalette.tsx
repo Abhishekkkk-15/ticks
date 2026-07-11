@@ -5,13 +5,26 @@ import type { Note, NoteListItem } from '../notes/types'
 import type { UseWorkspacesResult } from '../workspaces/useWorkspaces'
 import type { Workspace } from '../workspaces/types'
 
+interface NoteWithWorkspace extends NoteListItem {
+  workspaceId: string
+}
+
 interface CommandPaletteProps {
   workspacesApi: UseWorkspacesResult
   activeWorkspaceId: string | null
   onSelectWorkspace: (workspace: Workspace) => void
   onOpenNote: (workspaceId: string, note: Note) => void
+  onOpenSettings: (tab?: string) => void
   onClose: () => void
 }
+
+const SETTINGS_TABS: { id: string; label: string }[] = [
+  { id: 'general', label: 'General' },
+  { id: 'editor', label: 'Editor' },
+  { id: 'ai', label: 'AI & Tone' },
+  { id: 'shortcuts', label: 'Shortcuts' },
+  { id: 'workflows', label: 'Workflows' }
+]
 
 interface PaletteCommand {
   id: string
@@ -25,22 +38,24 @@ function CommandPalette({
   activeWorkspaceId,
   onSelectWorkspace,
   onOpenNote,
+  onOpenSettings,
   onClose
 }: CommandPaletteProps): React.JSX.Element {
   const [query, setQuery] = useState('')
-  const [notes, setNotes] = useState<NoteListItem[]>([])
+  const [notes, setNotes] = useState<NoteWithWorkspace[]>([])
   const [selectedIndex, setSelectedIndex] = useState(0)
 
   useEffect(() => {
     let cancelled = false
 
     async function load(): Promise<void> {
-      if (!activeWorkspaceId) {
-        setNotes([])
-        return
-      }
-      const data = await listNotes(activeWorkspaceId)
-      if (!cancelled) setNotes(data)
+      const results = await Promise.all(
+        workspacesApi.workspaces.map(async (ws) => {
+          const data = await listNotes(ws.id)
+          return data.map((note) => ({ ...note, workspaceId: ws.id }))
+        })
+      )
+      if (!cancelled) setNotes(results.flat())
     }
 
     load()
@@ -48,7 +63,7 @@ function CommandPalette({
     return () => {
       cancelled = true
     }
-  }, [activeWorkspaceId])
+  }, [workspacesApi.workspaces])
 
   const commands: PaletteCommand[] = []
 
@@ -74,6 +89,25 @@ function CommandPalette({
     }
   })
 
+  commands.push({
+    id: 'open-settings',
+    label: 'Open Settings',
+    run: () => {
+      onOpenSettings()
+      onClose()
+    }
+  })
+  for (const tab of SETTINGS_TABS) {
+    commands.push({
+      id: `settings-${tab.id}`,
+      label: `Settings: ${tab.label}`,
+      run: () => {
+        onOpenSettings(tab.id)
+        onClose()
+      }
+    })
+  }
+
   for (const workspace of workspacesApi.workspaces) {
     commands.push({
       id: `ws-${workspace.id}`,
@@ -86,13 +120,17 @@ function CommandPalette({
   }
 
   for (const note of notes) {
+    const workspace = workspacesApi.workspaces.find((w) => w.id === note.workspaceId)
+    const isActiveWorkspace = note.workspaceId === activeWorkspaceId
     commands.push({
       id: `note-${note.id}`,
-      label: `Open note: ${note.title}`,
+      label: isActiveWorkspace
+        ? `Open note: ${note.title}`
+        : `Open note: ${note.title} — in ${workspace?.name ?? 'workspace'}`,
       hint: note.snippet || undefined,
       run: () => {
-        if (!activeWorkspaceId) return
-        onOpenNote(activeWorkspaceId, note)
+        if (workspace) onSelectWorkspace(workspace)
+        onOpenNote(note.workspaceId, note)
         onClose()
       }
     })

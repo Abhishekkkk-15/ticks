@@ -457,6 +457,74 @@ the real app (not just unit-level checks) before moving on.
   position; then repeated with a deliberately off-screen saved position
   (9999, 9999) and confirmed it fell back to an on-screen position while
   keeping the saved 900×650 size.
+- **Eight follow-up items** (formatting-toolbar shortcut + default hidden,
+  focus-editor shortcut, settings shortcut + palette navigation,
+  documenting the existing edit/preview shortcut, toggleable autosave with
+  manual save, custom workflows, cross-workspace command palette, and
+  editable workspace names):
+  - **Formatting toolbar**: `EditorView.tsx`'s existing `toolbarVisible`
+    state now defaults to `false` (was always-visible), with `Ctrl+Shift+T`
+    toggling it and `Ctrl+Shift+E` switching to Edit mode and focusing the
+    CodeMirror view (`editorRef.current?.view?.focus()`) — useful from
+    Preview, where there's otherwise no way to jump straight into typing.
+  - **Settings shortcut + palette navigation**: `Ctrl+,` opens Settings; a
+    new `settings:navigate` event (`SettingsView.tsx`) lets the command
+    palette jump straight to a specific tab, including a new one per tab
+    ("Settings: General/Editor/AI & Tone/Shortcuts/Workflows"). The
+    existing `Ctrl/Cmd+E` edit/preview toggle was already implemented but
+    undocumented — added to the Shortcuts cheat-sheet alongside the new
+    ones rather than touching its (already-working) behavior.
+  - **Toggleable autosave**: new `autosave_enabled` setting (default
+    `true`). `useNoteEditor.ts` gained a `'unsaved'` status and a `save()`
+    function that flushes the pending content immediately; when autosave
+    is off, `onChange` still tracks pending content (nothing is lost) but
+    skips the debounce timer, and `Ctrl+S` (`NoteEditor.tsx`) calls
+    `save()` directly. `save()` is always available, so `Ctrl+S` also
+    works as an explicit manual save even with autosave on.
+  - **Custom workflows** (Settings → new "Workflows" tab): a workflow is
+    `{ name, trigger: on_save | on_copy | on_paste | shortcut, shortcut?,
+    action }`, where `action` is any existing AI action/rewrite mode —
+    deliberately just automating what the AI panel's buttons already do
+    manually, not a new automation engine. New
+    `features/workflows/runWorkflows.ts` filters by trigger, runs the
+    action, and appends+persists the result via the same
+    append-and-broadcast (`note:content-updated`) pattern the quick-
+    capture AI buttons already established. Wired: `on_save` from
+    `useNoteEditor.ts`'s two save-success paths (debounce timer and
+    manual `save()`); `on_copy`/`on_paste` from new handlers alongside
+    `NoteEditor.tsx`'s existing image-paste handling; `shortcut` from a
+    new keydown listener reusing `matchShortcut`. Errors from the AI call
+    itself (e.g. no API key configured) are swallowed silently
+    (`.catch(() => {})`) — same as the pre-existing quick-capture
+    buttons — so a misconfigured or rate-limited workflow fails quietly
+    with no toast; acceptable for now since the Settings AI tab already
+    surfaces whether a key is configured.
+  - **Cross-workspace command palette**: previously only listed/opened
+    notes in the active workspace. Now fetches every workspace's notes in
+    parallel, labels non-active-workspace results with their workspace
+    name, and calls `onSelectWorkspace` before `onOpenNote` so opening a
+    result actually switches the sidebar into that workspace instead of
+    erroring.
+  - **Editable workspace names**: the backend's `PATCH /workspaces/{id}`
+    rename endpoint already existed but had no frontend caller —
+    `useWorkspaces` gained `rename()`, and `WorkspaceList.tsx` gained
+    inline rename (hover-revealed pencil icon, autofocus input, commit on
+    blur/Enter, cancel on Escape) mirroring `NoteEditor.tsx`'s existing
+    title-rename pattern. Only available from the workspace list (not from
+    within an already-open workspace's note-list header).
+  - Verified end-to-end against the real running app, including a genuine
+    AI round-trip (a real dev Mistral key was configured): created and
+    renamed a scratch workspace purely through the UI, confirmed the
+    rename persisted; confirmed the toolbar starts hidden and both new
+    shortcuts work; confirmed `Ctrl+,` and command-palette tab navigation
+    both land on the right Settings tab; toggled autosave off, confirmed
+    the status showed "Unsaved" and the file was untouched until `Ctrl+S`,
+    which saved immediately; created an on-save workflow and a shortcut-
+    triggered workflow through the Settings UI, confirmed both actually
+    ran a real AI action and appended a real streamed summary — the
+    shortcut one without requiring a save first; opened a note living in a
+    different workspace from the command palette and confirmed the
+    sidebar switched into it correctly.
 
 ### Known follow-ups from completed milestones (not yet fixed)
 

@@ -284,6 +284,11 @@ function App(): React.JSX.Element {
       if (matchShortcut(event, 'Ctrl+Shift+F')) {
         event.preventDefault()
         window.dispatchEvent(new CustomEvent('sidebar:focus-search'))
+        return
+      }
+      if (matchShortcut(event, 'Ctrl+,')) {
+        event.preventDefault()
+        setView('settings')
       }
     }
     window.addEventListener('keydown', handleKeyDown)
@@ -377,7 +382,9 @@ function App(): React.JSX.Element {
                   onDeleted={() => closeTab(activeTab.note.id)}
                   onDuplicated={(note) => openNote(activeTab.workspaceId, note)}
                   onRenamed={renameTab}
-                  onSaveStatusChange={(status: SaveStatus) => setActiveDirty(status === 'saving')}
+                  onSaveStatusChange={(status: SaveStatus) =>
+                    setActiveDirty(status === 'saving' || status === 'unsaved')
+                  }
                 />
               ) : (
                 <EmptyState
@@ -398,6 +405,11 @@ function App(): React.JSX.Element {
                 activeWorkspaceId={selectedWorkspace?.id ?? activeTab?.workspaceId ?? null}
                 onSelectWorkspace={setSelectedWorkspace}
                 onOpenNote={openNote}
+                onOpenSettings={(tab) => {
+                  setView('settings')
+                  if (tab)
+                    window.dispatchEvent(new CustomEvent('settings:navigate', { detail: { tab } }))
+                }}
                 onClose={() => setPaletteOpen(false)}
               />
             )}

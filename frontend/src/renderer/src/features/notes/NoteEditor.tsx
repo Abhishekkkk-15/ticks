@@ -30,6 +30,8 @@ import type { Note } from './types'
 import { uploadFileResource } from '../resources/api'
 import { getClipboardImageFile, uploadPastedImage } from './pasteImage'
 import { matchShortcut } from '../../lib/shortcuts'
+import { useSettings } from '../settings/SettingsContext'
+import { runWorkflows } from '../workflows/runWorkflows'
 
 interface NoteEditorProps {
   workspaceId: string
@@ -44,7 +46,8 @@ const saveStatusLabels: Record<string, string> = {
   idle: '',
   saving: 'Saving…',
   saved: 'Saved',
-  error: 'Failed to save'
+  error: 'Failed to save',
+  unsaved: 'Unsaved'
 }
 
 const TOOLBAR_BTN = 'rounded-md p-1.5 transition-colors'
@@ -59,7 +62,12 @@ function NoteEditor({
   onRenamed,
   onSaveStatusChange
 }: NoteEditorProps): React.JSX.Element {
-  const { note, content, onChange, loading, error, saveStatus } = useNoteEditor(workspaceId, noteId)
+  const { note, content, onChange, loading, error, saveStatus, save } = useNoteEditor(
+    workspaceId,
+    noteId
+  )
+  const { settings } = useSettings()
+  const workflows = settings?.workflows ?? []
 
   useEffect(() => {
     onSaveStatusChange?.(saveStatus)
@@ -116,6 +124,27 @@ function NoteEditor({
       if (matchShortcut(event, 'Ctrl+Shift+Backspace')) {
         event.preventDefault()
         handleDelete()
+        return
+      }
+      if (matchShortcut(event, 'Ctrl+S')) {
+        event.preventDefault()
+        save()
+        return
+      }
+      for (const workflow of workflows) {
+        if (
+          workflow.trigger === 'shortcut' &&
+          workflow.shortcut &&
+          matchShortcut(event, workflow.shortcut)
+        ) {
+          event.preventDefault()
+          if (meta) {
+            runWorkflows('shortcut', [workflow], { workspaceId, noteId: meta.id, content }).catch(
+              () => {}
+            )
+          }
+          return
+        }
       }
     }
     window.addEventListener('keydown', handleKeyDown)
@@ -219,6 +248,17 @@ function NoteEditor({
   function handleInsertResult(result: string): void {
     const separator = content.endsWith('\n') || content === '' ? '' : '\n\n'
     onChange(`${content}${separator}${result}\n`)
+  }
+
+  function handleCopy(): void {
+    if (!meta || !workflows.some((w) => w.trigger === 'on_copy')) return
+    runWorkflows('on_copy', workflows, { workspaceId, noteId: meta.id, content }).catch(() => {})
+  }
+
+  async function handlePaste(event: React.ClipboardEvent): Promise<void> {
+    await handlePasteImage(event)
+    if (!meta || !workflows.some((w) => w.trigger === 'on_paste')) return
+    runWorkflows('on_paste', workflows, { workspaceId, noteId: meta.id, content }).catch(() => {})
   }
 
   function handleContextMenu(e: React.MouseEvent): void {
@@ -445,7 +485,8 @@ function NoteEditor({
         ref={editorAreaRef}
         className="min-h-0 flex-1"
         onContextMenu={handleContextMenu}
-        onPaste={handlePasteImage}
+        onCopy={handleCopy}
+        onPaste={handlePaste}
       >
         <EditorView
           value={content}

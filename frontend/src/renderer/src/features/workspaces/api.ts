@@ -18,3 +18,11 @@ export function createWorkspace(name: string): Promise<Workspace> {
 export function deleteWorkspace(id: string): Promise<void> {
   return apiFetch<void>(`/workspaces/${id}`, { method: 'DELETE' })
 }
+
+export function renameWorkspace(id: string, name: string): Promise<Workspace> {
+  return apiFetch<Workspace>(`/workspaces/${id}`, {
+    method: 'PATCH',
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ name })
+  })
+}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { createWorkspace, deleteWorkspace, listWorkspaces } from './api'
+import { createWorkspace, deleteWorkspace, listWorkspaces, renameWorkspace } from './api'
 import type { Workspace } from './types'
 
 export interface UseWorkspacesResult {
@@ -8,6 +8,7 @@ export interface UseWorkspacesResult {
   error: string | null
   create: (name: string) => Promise<void>
   remove: (id: string) => Promise<void>
+  rename: (id: string, name: string) => Promise<void>
 }
 
 export function useWorkspaces(): UseWorkspacesResult {
@@ -80,5 +81,18 @@ export function useWorkspaces(): UseWorkspacesResult {
     [refresh]
   )
 
-  return { workspaces, loading, error, create, remove }
+  const rename = useCallback(
+    async (id: string, name: string) => {
+      try {
+        await renameWorkspace(id, name)
+        setError(null)
+        await refresh()
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to rename workspace')
+      }
+    },
+    [refresh]
+  )
+
+  return { workspaces, loading, error, create, remove, rename }
 }

@@ -31,12 +31,24 @@ function EditorView({
 }: EditorViewProps): React.JSX.Element {
   const { settings } = useSettings()
   const [mode, setMode] = useState<EditorMode>('edit')
-  const [toolbarVisible, setToolbarVisible] = useState(true)
+  const [toolbarVisible, setToolbarVisible] = useState(false)
   const editorRef = useRef<ReactCodeMirrorRef>(null)
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent): void {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'e') {
+      const mod = event.ctrlKey || event.metaKey
+      if (!mod) return
+      const key = event.key.toLowerCase()
+      if (event.shiftKey && key === 't') {
+        event.preventDefault()
+        setToolbarVisible((visible) => !visible)
+      } else if (event.shiftKey && key === 'e') {
+        event.preventDefault()
+        setMode('edit')
+        // Wait a tick so the editor is mounted (it isn't yet if we were in
+        // Preview mode a moment ago) before trying to focus it.
+        setTimeout(() => editorRef.current?.view?.focus(), 0)
+      } else if (key === 'e') {
         event.preventDefault()
         setMode((m) => (m === 'edit' ? 'preview' : 'edit'))
       }
