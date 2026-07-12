@@ -40,9 +40,17 @@ export function startBackend(): void {
       env: { ...process.env, HOST, PORT: String(PORT) }
     })
   } else {
+    const scriptPath = join(backendDir, 'dist', 'index.js')
+    if (!fs.existsSync(scriptPath)) {
+      logStream.write(`[error] Packaged backend script not found at: ${scriptPath}\n`)
+      logStream.write(`[error] Please run "pnpm run build" in the backend directory before packaging the app.\n`)
+      logStream.end()
+      return
+    }
+
     // In production / packaged, spawn the compiled CJS bundle using Electron's node engine.
-    backendProcess = spawn(process.execPath, [join(backendDir, 'dist', 'index.js')], {
-      cwd: backendDir,
+    backendProcess = spawn(process.execPath, [scriptPath], {
+      cwd: process.resourcesPath,
       env: {
         ...process.env,
         ELECTRON_RUN_AS_NODE: '1',
