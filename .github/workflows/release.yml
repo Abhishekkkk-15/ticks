@@ -1,0 +1,264 @@
+name: Build & Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g. 1.0.0). Leave blank to use version from package.json.'
+        required: false
+        default: ''
+      prerelease:
+        description: 'Mark as pre-release?'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+# Only one release run at a time
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  # ─────────────────────────────────────────────
+  # Build Windows installer (.exe via NSIS)
+  # ─────────────────────────────────────────────
+  build-windows:
+    name: Windows (NSIS)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      # Backend deps + build
+      - name: Install backend dependencies
+        run: pnpm install
+        working-directory: backend
+
+      - name: Build backend
+        run: pnpm run build
+        working-directory: backend
+
+      # Frontend deps + electron-builder
+      - name: Install frontend dependencies
+        run: pnpm install
+        working-directory: frontend
+
+      - name: Set version (if provided)
+        if: ${{ inputs.version != '' }}
+        run: npm version ${{ inputs.version }} --no-git-tag-version
+        working-directory: frontend
+
+      - name: Build Windows installer
+        run: pnpm run build:win
+        working-directory: frontend
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: frontend/dist/*.exe
+          if-no-files-found: error
+
+  # ─────────────────────────────────────────────
+  # Build macOS DMG
+  # ─────────────────────────────────────────────
+  build-macos:
+    name: macOS (DMG)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install backend dependencies
+        run: pnpm install
+        working-directory: backend
+
+      - name: Build backend
+        run: pnpm run build
+        working-directory: backend
+
+      - name: Install frontend dependencies
+        run: pnpm install
+        working-directory: frontend
+
+      - name: Set version (if provided)
+        if: ${{ inputs.version != '' }}
+        run: npm version ${{ inputs.version }} --no-git-tag-version
+        working-directory: frontend
+
+      - name: Build macOS DMG
+        run: pnpm run build:mac
+        working-directory: frontend
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg
+          path: frontend/dist/*.dmg
+          if-no-files-found: error
+
+  # ─────────────────────────────────────────────
+  # Build Linux packages (AppImage + deb)
+  # ─────────────────────────────────────────────
+  build-linux:
+    name: Linux (AppImage + deb)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      # electron-builder on Linux needs these for packaging
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y \
+            libarchive-tools \
+            rpm \
+            fakeroot \
+            dpkg
+
+      - name: Install backend dependencies
+        run: pnpm install
+        working-directory: backend
+
+      - name: Build backend
+        run: pnpm run build
+        working-directory: backend
+
+      - name: Install frontend dependencies
+        run: pnpm install
+        working-directory: frontend
+
+      - name: Set version (if provided)
+        if: ${{ inputs.version != '' }}
+        run: npm version ${{ inputs.version }} --no-git-tag-version
+        working-directory: frontend
+
+      - name: Build Linux packages
+        run: pnpm run build:linux
+        working-directory: frontend
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Linux AppImage
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-appimage
+          path: frontend/dist/*.AppImage
+          if-no-files-found: error
+
+      - name: Upload Linux deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-deb
+          path: frontend/dist/*.deb
+          if-no-files-found: warn
+
+  # ─────────────────────────────────────────────
+  # Create GitHub Release and attach all installers
+  # ─────────────────────────────────────────────
+  release:
+    name: Publish Release
+    needs: [build-windows, build-macos, build-linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      # Resolve version: prefer workflow input, fall back to package.json
+      - name: Resolve version
+        id: ver
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            echo "tag=v${{ inputs.version }}" >> $GITHUB_OUTPUT
+            echo "name=v${{ inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            PKG=$(node -p "require('./frontend/package.json').version")
+            echo "tag=v${PKG}" >> $GITHUB_OUTPUT
+            echo "name=v${PKG}" >> $GITHUB_OUTPUT
+          fi
+
+      # Download all artifacts into a flat folder
+      - name: Download Windows installer
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-installer
+          path: release-assets
+
+      - name: Download macOS DMG
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-dmg
+          path: release-assets
+
+      - name: Download Linux AppImage
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-appimage
+          path: release-assets
+
+      - name: Download Linux deb
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-deb
+          path: release-assets
+        continue-on-error: true
+
+      - name: List release assets
+        run: ls -lh release-assets/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: "Ticks ${{ steps.ver.outputs.name }}"
+          prerelease: ${{ inputs.prerelease == 'true' }}
+          generate_release_notes: true
+          files: release-assets/*
+          body: |
+            ## 📦 Download Ticks ${{ steps.ver.outputs.name }}
+
+            | Platform | File |
+            |----------|------|
+            | 🪟 Windows | `*-setup.exe` |
+            | 🍎 macOS   | `*.dmg` |
+            | 🐧 Linux   | `*.AppImage` · `*.deb` |
+
+            > **First time?** See the [README](https://github.com/${{ github.repository }}#readme) for install instructions.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
