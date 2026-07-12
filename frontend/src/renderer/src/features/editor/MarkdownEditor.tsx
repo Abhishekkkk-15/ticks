@@ -110,7 +110,18 @@ function MarkdownEditor({
               label: note.title,
               displayLabel: note.title,
               type: 'keyword',
-              apply: `[${note.title}](note://${note.id})`
+              apply: (view, _completion, from, to) => {
+                let end = to
+                const nextChars = view.state.sliceDoc(to, to + 2)
+                if (nextChars === ']]') {
+                  end = to + 2
+                }
+                const insertText = `[${note.title}](note://${note.id})`
+                view.dispatch({
+                  changes: { from, to: end, insert: insertText },
+                  selection: { anchor: from + insertText.length }
+                })
+              }
             }))
           }
         }
