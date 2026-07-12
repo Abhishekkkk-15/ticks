@@ -1,8 +1,9 @@
-import { ChildProcess, spawn } from 'child_process'
+import { ChildProcess, spawn, execSync } from 'child_process'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 import fs from 'fs'
 import os from 'os'
+import net from 'net'
 
 const HOST = '127.0.0.1'
 const PORT = 8000
@@ -15,8 +16,75 @@ export function getApiBaseUrl(): string {
   return `http://${HOST}:${PORT}`
 }
 
+/**
+ * Check whether a port is already in use.
+ */
+function isPortInUse(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const server = net.createServer()
+    server.once('error', () => resolve(true))
+    server.once('listening', () => {
+      server.close()
+      resolve(false)
+    })
+    server.listen(port, HOST)
+  })
+}
+
+/**
+ * Best-effort kill of whatever process is holding the port.
+ * Works on Linux/macOS via `fuser` and on Windows via `netstat`+`taskkill`.
+ */
+function freePort(port: number): void {
+  try {
+    if (process.platform === 'win32') {
+      // Find PID listening on the port then kill it
+      const result = execSync(
+        `netstat -ano | findstr :${port} | findstr LISTENING`,
+        { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }
+      )
+      const match = result.trim().split(/\s+/).pop()
+      if (match && /^\d+$/.test(match)) {
+        execSync(`taskkill /PID ${match} /F`, { stdio: 'ignore' })
+      }
+    } else {
+      execSync(`fuser -k ${port}/tcp`, { stdio: 'ignore' })
+    }
+  } catch {
+    // No process was using the port, or the tool isn't available — ignore
+  }
+}
+
+/**
+ * Kill backendProcess and its entire child process group so the Node server
+ * inside the pnpm shell wrapper is also terminated.
+ */
+function killBackendGroup(): void {
+  if (!backendProcess || backendProcess.exitCode !== null) return
+  try {
+    if (process.platform === 'win32') {
+      // On Windows, spawn doesn't support process groups — just kill directly
+      backendProcess.kill('SIGTERM')
+    } else {
+      // Negative PID targets the whole process group
+      process.kill(-backendProcess.pid!, 'SIGTERM')
+    }
+  } catch {
+    // Process may already be gone
+    backendProcess.kill()
+  }
+}
+
 // Dev and Packaged: spawns the backend from its local or packaged folder
-export function startBackend(): void {
+export async function startBackend(): Promise<void> {
+  // Free the port if something is already holding it (e.g. a crashed previous run)
+  if (await isPortInUse(PORT)) {
+    console.warn(`[backend] Port ${PORT} already in use — attempting to free it...`)
+    freePort(PORT)
+    // Give the OS a moment to reclaim the port
+    await new Promise((r) => setTimeout(r, 500))
+  }
+
   const backendDir = is.dev
     ? join(__dirname, '../../../backend')
     : join(process.resourcesPath, 'backend')
@@ -37,6 +105,8 @@ export function startBackend(): void {
     backendProcess = spawn('pnpm', ['run', 'dev'], {
       cwd: backendDir,
       shell: true,
+      // detached: true creates a new process group so we can kill all children
+      detached: true,
       env: { ...process.env, HOST, PORT: String(PORT) }
     })
   } else {
@@ -51,6 +121,7 @@ export function startBackend(): void {
     // In production / packaged, spawn the compiled CJS bundle using Electron's node engine.
     backendProcess = spawn(process.execPath, [scriptPath], {
       cwd: process.resourcesPath,
+      detached: true,
       env: {
         ...process.env,
         ELECTRON_RUN_AS_NODE: '1',
@@ -84,7 +155,6 @@ export function startBackend(): void {
 }
 
 export function stopBackend(): void {
-  backendProcess?.kill()
+  killBackendGroup()
   backendProcess = null
 }
-
