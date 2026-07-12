@@ -412,7 +412,7 @@ function createWindow(): void {
   if (savedState.isMaximized) mainWindow.maximize()
 
   if (is.dev) {
-    mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
+    mainWindow.webContents.on('console-message', (_event, _level, message, line, sourceId) => {
       console.log(`[renderer console] ${message} (from ${sourceId}:${line})`)
     })
   }

@@ -19,6 +19,7 @@ import {
   listFolders,
   listTags
 } from '../services/noteService.js';
+import { getGitStatus, syncGit } from '../services/gitService.js';
 
 const router = Router();
 
@@ -108,6 +109,20 @@ router.patch('/workspaces/:workspace_id/notes/:note_id', (req, res, next) => {
 router.put('/workspaces/:workspace_id/notes/:note_id/content', (req, res, next) => {
   try {
     const note = updateContent(req.params.workspace_id, req.params.note_id, req.body.content);
+    
+    // Auto-sync in the background if enabled
+    getGitStatus(req.params.workspace_id)
+      .then((status) => {
+        if (status.initialized && status.auto_sync_on_save && status.remote_url) {
+          syncGit(req.params.workspace_id).catch((err) => {
+            console.error(`[backend] Auto-sync failed for workspace ${req.params.workspace_id}:`, err);
+          });
+        }
+      })
+      .catch((err) => {
+        console.error('[backend] Failed to fetch git status for auto-sync:', err);
+      });
+
     res.json(note);
   } catch (err) {
     next(err);

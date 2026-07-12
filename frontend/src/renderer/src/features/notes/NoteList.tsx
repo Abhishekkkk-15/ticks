@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeft, Clock, List, Pin, RotateCcw, Star, Trash2, Upload, X } from 'lucide-react'
+import { ArrowLeft, Clock, List, Pin, RotateCcw, Star, Trash2, Upload, X, RefreshCw } from 'lucide-react'
 import { useNotes } from './useNotes'
 import type { NoteView } from './useNotes'
 import { highlightMatch } from './highlightMatch'
 import type { Note } from './types'
 import Select from '../../components/ui/Select'
+import GitSyncModal from '../workspaces/GitSyncModal'
 
 interface NoteListProps {
   workspaceId: string
@@ -59,6 +60,7 @@ function NoteList({
     importNote
   } = useNotes(workspaceId)
   const [newTitle, setNewTitle] = useState('')
+  const [isGitSyncModalOpen, setIsGitSyncModalOpen] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
   const canCreate = view !== 'recent' && view !== 'trash'
@@ -109,6 +111,14 @@ function NoteList({
           className="rounded-md p-1 text-neutral-500 hover:bg-neutral-800 hover:text-neutral-300"
         >
           <Upload size={14} />
+        </button>
+        <button
+          type="button"
+          onClick={() => setIsGitSyncModalOpen(true)}
+          title="Git Sync Settings & Sync"
+          className="rounded-md p-1 text-neutral-500 hover:bg-neutral-800 hover:text-neutral-300"
+        >
+          <RefreshCw size={14} />
         </button>
       </div>
 
@@ -268,6 +278,14 @@ function NoteList({
       )}
 
       {error && <div className="px-3 pb-2 text-xs text-red-400">{error}</div>}
+
+      {isGitSyncModalOpen && (
+        <GitSyncModal
+          workspaceId={workspaceId}
+          workspaceName={workspaceName}
+          onClose={() => setIsGitSyncModalOpen(false)}
+        />
+      )}
     </div>
   )
 }
