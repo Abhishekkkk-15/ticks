@@ -411,6 +411,12 @@ function createWindow(): void {
 
   if (savedState.isMaximized) mainWindow.maximize()
 
+  if (is.dev) {
+    mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
+      console.log(`[renderer console] ${message} (from ${sourceId}:${line})`)
+    })
+  }
+
   // Debounced so a drag-resize doesn't write on every intermediate frame;
   // 'close' below guarantees a final save even if the debounce never fires.
   let saveStateTimer: ReturnType<typeof setTimeout> | undefined

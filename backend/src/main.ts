@@ -15,8 +15,14 @@ fs.mkdirSync(settings.workspacesRoot, { recursive: true });
 
 const app = express();
 
-app.use(cors({ origin: settings.corsOrigins }));
+app.use(cors({ origin: settings.corsOrigins.includes('*') ? '*' : settings.corsOrigins }));
 app.use(express.json());
+
+// Log all incoming requests
+app.use((req, res, next) => {
+  console.log(`[backend] ${req.method} ${req.path}`);
+  next();
+});
 
 // Register API routers
 app.use(healthRouter);
