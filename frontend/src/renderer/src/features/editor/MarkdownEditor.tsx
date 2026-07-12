@@ -8,6 +8,7 @@ import { autocompletion } from '@codemirror/autocomplete'
 import { markdownKeymapExtension } from './markdownShortcuts'
 import { useSettings } from '../settings/SettingsContext'
 import { isLightTheme } from '../settings/themeUtils'
+import { getClipboardImageFile, uploadPastedImage } from '../notes/pasteImage'
 
 export interface EditorSelection {
   text: string
@@ -29,6 +30,9 @@ interface MarkdownEditorProps {
   onSelectionChange?: (selection: EditorSelection) => void
   editorRef?: Ref<ReactCodeMirrorRef>
   notes?: { id: string; title: string }[]
+  workspaceId?: string
+  noteId?: string
+  onPaste?: (event: ClipboardEvent) => void
 }
 
 const baseExtensions = [
@@ -71,7 +75,10 @@ function MarkdownEditor({
   onChange,
   onSelectionChange,
   editorRef,
-  notes = []
+  notes = [],
+  workspaceId,
+  noteId,
+  onPaste
 }: MarkdownEditorProps): React.JSX.Element {
   const { settings } = useSettings()
 
@@ -129,9 +136,38 @@ function MarkdownEditor({
     })
   }, [notes])
 
+  const domEventHandlers = useMemo(() => {
+    return EditorView.domEventHandlers({
+      paste(event, view) {
+        if (workspaceId && noteId) {
+          const file = getClipboardImageFile(event.clipboardData!)
+          if (file) {
+            event.preventDefault()
+            uploadPastedImage(workspaceId, noteId, file)
+              .then((embed) => {
+                const mainSel = view.state.selection.main
+                view.dispatch({
+                  changes: { from: mainSel.from, to: mainSel.to, insert: embed },
+                  selection: { anchor: mainSel.from + embed.length }
+                })
+              })
+              .catch((err) => {
+                console.error('Image paste failed:', err)
+              })
+            return true
+          }
+        }
+        if (onPaste) {
+          onPaste(event)
+        }
+        return false
+      }
+    })
+  }, [workspaceId, noteId, onPaste])
+
   const extensions = useMemo(() => {
-    return [...baseExtensions, fontTheme, chromeTheme, autocompleteExtension]
-  }, [fontTheme, autocompleteExtension])
+    return [...baseExtensions, fontTheme, chromeTheme, autocompleteExtension, domEventHandlers]
+  }, [fontTheme, autocompleteExtension, domEventHandlers])
 
   function handleUpdate(viewUpdate: MinimalViewUpdate): void {
     if (!onSelectionChange || !viewUpdate.selectionSet) return

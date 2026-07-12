@@ -16,6 +16,7 @@ interface EditorViewProps {
   noteId: string
   onSelectionChange?: (selection: EditorSelection) => void
   notes?: { id: string; title: string }[]
+  onPaste?: (event: ClipboardEvent) => void
 }
 
 const modes: { id: EditorMode; label: string }[] = [
@@ -29,7 +30,8 @@ function EditorView({
   workspaceId,
   noteId,
   onSelectionChange,
-  notes = []
+  notes = [],
+  onPaste
 }: EditorViewProps): React.JSX.Element {
   const { settings } = useSettings()
   const [mode, setMode] = useState<EditorMode>('edit')
@@ -122,6 +124,9 @@ function EditorView({
               onSelectionChange={onSelectionChange}
               editorRef={editorRef}
               notes={notes}
+              workspaceId={workspaceId}
+              noteId={noteId}
+              onPaste={onPaste}
             />
           </div>
         ) : (

@@ -286,9 +286,11 @@ function NoteEditor({
     }
   }
 
-  async function handlePasteImage(event: React.ClipboardEvent): Promise<void> {
+  async function handlePasteImage(event: ClipboardEvent | React.ClipboardEvent): Promise<void> {
     if (!meta) return
-    const file = getClipboardImageFile(event.clipboardData)
+    const clipboardData = 'clipboardData' in event ? event.clipboardData : (event as any).clipboardData
+    if (!clipboardData) return
+    const file = getClipboardImageFile(clipboardData)
     if (!file) return // no image on the clipboard — let normal text paste proceed
     event.preventDefault()
     try {
@@ -322,10 +324,12 @@ function NoteEditor({
     }).catch(() => {})
   }
 
-  async function handlePaste(event: React.ClipboardEvent): Promise<void> {
+  async function handlePaste(event: ClipboardEvent | React.ClipboardEvent): Promise<void> {
     await handlePasteImage(event)
     if (!meta || !workflows.some((w) => w.trigger === 'on_paste')) return
-    const pasted = event.clipboardData.getData('text/plain')
+    const clipboardData = 'clipboardData' in event ? event.clipboardData : (event as any).clipboardData
+    if (!clipboardData) return
+    const pasted = clipboardData.getData('text/plain')
     runWorkflows('on_paste', workflows, {
       workspaceId,
       noteId: meta.id,
@@ -600,6 +604,7 @@ function NoteEditor({
           noteId={meta.id}
           onSelectionChange={setSelection}
           notes={notesList}
+          onPaste={handlePaste}
         />
       </div>
 
