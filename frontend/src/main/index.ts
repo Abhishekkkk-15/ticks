@@ -160,20 +160,28 @@ function simulateCopyAndRead(oldClipboard: string): Promise<string> {
         command = 'osascript'
         args = ['-e', 'tell application "System Events" to keystroke "c" using {command down}']
       } else if (process.platform === 'win32') {
-        // Use PowerShell + SendKeys (most reliable way without extra deps).
-        // execFile with an args array (not exec with a shell string) is load-
-        // bearing here: exec on Windows routes through cmd.exe /c, and the
-        // nested double quotes between cmd.exe's parsing and PowerShell's own
-        // -Command "..." parsing silently mangle the command — execFile
-        // passes args straight to CreateProcess, no shell quoting involved.
-        command = 'powershell.exe'
-        args = [
-          '-NonInteractive',
-          '-WindowStyle',
-          'Hidden',
-          '-Command',
-          "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('^c')"
-        ]
+        // VBScript is extremely lightweight and does not open a console window
+        // or steal keyboard focus from the active app, unlike powershell.exe.
+        const tempVbsPath = join(os.tmpdir(), `ticks-copy-${Date.now()}.vbs`)
+        try {
+          fs.writeFileSync(
+            tempVbsPath,
+            'Set WshShell = WScript.CreateObject("WScript.Shell")\nWshShell.SendKeys "^c"\n',
+            'utf-8'
+          )
+          command = 'wscript.exe'
+          args = ['//B', tempVbsPath]
+        } catch (err) {
+          // Fallback to powershell if writing file fails
+          command = 'powershell.exe'
+          args = [
+            '-NonInteractive',
+            '-WindowStyle',
+            'Hidden',
+            '-Command',
+            "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('^c')"
+          ]
+        }
       } else {
         // Linux fallback (xdotool) – should rarely reach here
         command = 'xdotool'
@@ -181,6 +189,13 @@ function simulateCopyAndRead(oldClipboard: string): Promise<string> {
       }
 
       execFile(command, args, (error, _stdout, stderr) => {
+        if (process.platform === 'win32' && command === 'wscript.exe') {
+          try {
+            fs.unlinkSync(args[1])
+          } catch (e) {
+            // Ignore
+          }
+        }
         if (error) {
           console.error('[global-capture] Failed to simulate copy:', error.message, stderr)
         }
