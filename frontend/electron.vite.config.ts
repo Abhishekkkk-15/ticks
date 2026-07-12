@@ -15,11 +15,15 @@ const excalidrawFontsDir = resolve('node_modules/@excalidraw/excalidraw/dist/pro
 // stripBase flattens each match back down to just its filename.
 const excalidrawFontTargets = readdirSync(excalidrawFontsDir, { withFileTypes: true })
   .filter((entry) => entry.isDirectory())
-  .map((entry) => ({
-    src: `${resolve('node_modules/@excalidraw/excalidraw/dist/prod/fonts', entry.name)}/*`,
-    dest: `excalidraw-assets/fonts/${entry.name}`,
-    rename: { stripBase: true as const }
-  }))
+  .map((entry) => {
+    const srcPath = resolve('node_modules/@excalidraw/excalidraw/dist/prod/fonts', entry.name)
+    const normalizedSrc = srcPath.replace(/\\/g, '/')
+    return {
+      src: `${normalizedSrc}/*`,
+      dest: `excalidraw-assets/fonts/${entry.name}`,
+      rename: { stripBase: true as const }
+    }
+  })
 
 export default defineConfig({
   main: {
