@@ -14,7 +14,7 @@ asarUnpack:
 win:
   executableName: ai-learning-workspace
   target:
-    - zip
+    - nsis
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
