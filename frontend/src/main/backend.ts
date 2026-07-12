@@ -1,9 +1,13 @@
 import { ChildProcess, spawn } from 'child_process'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
+import fs from 'fs'
+import os from 'os'
 
 const HOST = '127.0.0.1'
 const PORT = 8000
+const LOG_DIR = join(os.homedir(), 'AILearningWorkspace')
+const LOG_FILE = join(LOG_DIR, 'backend.log')
 
 let backendProcess: ChildProcess | null = null
 
@@ -16,6 +20,18 @@ export function startBackend(): void {
   const backendDir = is.dev
     ? join(__dirname, '../../../backend')
     : join(process.resourcesPath, 'backend')
+
+  // Ensure log directory exists
+  try {
+    fs.mkdirSync(LOG_DIR, { recursive: true })
+  } catch (e) {
+    // Ignore
+  }
+
+  const logStream = fs.createWriteStream(LOG_FILE, { flags: 'w' })
+  logStream.write(`[main] Starting backend. is.dev=${is.dev}\n`)
+  logStream.write(`[main] process.execPath: ${process.execPath}\n`)
+  logStream.write(`[main] backendDir: ${backendDir}\n`)
 
   if (is.dev) {
     backendProcess = spawn('pnpm', ['run', 'dev'], {
@@ -36,23 +52,26 @@ export function startBackend(): void {
     })
   }
 
-  backendProcess.stdout?.on('data', (data) => console.log(`[backend] ${data.toString().trim()}`))
-  backendProcess.stderr?.on('data', (data) => console.log(`[backend] ${data.toString().trim()}`))
+  backendProcess.stdout?.on('data', (data) => {
+    const text = data.toString()
+    console.log(`[backend] ${text.trim()}`)
+    logStream.write(`[stdout] ${text}`)
+  })
+
+  backendProcess.stderr?.on('data', (data) => {
+    const text = data.toString()
+    console.error(`[backend] ${text.trim()}`)
+    logStream.write(`[stderr] ${text}`)
+  })
 
   backendProcess.on('error', (error) => {
     console.error('[backend] Failed to start:', error)
+    logStream.write(`[error] Failed to start backend process: ${error.message}\n`)
   })
 
   backendProcess.on('exit', (code, signal) => {
-    if (code !== null && code !== 0) {
-      console.warn(
-        `[backend] Process exited with code ${code}. ` +
-          'If you already have it running manually (e.g. on port 8000), this is expected.'
-      )
-    } else if (signal) {
-      console.log(`[backend] Process terminated by signal ${signal}`)
-    }
-    backendProcess = null
+    logStream.write(`[exit] Process exited with code ${code}, signal ${signal}\n`)
+    logStream.end()
   })
 }
 
