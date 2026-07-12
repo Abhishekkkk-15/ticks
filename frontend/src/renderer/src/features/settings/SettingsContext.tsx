@@ -12,9 +12,28 @@ interface SettingsContextType {
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined)
 
+const LOCAL_STORAGE_KEY = 'ticks:settings'
+
+function getCachedSettings(): SettingsInfo | null {
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
+function setCachedSettings(settings: SettingsInfo): void {
+  try {
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(settings))
+  } catch (e) {
+    // Ignore
+  }
+}
+
 export function SettingsProvider({ children }: { children: React.ReactNode }): React.JSX.Element {
-  const [settings, setSettings] = useState<SettingsInfo | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [settings, setSettings] = useState<SettingsInfo | null>(getCachedSettings)
+  const [loading, setLoading] = useState(() => !getCachedSettings())
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -24,6 +43,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }): R
         const data = await getSettings()
         if (!cancelled) {
           setSettings(data)
+          setCachedSettings(data)
         }
       } catch (err) {
         if (!cancelled) {
@@ -72,6 +92,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }): R
     try {
       const updated = await updateSettingsApi(update)
       setSettings(updated)
+      setCachedSettings(updated)
       window.api.notifySettingsUpdated()
     } catch (err) {
       throw err instanceof Error ? err : new Error('Failed to update settings')
