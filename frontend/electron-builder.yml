@@ -38,10 +38,5 @@ appImage:
   artifactName: ${name}-${version}.${ext}
 npmRebuild: false
 extraResources:
-  - from: ../backend
-    to: backend
-    filter:
-      - '**/*'
-      - '!.venv/**/*'
-      - '!__pycache__/**/*'
-      - '!**/*.pyc'
+  - from: ../backend/dist
+    to: backend/dist

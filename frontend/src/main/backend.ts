@@ -1,5 +1,4 @@
 import { ChildProcess, spawn } from 'child_process'
-import { existsSync } from 'fs'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 
@@ -12,39 +11,30 @@ export function getApiBaseUrl(): string {
   return `http://${HOST}:${PORT}`
 }
 
-function resolvePythonExecutable(backendDir: string): string | null {
-  const venvPython =
-    process.platform === 'win32'
-      ? join(backendDir, '.venv', 'Scripts', 'python.exe')
-      : join(backendDir, '.venv', 'bin', 'python')
-
-  if (existsSync(venvPython)) return venvPython
-  return process.platform === 'win32' ? 'python.exe' : 'python3'
-}
-
 // Dev and Packaged: spawns the backend from its local or packaged folder
 export function startBackend(): void {
   const backendDir = is.dev
     ? join(__dirname, '../../../backend')
     : join(process.resourcesPath, 'backend')
-  const pythonExecutable = resolvePythonExecutable(backendDir)
 
-  if (!pythonExecutable) {
-    console.error(
-      `[backend] No virtualenv or system python found for ${backendDir}. ` +
-        'Please start the backend manually.'
-    )
-    return
-  }
-
-  backendProcess = spawn(
-    pythonExecutable,
-    ['-m', 'uvicorn', 'app.main:app', '--host', HOST, '--port', String(PORT)],
-    {
+  if (is.dev) {
+    backendProcess = spawn('pnpm', ['run', 'dev'], {
       cwd: backendDir,
+      shell: true,
       env: { ...process.env, HOST, PORT: String(PORT) }
-    }
-  )
+    })
+  } else {
+    // In production / packaged, spawn the compiled CJS bundle using Electron's node engine.
+    backendProcess = spawn(process.execPath, [join(backendDir, 'dist', 'index.js')], {
+      cwd: backendDir,
+      env: {
+        ...process.env,
+        ELECTRON_RUN_AS_NODE: '1',
+        HOST,
+        PORT: String(PORT)
+      }
+    })
+  }
 
   backendProcess.stdout?.on('data', (data) => console.log(`[backend] ${data.toString().trim()}`))
   backendProcess.stderr?.on('data', (data) => console.log(`[backend] ${data.toString().trim()}`))
@@ -70,3 +60,4 @@ export function stopBackend(): void {
   backendProcess?.kill()
   backendProcess = null
 }
+
