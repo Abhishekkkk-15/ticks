@@ -15,7 +15,7 @@ function TitleBar(): React.JSX.Element | null {
       style={DRAG_REGION}
       onDoubleClick={() => window.api.windowControls.toggleMaximize()}
     >
-      <span className="text-xs font-medium tracking-wide">AI Learning Workspace</span>
+      <span className="text-xs font-medium tracking-wide">Ticks</span>
       <div className="flex h-full items-stretch" style={NO_DRAG_REGION}>
         <button
           type="button"

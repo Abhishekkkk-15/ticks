@@ -41,7 +41,7 @@ function Sidebar({
   return (
     <aside className="flex w-64 shrink-0 flex-col border-r border-neutral-800/60 bg-neutral-950 h-full">
       <div className="flex items-center justify-between px-4 py-4 text-sm font-medium text-neutral-200">
-        <span>AI Learning Workspace</span>
+        <span>Ticks</span>
         <button
           type="button"
           onClick={onToggleSidebar}

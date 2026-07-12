@@ -5,7 +5,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 export const settings = {
-  appName: 'AI Learning Workspace API',
+  appName: 'Ticks API',
   version: '0.1.0',
   environment: process.env.NODE_ENV || 'development',
   host: process.env.HOST || '127.0.0.1',
