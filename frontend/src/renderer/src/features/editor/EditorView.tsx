@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ReactCodeMirrorRef } from '@uiw/react-codemirror'
-import { PanelTop } from 'lucide-react'
+import { PanelTop, Map } from 'lucide-react'
 import MarkdownEditor from './MarkdownEditor'
 import MarkdownPreview from './MarkdownPreview'
 import EditorToolbar from './EditorToolbar'
@@ -36,7 +36,26 @@ function EditorView({
   const { settings } = useSettings()
   const [mode, setMode] = useState<EditorMode>('edit')
   const [toolbarVisible, setToolbarVisible] = useState(true)
+  const [minimapVisible, setMinimapVisible] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('ticks:minimap') !== 'false'
+    } catch {
+      return true
+    }
+  })
   const editorRef = useRef<ReactCodeMirrorRef>(null)
+
+  function toggleMinimap(): void {
+    setMinimapVisible((v) => {
+      const next = !v
+      try {
+        localStorage.setItem('ticks:minimap', String(next))
+      } catch {
+        // ignore
+      }
+      return next
+    })
+  }
 
   useEffect(() => {
     function handleToggle(): void {
@@ -98,18 +117,32 @@ function EditorView({
           ))}
         </div>
         {mode === 'edit' && (
-          <button
-            type="button"
-            onClick={() => setToolbarVisible((visible) => !visible)}
-            title={toolbarVisible ? 'Hide formatting toolbar' : 'Show formatting toolbar'}
-            className={`rounded-md p-1.5 transition-colors ${
-              toolbarVisible
-                ? 'bg-neutral-800 text-neutral-100'
-                : 'text-neutral-500 hover:text-neutral-300'
-            }`}
-          >
-            <PanelTop size={15} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={toggleMinimap}
+              title={minimapVisible ? 'Hide minimap' : 'Show minimap'}
+              className={`rounded-md p-1.5 transition-colors ${
+                minimapVisible
+                  ? 'bg-neutral-800 text-neutral-100'
+                  : 'text-neutral-500 hover:text-neutral-300'
+              }`}
+            >
+              <Map size={15} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setToolbarVisible((visible) => !visible)}
+              title={toolbarVisible ? 'Hide formatting toolbar' : 'Show formatting toolbar'}
+              className={`rounded-md p-1.5 transition-colors ${
+                toolbarVisible
+                  ? 'bg-neutral-800 text-neutral-100'
+                  : 'text-neutral-500 hover:text-neutral-300'
+              }`}
+            >
+              <PanelTop size={15} />
+            </button>
+          </div>
         )}
       </div>
 
@@ -127,6 +160,7 @@ function EditorView({
               workspaceId={workspaceId}
               noteId={noteId}
               onPaste={onPaste}
+              showMinimap={minimapVisible}
             />
           </div>
         ) : (

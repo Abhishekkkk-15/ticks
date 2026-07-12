@@ -5,6 +5,10 @@ import type { ReactCodeMirrorRef } from '@uiw/react-codemirror'
 import { markdown } from '@codemirror/lang-markdown'
 import { languages } from '@codemirror/language-data'
 import { autocompletion } from '@codemirror/autocomplete'
+import { keymap } from '@codemirror/view'
+import { moveLineUp, moveLineDown, copyLineUp, copyLineDown, toggleComment } from '@codemirror/commands'
+import { searchKeymap, selectNextOccurrence, selectSelectionMatches } from '@codemirror/search'
+import { showMinimap as minimapFacet } from '@replit/codemirror-minimap'
 import { markdownKeymapExtension } from './markdownShortcuts'
 import { useSettings } from '../settings/SettingsContext'
 import { isLightTheme } from '../settings/themeUtils'
@@ -33,11 +37,14 @@ interface MarkdownEditorProps {
   workspaceId?: string
   noteId?: string
   onPaste?: (event: ClipboardEvent) => void
+  showMinimap?: boolean
 }
 
 const baseExtensions = [
   markdown({ codeLanguages: languages }),
   markdownKeymapExtension,
+  // Alt+Click adds a new cursor instead of moving the single cursor
+  EditorView.clickAddsSelectionRange.of((e) => e.altKey),
   EditorView.contentAttributes.of({
     spellcheck: 'true',
     autocorrect: 'on',
@@ -78,7 +85,8 @@ function MarkdownEditor({
   notes = [],
   workspaceId,
   noteId,
-  onPaste
+  onPaste,
+  showMinimap = true
 }: MarkdownEditorProps): React.JSX.Element {
   const { settings } = useSettings()
 
@@ -165,9 +173,41 @@ function MarkdownEditor({
     })
   }, [workspaceId, noteId, onPaste])
 
+  const vscodeKeymapExtension = useMemo(() => {
+    return keymap.of([
+      { key: 'Alt-ArrowUp',           run: moveLineUp },
+      { key: 'Alt-ArrowDown',         run: moveLineDown },
+      { key: 'Shift-Alt-ArrowUp',     run: copyLineUp },
+      { key: 'Shift-Alt-ArrowDown',   run: copyLineDown },
+      { key: 'Mod-/',                 run: toggleComment },
+      // Multiple cursors
+      { key: 'Mod-d',                 run: selectNextOccurrence },
+      { key: 'Mod-Shift-l',           run: selectSelectionMatches },
+      ...searchKeymap
+    ])
+  }, [])
+
+  const minimapExtension = useMemo(() => {
+    if (!showMinimap) return []
+    return minimapFacet.of({
+      create: () => {
+        const dom = document.createElement('div')
+        return { dom }
+      }
+    })
+  }, [showMinimap])
+
   const extensions = useMemo(() => {
-    return [...baseExtensions, fontTheme, chromeTheme, autocompleteExtension, domEventHandlers]
-  }, [fontTheme, autocompleteExtension, domEventHandlers])
+    return [
+      ...baseExtensions,
+      fontTheme,
+      chromeTheme,
+      autocompleteExtension,
+      domEventHandlers,
+      vscodeKeymapExtension,
+      minimapExtension
+    ]
+  }, [fontTheme, autocompleteExtension, domEventHandlers, vscodeKeymapExtension, minimapExtension])
 
   function handleUpdate(viewUpdate: MinimalViewUpdate): void {
     if (!onSelectionChange || !viewUpdate.selectionSet) return
