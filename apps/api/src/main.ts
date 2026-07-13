@@ -39,6 +39,9 @@ app.use(mcpRouter);
 
 // Global exception and error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (res.headersSent) {
+    return next(err);
+  }
   if (err && typeof err.status === 'number') {
     return res.status(err.status).json({ detail: err.message || err.detail || String(err) });
   }

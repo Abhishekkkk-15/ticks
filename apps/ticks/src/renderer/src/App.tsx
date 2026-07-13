@@ -12,7 +12,6 @@ import { useWorkspaces } from './features/workspaces/useWorkspaces'
 import type { Workspace } from './features/workspaces/types'
 import CommandPalette from './features/command-palette/CommandPalette'
 import SettingsView from './features/settings/SettingsView'
-import MCPView from './features/mcp/MCPView'
 
 import { useSettings } from './features/settings/SettingsContext'
 import { matchShortcut } from './lib/shortcuts'
@@ -30,7 +29,7 @@ const QUICK_CAPTURE_ACTIONS: { id: AiAction; label: string }[] = [
   { id: 'key-points', label: 'Key Points' }
 ]
 
-type MainView = 'notes' | 'whiteboard' | 'settings' | 'mcp'
+type MainView = 'notes' | 'whiteboard' | 'settings'
 
 function App(): React.JSX.Element {
   const backendStatus = useBackendStatus()
@@ -373,17 +372,6 @@ function App(): React.JSX.Element {
               >
                 Whiteboard
               </button>
-              <button
-                type="button"
-                onClick={() => setView('mcp')}
-                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                  view === 'mcp'
-                    ? 'bg-neutral-800 text-neutral-100'
-                    : 'text-neutral-500 hover:text-neutral-300'
-                }`}
-              >
-                MCP Server
-              </button>
               <span className="ml-auto text-xs text-neutral-600">Ctrl+Shift+P for commands</span>
               <button
                 type="button"
@@ -412,8 +400,6 @@ function App(): React.JSX.Element {
             <div className="min-h-0 flex-1">
               {view === 'settings' ? (
                 <SettingsView />
-              ) : view === 'mcp' ? (
-                <MCPView />
               ) : view === 'whiteboard' ? (
                 <DrawingView
                   workspaceId={selectedWorkspace?.id ?? activeTab?.workspaceId ?? null}

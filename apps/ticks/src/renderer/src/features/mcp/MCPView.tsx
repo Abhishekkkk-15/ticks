@@ -117,8 +117,7 @@ export default function MCPView(): React.JSX.Element {
   }
 
   return (
-    <div className="h-full overflow-y-auto bg-neutral-950 p-6 text-neutral-200">
-      <div className="mx-auto max-w-5xl space-y-6">
+    <div className="space-y-6">
         
         {/* Header Title Section */}
         <div className="border-b border-neutral-800 pb-5">
@@ -356,9 +355,7 @@ export default function MCPView(): React.JSX.Element {
             </div>
           </div>
 
-        </div>
-
-      </div>
+    </div>
     </div>
   )
 }

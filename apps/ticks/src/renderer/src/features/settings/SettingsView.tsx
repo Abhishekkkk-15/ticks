@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Check, Keyboard, Monitor, Sparkles, Sliders, Trash2, X, Zap } from 'lucide-react'
+import { Check, Keyboard, Monitor, Sparkles, Sliders, Trash2, Terminal, X, Zap } from 'lucide-react'
 import { useSettings } from './SettingsContext'
 import { setMistralApiKey, setStyleExamples } from './api'
 import { useAiAction } from '../ai/useAiAction'
 import { useWorkspaces } from '../workspaces/useWorkspaces'
 import Select from '../../components/ui/Select'
 import FontPicker from './FontPicker'
+import MCPView from '../mcp/MCPView'
 import {
   WORKFLOW_ACTIONS,
   WORKFLOW_SCOPE_LABELS,
@@ -14,7 +15,7 @@ import {
 } from '../workflows/runWorkflows'
 import type { Workflow, WorkflowTrigger, WorkflowScope, WorkflowOutputMode } from './types'
 
-type SettingsTab = 'general' | 'editor' | 'ai' | 'shortcuts' | 'workflows'
+type SettingsTab = 'general' | 'editor' | 'ai' | 'shortcuts' | 'workflows' | 'mcp'
 
 const TRIGGER_OPTIONS: { value: WorkflowTrigger; label: string }[] = [
   { value: 'on_save', label: 'On save' },
@@ -252,17 +253,17 @@ function SettingsView(): React.JSX.Element {
   }
 
   return (
-    <div className="flex h-full bg-neutral-950 text-neutral-100">
+    <div className="flex flex-col md:flex-row h-full bg-neutral-950 text-neutral-100">
       {/* Settings Navigation Sidebar */}
-      <aside className="w-56 shrink-0 border-r border-neutral-800 bg-neutral-900/50 p-4">
-        <h1 className="mb-6 px-2 text-sm font-semibold tracking-wider text-neutral-400 uppercase">
+      <aside className="w-full md:w-56 shrink-0 border-b md:border-b-0 md:border-r border-neutral-800 bg-neutral-900/50 p-4">
+        <h1 className="hidden md:block mb-6 px-2 text-sm font-semibold tracking-wider text-neutral-400 uppercase">
           Settings
         </h1>
-        <nav className="space-y-1">
+        <nav className="flex flex-row md:flex-col gap-1 overflow-x-auto md:overflow-x-visible pb-2 md:pb-0 scrollbar-none">
           <button
             type="button"
             onClick={() => setActiveTab('general')}
-            className={`flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+            className={`flex shrink-0 w-auto md:w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
               activeTab === 'general'
                 ? 'bg-neutral-800 text-neutral-100'
                 : 'text-neutral-400 hover:bg-neutral-800/40 hover:text-neutral-200'
@@ -274,7 +275,7 @@ function SettingsView(): React.JSX.Element {
           <button
             type="button"
             onClick={() => setActiveTab('editor')}
-            className={`flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+            className={`flex shrink-0 w-auto md:w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
               activeTab === 'editor'
                 ? 'bg-neutral-800 text-neutral-100'
                 : 'text-neutral-400 hover:bg-neutral-800/40 hover:text-neutral-200'
@@ -286,7 +287,7 @@ function SettingsView(): React.JSX.Element {
           <button
             type="button"
             onClick={() => setActiveTab('ai')}
-            className={`flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+            className={`flex shrink-0 w-auto md:w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
               activeTab === 'ai'
                 ? 'bg-neutral-800 text-neutral-100'
                 : 'text-neutral-400 hover:bg-neutral-800/40 hover:text-neutral-200'
@@ -298,7 +299,7 @@ function SettingsView(): React.JSX.Element {
           <button
             type="button"
             onClick={() => setActiveTab('shortcuts')}
-            className={`flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+            className={`flex shrink-0 w-auto md:w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
               activeTab === 'shortcuts'
                 ? 'bg-neutral-800 text-neutral-100'
                 : 'text-neutral-400 hover:bg-neutral-800/40 hover:text-neutral-200'
@@ -310,7 +311,7 @@ function SettingsView(): React.JSX.Element {
           <button
             type="button"
             onClick={() => setActiveTab('workflows')}
-            className={`flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+            className={`flex shrink-0 w-auto md:w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
               activeTab === 'workflows'
                 ? 'bg-neutral-800 text-neutral-100'
                 : 'text-neutral-400 hover:bg-neutral-800/40 hover:text-neutral-200'
@@ -319,11 +320,24 @@ function SettingsView(): React.JSX.Element {
             <Zap size={16} />
             Workflows
           </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('mcp')}
+            className={`flex shrink-0 w-auto md:w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+              activeTab === 'mcp'
+                ? 'bg-neutral-800 text-neutral-100'
+                : 'text-neutral-400 hover:bg-neutral-800/40 hover:text-neutral-200'
+            }`}
+          >
+            <Terminal size={16} />
+            MCP Server
+          </button>
         </nav>
       </aside>
 
       {/* Settings Content Pane */}
-      <main className="flex-1 overflow-y-auto px-10 py-8 max-w-3xl">
+      <main className="flex-1 overflow-y-auto px-4 md:px-10 py-6 md:py-8 w-full">
+        <div className="max-w-3xl w-full">
         {activeTab === 'general' && (
           <div className="space-y-12">
             <div>
@@ -336,7 +350,7 @@ function SettingsView(): React.JSX.Element {
             {/* Theme section */}
             <section className="space-y-3">
               <h3 className="text-sm font-medium text-neutral-200">Theme</h3>
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                 {/* Dark Theme Card */}
                 <button
                   type="button"
@@ -1299,6 +1313,10 @@ function SettingsView(): React.JSX.Element {
             </section>
           </div>
         )}
+        {activeTab === 'mcp' && (
+          <MCPView />
+        )}
+        </div>
       </main>
     </div>
   )

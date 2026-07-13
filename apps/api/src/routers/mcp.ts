@@ -26,7 +26,6 @@ router.get('/mcp/sse', async (req, res, next) => {
     };
 
     console.log(`[mcp] New connection established for session ${sessionId}`);
-    await transport.start();
     await mcpServer.connect(transport);
   } catch (err) {
     next(err);
