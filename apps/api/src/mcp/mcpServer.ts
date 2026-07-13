@@ -7,17 +7,18 @@ import { listDrawings, getDrawing, saveScene, createDrawing } from '../services/
 import { listResources, getResourceFilePath } from '../services/resourceService.js';
 import fs from 'fs';
 
-export const mcpServer = new Server(
-  {
-    name: 'ticks-mcp-server',
-    version: '0.1.0',
-  },
-  {
-    capabilities: {
-      tools: {},
+export function createMcpServer(): Server {
+  const server = new Server(
+    {
+      name: 'ticks-mcp-server',
+      version: '0.1.0',
     },
-  }
-);
+    {
+      capabilities: {
+        tools: {},
+      },
+    }
+  );
 
 // Define tools
 const TOOLS = [
@@ -141,7 +142,7 @@ const TOOLS = [
 ];
 
 // Register list tools handler
-mcpServer.setRequestHandler(ListToolsRequestSchema, async () => {
+server.setRequestHandler(ListToolsRequestSchema, async () => {
   const currentSettings = getSettingsInfo();
   const permitted = currentSettings.mcp_permitted_tools || [];
   const filtered = TOOLS.filter(t => permitted.includes(t.name));
@@ -164,7 +165,7 @@ function permitNote(noteId: string) {
 }
 
 // Register tool call handler
-mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
   const currentSettings = getSettingsInfo();
   
@@ -420,3 +421,6 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
     };
   }
 });
+
+  return server;
+}

@@ -35,7 +35,6 @@ app.use(drawingsRouter);
 app.use(settingsRouter);
 app.use(aiRouter);
 app.use(gitSyncRouter);
-app.use(mcpRouter);
 
 // Global exception and error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -51,4 +50,29 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 
 app.listen(settings.port, settings.host, () => {
   console.log(`[backend] ${settings.appName} listening on http://${settings.host}:${settings.port}`);
+});
+
+// Start a separate Express instance specifically for the MCP Server on port 8001 (port + 1)
+const mcpApp = express();
+mcpApp.use(cors({ origin: '*' }));
+mcpApp.use(express.json());
+
+mcpApp.use((req, res, next) => {
+  console.log(`[mcp-server] ${req.method} ${req.path}`);
+  next();
+});
+
+mcpApp.use(mcpRouter);
+
+mcpApp.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (res.headersSent) {
+    return next(err);
+  }
+  console.error(`[mcp-server] Unhandled error on ${req.method} ${req.path}:`, err);
+  res.status(500).json({ detail: 'Internal server error' });
+});
+
+const mcpPort = settings.port + 1;
+mcpApp.listen(mcpPort, settings.host, () => {
+  console.log(`[mcp-server] MCP Server listening on http://${settings.host}:${mcpPort}`);
 });

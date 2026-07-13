@@ -58,7 +58,7 @@ export default function MCPView(): React.JSX.Element {
     )
   }
 
-  const sseUrl = 'http://localhost:8000/mcp/sse'
+  const sseUrl = 'http://localhost:8001/mcp/sse'
 
   const handleCopyUrl = () => {
     navigator.clipboard.writeText(sseUrl)

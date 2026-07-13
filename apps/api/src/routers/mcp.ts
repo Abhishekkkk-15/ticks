@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
-import { mcpServer } from '../mcp/mcpServer.js';
+import { createMcpServer } from '../mcp/mcpServer.js';
 import { getSettingsInfo } from '../services/settingsService.js';
 
 const router = Router();
@@ -26,6 +26,7 @@ router.get('/mcp/sse', async (req, res, next) => {
     };
 
     console.log(`[mcp] New connection established for session ${sessionId}`);
+    const mcpServer = createMcpServer();
     await mcpServer.connect(transport);
   } catch (err) {
     next(err);
