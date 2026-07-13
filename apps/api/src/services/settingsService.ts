@@ -32,7 +32,21 @@ const DEFAULT_DATA = {
     ai_style: '',
     ai_format: ''
   } as Record<string, string>,
-  workflows: [] as any[]
+  workflows: [] as any[],
+  mcp_enabled: false,
+  mcp_permitted_notes: [] as string[],
+  mcp_permitted_tools: [
+    'list_workspaces',
+    'list_notes',
+    'read_note',
+    'search_notes',
+    'read_drawing',
+    'read_resource',
+    'create_note',
+    'update_note',
+    'patch_note',
+    'write_drawing'
+  ] as string[]
 };
 
 function readSettingsFile(): any {
@@ -95,7 +109,10 @@ export function getSettingsInfo(): SettingsInfo {
     default_editor_mode: data.default_editor_mode,
     mini_tray_size: data.mini_tray_size,
     keyboard_shortcuts: data.keyboard_shortcuts,
-    workflows: data.workflows
+    workflows: data.workflows,
+    mcp_enabled: data.mcp_enabled,
+    mcp_permitted_notes: data.mcp_permitted_notes || [],
+    mcp_permitted_tools: data.mcp_permitted_tools || []
   };
 }
 

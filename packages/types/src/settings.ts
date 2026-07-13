@@ -37,6 +37,9 @@ export interface SettingsInfo {
   mini_tray_size: 'compact' | 'default' | 'tall'
   keyboard_shortcuts: Record<string, string>
   workflows: Workflow[]
+  mcp_enabled: boolean
+  mcp_permitted_notes: string[]
+  mcp_permitted_tools: string[]
 }
 
 export interface SettingsUpdate {
@@ -50,6 +53,9 @@ export interface SettingsUpdate {
   mini_tray_size?: 'compact' | 'default' | 'tall'
   keyboard_shortcuts?: Record<string, string>
   workflows?: Workflow[]
+  mcp_enabled?: boolean
+  mcp_permitted_notes?: string[]
+  mcp_permitted_tools?: string[]
 }
 
 export interface MistralApiKeyUpdate {
