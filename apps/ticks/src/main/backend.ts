@@ -16,6 +16,22 @@ export function getApiBaseUrl(): string {
   return `http://${HOST}:${PORT}`
 }
 
+export function getMcpBridgePath(): string {
+  const backendDir = is.dev
+    ? join(__dirname, '../../../api')
+    : join(process.resourcesPath, 'api')
+    
+  let exeName = 'Ticks-MCP-Bridge.bat'
+  if (process.platform === 'darwin' || process.platform === 'linux') {
+    exeName = 'Ticks-MCP-Bridge.sh'
+  }
+  
+  // Return with forward slashes or double backslashes depending on platform for the json string.
+  // Actually the IDE config will expect standard path.
+  // We'll let path.join do its standard thing, the React component will format it for JSON.
+  return join(backendDir, 'dist', exeName)
+}
+
 /**
  * Check whether a port is already in use.
  */
@@ -63,8 +79,9 @@ function killBackendGroup(): void {
   if (!backendProcess || backendProcess.exitCode !== null) return
   try {
     if (process.platform === 'win32') {
-      // On Windows, spawn doesn't support process groups — just kill directly
-      backendProcess.kill('SIGTERM')
+      // On Windows, killing a shell-spawned process orphans its children.
+      // Use taskkill /T (tree) to cleanly terminate the whole group.
+      execSync(`taskkill /PID ${backendProcess.pid} /T /F`, { stdio: 'ignore' })
     } else {
       // Negative PID targets the whole process group
       process.kill(-backendProcess.pid!, 'SIGTERM')
@@ -107,6 +124,7 @@ export async function startBackend(): Promise<void> {
       shell: true,
       // detached: true creates a new process group so we can kill all children
       detached: true,
+      windowsHide: true,
       env: { ...process.env, HOST, PORT: String(PORT) }
     })
   } else {
@@ -122,6 +140,7 @@ export async function startBackend(): Promise<void> {
     backendProcess = spawn(process.execPath, [scriptPath], {
       cwd: process.resourcesPath,
       detached: true,
+      windowsHide: true,
       env: {
         ...process.env,
         ELECTRON_RUN_AS_NODE: '1',

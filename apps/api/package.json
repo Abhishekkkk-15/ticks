@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/main.ts",
     "build": "rimraf dist && esbuild src/main.ts --bundle --platform=node --target=node20 --outfile=dist/index.js",
-    "build:bridge": "esbuild src/bridge-cli.ts --bundle --platform=node --target=node20 --outfile=dist/bridge-cli.js && npx pkg dist/bridge-cli.js --targets node18-win-x64,node18-linux-x64,node18-macos-x64 --output dist/Ticks-MCP-Bridge",
+    "build:bridge": "node build-bridge.js",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit"
   },

@@ -4,6 +4,7 @@ import { electronAPI } from '@electron-toolkit/preload'
 // Custom APIs for renderer
 const api = {
   getApiBaseUrl: (): Promise<string> => ipcRenderer.invoke('api:get-base-url'),
+  getMcpBridgePath: (): Promise<string> => ipcRenderer.invoke('api:get-mcp-bridge-path'),
   exportNote: (defaultName: string, content: string): Promise<boolean> =>
     ipcRenderer.invoke('file:export-note', defaultName, content),
   importNote: (): Promise<{ title: string; content: string } | null> =>

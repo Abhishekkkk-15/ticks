@@ -29,6 +29,7 @@ export default function MCPView(): React.JSX.Element {
   const [workspaceNotesList, setWorkspaceNotesList] = useState<WorkspaceNotes[]>([])
   const [loadingNotes, setLoadingNotes] = useState(true)
   const [copied, setCopied] = useState(false)
+  const [bridgePath, setBridgePath] = useState('<PATH_TO_TICKS>/resources/api/dist/Ticks-MCP-Bridge-win.exe')
 
   // Load workspaces and their notes
   useEffect(() => {
@@ -45,6 +46,14 @@ export default function MCPView(): React.JSX.Element {
         console.error('Failed to load notes for MCP View:', err)
       } finally {
         setLoadingNotes(false)
+      }
+      
+      try {
+        const path = await window.api.getMcpBridgePath()
+        // Format path for JSON by replacing single backslashes with double backslashes
+        setBridgePath(path.replace(/\\/g, '\\\\'))
+      } catch (err) {
+        console.error('Failed to get bridge path:', err)
       }
     }
     loadData()
@@ -189,12 +198,13 @@ export default function MCPView(): React.JSX.Element {
               Claude Desktop Config
             </h3>
             <p className="text-[10px] leading-relaxed text-neutral-500">
-              Add this block to your <code className="text-neutral-400 font-mono">claude_desktop_config.json</code> under <code className="text-neutral-400 font-mono">mcpServers</code>:
+              Add this block to your <code className="text-neutral-400 font-mono">claude_desktop_config.json</code> under <code className="text-neutral-400 font-mono">mcpServers</code>. Replace the path with the actual installation path of your Ticks application:
             </p>
             <pre className="text-[9px] font-mono bg-neutral-950 p-2.5 rounded border border-neutral-900 text-amber-500/90 overflow-x-auto">
 {`"mcpServers": {
   "ticks": {
-    "url": "${sseUrl}"
+    "command": "${bridgePath}",
+    "args": []
   }
 }`}
             </pre>

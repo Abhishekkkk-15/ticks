@@ -2,7 +2,7 @@ import { app, shell, BrowserWindow, ipcMain, globalShortcut, clipboard, screen }
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
-import { getApiBaseUrl, startBackend, stopBackend } from './backend'
+import { getApiBaseUrl, getMcpBridgePath, startBackend, stopBackend } from './backend'
 import { exportNoteFile, importNoteFile, pickResourceFile } from './files'
 import fs from 'fs'
 import os from 'os'
@@ -518,6 +518,7 @@ if (!gotSingleInstanceLock) {
     })
 
     ipcMain.handle('api:get-base-url', () => getApiBaseUrl())
+    ipcMain.handle('api:get-mcp-bridge-path', () => getMcpBridgePath())
     ipcMain.handle('file:export-note', (_event, defaultName: string, content: string) =>
       exportNoteFile(defaultName, content)
     )
