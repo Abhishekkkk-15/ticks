@@ -38,5 +38,5 @@ appImage:
   artifactName: ${name}-${version}.${ext}
 npmRebuild: false
 extraResources:
-  - from: ../backend/dist
-    to: backend/dist
+  - from: ../api/dist
+    to: api/dist

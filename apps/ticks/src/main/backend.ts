@@ -86,8 +86,8 @@ export async function startBackend(): Promise<void> {
   }
 
   const backendDir = is.dev
-    ? join(__dirname, '../../../backend')
-    : join(process.resourcesPath, 'backend')
+    ? join(__dirname, '../../../api')
+    : join(process.resourcesPath, 'api')
 
   // Ensure log directory exists
   try {

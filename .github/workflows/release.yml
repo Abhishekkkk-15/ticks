@@ -41,18 +41,18 @@ jobs:
 
       # Build backend
       - name: Build backend
-        run: pnpm --filter @ticks/backend run build
+        run: pnpm --filter api run build
 
       # Set version (if provided)
       - name: Set version (if provided)
         if: ${{ inputs.version != '' }}
         run: npm version ${{ inputs.version }} --no-git-tag-version
-        working-directory: apps/frontend
+        working-directory: apps/ticks
 
       # Build Windows installer
       - name: Build Windows installer
         run: pnpm run build:win
-        working-directory: apps/frontend
+        working-directory: apps/ticks
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -61,7 +61,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: windows-installer
-          path: apps/frontend/dist/*.exe
+          path: apps/ticks/dist/*.exe
           if-no-files-found: error
 
   # ─────────────────────────────────────────────
@@ -87,18 +87,18 @@ jobs:
 
       # Build backend
       - name: Build backend
-        run: pnpm --filter @ticks/backend run build
+        run: pnpm --filter api run build
 
       # Set version (if provided)
       - name: Set version (if provided)
         if: ${{ inputs.version != '' }}
         run: npm version ${{ inputs.version }} --no-git-tag-version
-        working-directory: apps/frontend
+        working-directory: apps/ticks
 
       # Build macOS DMG
       - name: Build macOS DMG
         run: pnpm run build:mac
-        working-directory: apps/frontend
+        working-directory: apps/ticks
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -107,7 +107,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: macos-dmg
-          path: apps/frontend/dist/*.dmg
+          path: apps/ticks/dist/*.dmg
           if-no-files-found: error
 
   # ─────────────────────────────────────────────
@@ -143,18 +143,18 @@ jobs:
 
       # Build backend
       - name: Build backend
-        run: pnpm --filter @ticks/backend run build
+        run: pnpm --filter api run build
 
       # Set version (if provided)
       - name: Set version (if provided)
         if: ${{ inputs.version != '' }}
         run: npm version ${{ inputs.version }} --no-git-tag-version
-        working-directory: apps/frontend
+        working-directory: apps/ticks
 
       # Build Linux packages
       - name: Build Linux packages
         run: pnpm run build:linux
-        working-directory: apps/frontend
+        working-directory: apps/ticks
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -163,7 +163,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: linux-appimage
-          path: apps/frontend/dist/*.AppImage
+          path: apps/ticks/dist/*.AppImage
           if-no-files-found: error
 
       # Upload Linux deb
@@ -171,7 +171,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: linux-deb
-          path: apps/frontend/dist/*.deb
+          path: apps/ticks/dist/*.deb
           if-no-files-found: warn
 
 # ─────────────────────────────────────────────
@@ -194,7 +194,7 @@ jobs:
             echo "tag=v${{ inputs.version }}" >> $GITHUB_OUTPUT
             echo "name=v${{ inputs.version }}" >> $GITHUB_OUTPUT
           else
-            PKG=$(node -p "require('./apps/frontend/package.json').version")
+            PKG=$(node -p "require('./apps/ticks/package.json').version")
             echo "tag=v${PKG}" >> $GITHUB_OUTPUT
             echo "name=v${PKG}" >> $GITHUB_OUTPUT
           fi

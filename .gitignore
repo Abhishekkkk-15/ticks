@@ -18,9 +18,9 @@ workspace/
 .claude/
 
 # Build artifacts
-apps/backend/dist/
-apps/frontend/out/
-apps/frontend/dist/
+apps/api/dist/
+apps/ticks/out/
+apps/ticks/dist/
 .turbo/
 
 # Claude Code /export transcripts

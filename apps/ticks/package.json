@@ -16,7 +16,7 @@
     "typecheck": "pnpm run typecheck:node && pnpm run typecheck:web",
     "start": "electron-vite preview",
     "dev": "electron-vite dev",
-    "build": "pnpm --filter @ticks/backend run build && pnpm run typecheck && electron-vite build",
+    "build": "pnpm --filter api run build && pnpm run typecheck && electron-vite build",
     "build:unpack": "pnpm run build && electron-builder --dir",
     "build:win": "pnpm run build && electron-builder --win",
     "build:mac": "pnpm run build && electron-builder --mac",
