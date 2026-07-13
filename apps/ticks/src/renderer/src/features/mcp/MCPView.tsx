@@ -29,7 +29,7 @@ export default function MCPView(): React.JSX.Element {
   const [workspaceNotesList, setWorkspaceNotesList] = useState<WorkspaceNotes[]>([])
   const [loadingNotes, setLoadingNotes] = useState(true)
   const [copied, setCopied] = useState(false)
-  const [bridgePath, setBridgePath] = useState('<PATH_TO_TICKS>/resources/api/dist/Ticks-MCP-Bridge-win.exe')
+  const [bridgePath, setBridgePath] = useState('<PATH_TO_TICKS>/resources/api/dist/Ticks-MCP-Bridge.bat')
 
   // Load workspaces and their notes
   useEffect(() => {
