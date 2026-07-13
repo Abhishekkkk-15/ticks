@@ -21,6 +21,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useIsMaximized } from './lib/useIsMaximized'
 import { streamAiAction } from './features/ai/api'
 import type { AiAction } from './features/ai/api'
+import { useBackendStatus } from './lib/useBackendStatus'
 
 const QUICK_CAPTURE_ACTIONS: { id: AiAction; label: string }[] = [
   { id: 'summarize', label: 'Summarize' },
@@ -31,6 +32,19 @@ const QUICK_CAPTURE_ACTIONS: { id: AiAction; label: string }[] = [
 type MainView = 'notes' | 'whiteboard' | 'settings'
 
 function App(): React.JSX.Element {
+  const backendStatus = useBackendStatus()
+  const [showTroubleshoot, setShowTroubleshoot] = useState(false)
+
+  useEffect(() => {
+    if (backendStatus === 'offline') {
+      const timer = setTimeout(() => setShowTroubleshoot(true), 6000)
+      return () => clearTimeout(timer)
+    } else {
+      setShowTroubleshoot(false)
+    }
+    return undefined
+  }, [backendStatus])
+
   const workspacesApi = useWorkspaces()
   const [selectedWorkspace, setSelectedWorkspace] = useState<Workspace | null>(null)
   const [tabs, setTabs] = useState<OpenTab[]>([])
@@ -486,6 +500,132 @@ function App(): React.JSX.Element {
           </AnimatePresence>
         </AppShell>
       </div>
+
+      <AnimatePresence>
+        {backendStatus !== 'connected' && (
+          <motion.div
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.8, ease: 'easeInOut' }}
+            className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#f1ead9] select-none"
+          >
+            {/* Logo / Animation container */}
+            <div className="relative mb-10 flex h-32 w-32 items-center justify-center">
+              {/* Soft breathing background glow */}
+              <motion.div
+                animate={{ scale: [1, 1.25, 1], opacity: [0.15, 0.35, 0.15] }}
+                transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+                className="absolute inset-0 rounded-full bg-[#002b36]/10 blur-2xl"
+              />
+
+              {/* Pulsing outer ring */}
+              <motion.div
+                animate={{ scale: [1, 1.15, 1], opacity: [0.3, 0.6, 0.3] }}
+                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                className="absolute inset-2 rounded-full border border-[#002b36]/20"
+              />
+
+              {/* Rotating outer dash ring */}
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 16, repeat: Infinity, ease: 'linear' }}
+                className="absolute inset-0 rounded-full border border-dashed border-[#002b36]/10"
+              />
+
+              {/* Symmetrical cozy notepad SVG */}
+              <svg
+                width="56"
+                height="56"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#002b36"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="relative z-10 filter drop-shadow-[0_0_8px_rgba(0,43,54,0.15)]"
+              >
+                {/* Page outline */}
+                <motion.path
+                  d="M16 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L16 3z"
+                  initial={{ pathLength: 0 }}
+                  animate={{ pathLength: 1 }}
+                  transition={{ duration: 1.6, ease: 'easeInOut' }}
+                />
+                {/* Dog-ear fold */}
+                <motion.path
+                  d="M15 3v5h5"
+                  initial={{ pathLength: 0 }}
+                  animate={{ pathLength: 1 }}
+                  transition={{ duration: 0.8, delay: 0.6, ease: 'easeInOut' }}
+                />
+                {/* Cozy horizontal writing lines */}
+                <motion.line
+                  x1="8"
+                  y1="12"
+                  x2="16"
+                  y2="12"
+                  initial={{ pathLength: 0 }}
+                  animate={{ pathLength: 1 }}
+                  transition={{ duration: 0.6, delay: 1.1, ease: 'easeInOut' }}
+                />
+                <motion.line
+                  x1="8"
+                  y1="16"
+                  x2="15"
+                  y2="16"
+                  initial={{ pathLength: 0 }}
+                  animate={{ pathLength: 1 }}
+                  transition={{ duration: 0.6, delay: 1.4, ease: 'easeInOut' }}
+                />
+              </svg>
+            </div>
+
+            {/* Application Title */}
+            <motion.h1
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 1.2, delay: 0.2, ease: 'easeOut' }}
+              className="text-3xl font-light tracking-[0.3em] text-[#002b36] uppercase font-sans mb-3"
+            >
+              Ticks
+            </motion.h1>
+
+            {/* Subtitle / Loading State */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.8, delay: 0.6 }}
+              className="flex flex-col items-center gap-1.5"
+            >
+              <div className="flex items-center gap-2">
+                {/* Small infinite spinner */}
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+                  className="h-3 w-3 rounded-full border border-[#002b36]/30 border-t-[#002b36]"
+                />
+                <span className="text-xs font-light tracking-wide text-[#073642]">
+                  {backendStatus === 'connecting'
+                    ? 'Loading backend service...'
+                    : 'Establishing secure API connection...'}
+                </span>
+              </div>
+
+              {/* Troubleshooting helper */}
+              {showTroubleshoot && (
+                <motion.p
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-6 max-w-sm text-center text-[11px] font-light leading-relaxed text-[#586e75] px-4"
+                >
+                  The database or API server is taking longer than usual to boot. 
+                  This can happen during first-time initialization or file lock checks.
+                </motion.p>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
