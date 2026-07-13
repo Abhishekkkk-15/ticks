@@ -1,11 +1,10 @@
-# Python (backend)
-backend/.venv/
+# Python leftovers (legacy — backend is now Node.js)
 **/__pycache__/
 *.pyc
 .env
 !.env.example
 
-# Node (frontend, safety net beyond frontend/.gitignore)
+# Node — all packages
 **/node_modules/
 
 # OS
@@ -18,9 +17,11 @@ workspace/
 # Local tool config
 .claude/
 
-# Backend build artifacts
-backend/dist/
+# Build artifacts
+apps/backend/dist/
+apps/frontend/out/
+apps/frontend/dist/
+.turbo/
 
-# Claude Code /export transcripts (e.g. 2026-07-09-185754-some-slug.txt) —
-# never belongs in the repo, just a local session dump.
+# Claude Code /export transcripts
 /[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-*.txt
