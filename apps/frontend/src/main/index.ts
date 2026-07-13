@@ -403,6 +403,7 @@ function createWindow(): void {
 
   // Create the browser window.
   const mainWindow = new BrowserWindow({
+    title: 'Ticks',
     width: savedState.width,
     height: savedState.height,
     ...(savedState.x !== undefined && savedState.y !== undefined

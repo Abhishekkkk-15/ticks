@@ -16,15 +16,11 @@ on:
           - 'false'
           - 'true'
 
-# Only one release run at a time
 concurrency:
   group: release
   cancel-in-progress: false
 
 jobs:
-  # ─────────────────────────────────────────────
-  # Build Windows installer (.exe via NSIS)
-  # ─────────────────────────────────────────────
   build-windows:
     name: Windows (NSIS)
     runs-on: windows-latest
