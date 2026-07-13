@@ -1,0 +1,22 @@
+{
+  "name": "ticks-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "dev:backend": "turbo run dev --filter=@ticks/backend",
+    "dev:frontend": "turbo run dev --filter=@ticks/frontend"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.4",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  },
+  "packageManager": "pnpm@11.11.0"
+}
