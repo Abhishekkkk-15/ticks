@@ -55,7 +55,7 @@ app.listen(settings.port, settings.host, () => {
 // Start a separate Express instance specifically for the MCP Server on port 8001 (port + 1)
 const mcpApp = express();
 mcpApp.use(cors({ origin: '*' }));
-mcpApp.use(express.json());
+// Do not use express.json() because the MCP SDK consumes the raw request stream directly.
 
 mcpApp.use((req, res, next) => {
   console.log(`[mcp-server] ${req.method} ${req.path}`);
