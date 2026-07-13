@@ -39,38 +39,35 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
-          cache-dependency-path: frontend/pnpm-lock.yaml
+          cache-dependency-path: package.json
 
-      # Backend deps + build
-      - name: Install backend dependencies
-        run: pnpm install
-        working-directory: backend
+      # Install all workspace dependencies
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
 
+      # Build backend
       - name: Build backend
-        run: pnpm run build
-        working-directory: backend
+        run: pnpm --filter @ticks/backend run build
 
-      # Frontend deps + electron-builder
-      - name: Install frontend dependencies
-        run: pnpm install
-        working-directory: frontend
-
+      # Set version (if provided)
       - name: Set version (if provided)
         if: ${{ inputs.version != '' }}
         run: npm version ${{ inputs.version }} --no-git-tag-version
-        working-directory: frontend
+        working-directory: apps/frontend
 
+      # Build Windows installer
       - name: Build Windows installer
         run: pnpm run build:win
-        working-directory: frontend
+        working-directory: apps/frontend
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # Upload Windows artifact
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows-installer
-          path: frontend/dist/*.exe
+          path: apps/frontend/dist/*.exe
           if-no-files-found: error
 
   # ─────────────────────────────────────────────
@@ -90,36 +87,35 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
-          cache-dependency-path: frontend/pnpm-lock.yaml
+          cache-dependency-path: package.json
 
-      - name: Install backend dependencies
-        run: pnpm install
-        working-directory: backend
+      # Install all workspace dependencies
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
 
+      # Build backend
       - name: Build backend
-        run: pnpm run build
-        working-directory: backend
+        run: pnpm --filter @ticks/backend run build
 
-      - name: Install frontend dependencies
-        run: pnpm install
-        working-directory: frontend
-
+      # Set version (if provided)
       - name: Set version (if provided)
         if: ${{ inputs.version != '' }}
         run: npm version ${{ inputs.version }} --no-git-tag-version
-        working-directory: frontend
+        working-directory: apps/frontend
 
+      # Build macOS DMG
       - name: Build macOS DMG
         run: pnpm run build:mac
-        working-directory: frontend
+        working-directory: apps/frontend
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # Upload macOS artifact
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
         with:
           name: macos-dmg
-          path: frontend/dist/*.dmg
+          path: apps/frontend/dist/*.dmg
           if-no-files-found: error
 
   # ─────────────────────────────────────────────
@@ -139,7 +135,7 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
-          cache-dependency-path: frontend/pnpm-lock.yaml
+          cache-dependency-path: package.json
 
       # electron-builder on Linux needs these for packaging
       - name: Install system dependencies
@@ -151,46 +147,46 @@ jobs:
             fakeroot \
             dpkg
 
-      - name: Install backend dependencies
-        run: pnpm install
-        working-directory: backend
+      # Install all workspace dependencies
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
 
+      # Build backend
       - name: Build backend
-        run: pnpm run build
-        working-directory: backend
+        run: pnpm --filter @ticks/backend run build
 
-      - name: Install frontend dependencies
-        run: pnpm install
-        working-directory: frontend
-
+      # Set version (if provided)
       - name: Set version (if provided)
         if: ${{ inputs.version != '' }}
         run: npm version ${{ inputs.version }} --no-git-tag-version
-        working-directory: frontend
+        working-directory: apps/frontend
 
+      # Build Linux packages
       - name: Build Linux packages
         run: pnpm run build:linux
-        working-directory: frontend
+        working-directory: apps/frontend
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # Upload Linux AppImage
       - name: Upload Linux AppImage
         uses: actions/upload-artifact@v4
         with:
           name: linux-appimage
-          path: frontend/dist/*.AppImage
+          path: apps/frontend/dist/*.AppImage
           if-no-files-found: error
 
+      # Upload Linux deb
       - name: Upload Linux deb
         uses: actions/upload-artifact@v4
         with:
           name: linux-deb
-          path: frontend/dist/*.deb
+          path: apps/frontend/dist/*.deb
           if-no-files-found: warn
 
-  # ─────────────────────────────────────────────
-  # Create GitHub Release and attach all installers
-  # ─────────────────────────────────────────────
+# ─────────────────────────────────────────────
+# Create GitHub Release and attach all installers
+# ─────────────────────────────────────────────
   release:
     name: Publish Release
     needs: [build-windows, build-macos, build-linux]
@@ -208,7 +204,7 @@ jobs:
             echo "tag=v${{ inputs.version }}" >> $GITHUB_OUTPUT
             echo "name=v${{ inputs.version }}" >> $GITHUB_OUTPUT
           else
-            PKG=$(node -p "require('./frontend/package.json').version")
+            PKG=$(node -p "require('./apps/frontend/package.json').version")
             echo "tag=v${PKG}" >> $GITHUB_OUTPUT
             echo "name=v${PKG}" >> $GITHUB_OUTPUT
           fi
