@@ -6,7 +6,7 @@ import { SettingsInfo } from '@ticks/types';
 const DEFAULT_DATA = {
   mistral_api_key: null as string | null,
   style_examples: [] as string[],
-  theme: 'dark',
+  theme: 'solarized-light',
   font_size: 14,
   editor_font: 'monospace',
   autosave_delay: 800,
