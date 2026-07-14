@@ -67,6 +67,43 @@ function CommandPalette({
 
   const commands: PaletteCommand[] = []
 
+  // 1. Recent Notes
+  const sortedNotes = [...notes].sort((a, b) => {
+    const aTime = a.opened_at || a.updated_at || a.created_at
+    const bTime = b.opened_at || b.updated_at || b.created_at
+    return new Date(bTime).getTime() - new Date(aTime).getTime()
+  })
+
+  for (const note of sortedNotes) {
+    const workspace = workspacesApi.workspaces.find((w) => w.id === note.workspaceId)
+    const isActiveWorkspace = note.workspaceId === activeWorkspaceId
+    commands.push({
+      id: `note-${note.id}`,
+      label: isActiveWorkspace
+        ? `Open note: ${note.title}`
+        : `Open note: ${note.title} — in ${workspace?.name ?? 'workspace'}`,
+      hint: note.snippet || undefined,
+      run: () => {
+        if (workspace) onSelectWorkspace(workspace)
+        onOpenNote(note.workspaceId, note)
+        onClose()
+      }
+    })
+  }
+
+  // 2. Workspaces
+  for (const workspace of workspacesApi.workspaces) {
+    commands.push({
+      id: `ws-${workspace.id}`,
+      label: `Switch workspace: ${workspace.name}`,
+      run: () => {
+        onSelectWorkspace(workspace)
+        onClose()
+      }
+    })
+  }
+
+  // 3. Other actions
   if (activeWorkspaceId) {
     const workspaceId = activeWorkspaceId
     commands.push({
@@ -97,40 +134,13 @@ function CommandPalette({
       onClose()
     }
   })
+  
   for (const tab of SETTINGS_TABS) {
     commands.push({
       id: `settings-${tab.id}`,
       label: `Settings: ${tab.label}`,
       run: () => {
         onOpenSettings(tab.id)
-        onClose()
-      }
-    })
-  }
-
-  for (const workspace of workspacesApi.workspaces) {
-    commands.push({
-      id: `ws-${workspace.id}`,
-      label: `Switch workspace: ${workspace.name}`,
-      run: () => {
-        onSelectWorkspace(workspace)
-        onClose()
-      }
-    })
-  }
-
-  for (const note of notes) {
-    const workspace = workspacesApi.workspaces.find((w) => w.id === note.workspaceId)
-    const isActiveWorkspace = note.workspaceId === activeWorkspaceId
-    commands.push({
-      id: `note-${note.id}`,
-      label: isActiveWorkspace
-        ? `Open note: ${note.title}`
-        : `Open note: ${note.title} — in ${workspace?.name ?? 'workspace'}`,
-      hint: note.snippet || undefined,
-      run: () => {
-        if (workspace) onSelectWorkspace(workspace)
-        onOpenNote(note.workspaceId, note)
         onClose()
       }
     })
