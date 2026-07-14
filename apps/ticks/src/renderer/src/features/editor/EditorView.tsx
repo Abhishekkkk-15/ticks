@@ -99,7 +99,7 @@ function EditorView({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex shrink-0 items-center justify-between gap-1 border-b border-neutral-800 px-3 py-2">
+      <div className="flex shrink-0 items-center justify-between gap-1 border-b border-neutral-800 px-3 py-2 hide-in-focus">
         <div className="flex items-center gap-1">
           {modes.map((m) => (
             <button

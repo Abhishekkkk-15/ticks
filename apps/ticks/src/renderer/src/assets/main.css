@@ -246,3 +246,8 @@ body {
 ::-webkit-scrollbar-corner {
   background: transparent;
 }
+
+/* Focus Mode */
+.focus-mode .hide-in-focus {
+  display: none !important;
+}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Settings as SettingsIcon, X } from 'lucide-react'
+import { Settings as SettingsIcon, X, Maximize } from 'lucide-react'
 import AppShell from './components/layout/AppShell'
 import TitleBar from './components/layout/TitleBar'
 import DrawingView from './features/drawings/DrawingView'
@@ -59,6 +59,7 @@ function App(): React.JSX.Element {
   } | null>(null)
   const [captureRunningAction, setCaptureRunningAction] = useState<string | null>(null)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [focusMode, setFocusMode] = useState(false)
 
   const { settings } = useSettings()
 
@@ -289,6 +290,11 @@ function App(): React.JSX.Element {
         handleCreateNote()
         return
       }
+      if (matchShortcut(event, 'F11')) {
+        event.preventDefault()
+        setFocusMode((m) => !m)
+        return
+      }
       if (matchShortcut(event, 'Ctrl+Shift+W')) {
         if (activeTabId) {
           event.preventDefault()
@@ -335,7 +341,7 @@ function App(): React.JSX.Element {
 
   return (
     <div
-      className={`flex h-screen flex-col ${rounded ? 'overflow-hidden rounded-lg shadow-2xl' : ''}`}
+      className={`flex h-screen flex-col ${rounded ? 'overflow-hidden rounded-lg shadow-2xl' : ''} ${focusMode ? 'focus-mode' : ''}`}
     >
       <TitleBar />
       <div className="min-h-0 flex-1">
@@ -386,16 +392,31 @@ function App(): React.JSX.Element {
               >
                 <SettingsIcon size={14} />
               </button>
+              <button
+                type="button"
+                onClick={() => setFocusMode(!focusMode)}
+                title="Toggle Focus Mode (F11)"
+                aria-pressed={focusMode}
+                className={`rounded-md p-1.5 ${
+                  focusMode
+                    ? 'bg-amber-500/20 text-amber-500 hover:bg-amber-500/30'
+                    : 'text-neutral-500 hover:bg-neutral-800 hover:text-neutral-300'
+                }`}
+              >
+                <Maximize size={14} />
+              </button>
             </div>
             {view === 'notes' && (
-              <TabBar
-                tabs={tabs}
-                activeId={activeTabId}
-                activeDirty={activeDirty}
-                onSelect={setActiveTabId}
-                onClose={closeTab}
-                onReorder={reorderTabs}
-              />
+              <div className="shrink-0 hide-in-focus">
+                <TabBar
+                  tabs={tabs}
+                  activeId={activeTabId}
+                  activeDirty={activeDirty}
+                  onSelect={setActiveTabId}
+                  onClose={closeTab}
+                  onReorder={reorderTabs}
+                />
+              </div>
             )}
             <div className="min-h-0 flex-1">
               {view === 'settings' ? (

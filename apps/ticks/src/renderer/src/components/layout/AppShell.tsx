@@ -31,7 +31,7 @@ function AppShell({
       <motion.div
         animate={{ width: sidebarCollapsed ? 0 : 256 }}
         transition={{ type: 'spring', stiffness: 350, damping: 30 }}
-        className="flex shrink-0 flex-col overflow-hidden h-full"
+        className="flex shrink-0 flex-col overflow-hidden h-full hide-in-focus"
       >
         <Sidebar
           selectedNoteId={selectedNoteId}
@@ -47,7 +47,7 @@ function AppShell({
         <button
           type="button"
           onClick={onToggleSidebar}
-          className="absolute top-4 left-4 z-40 rounded-lg border border-neutral-800 bg-neutral-900/90 p-1.5 text-neutral-400 hover:text-neutral-200 shadow-xl backdrop-blur transition-all"
+          className="absolute top-4 left-4 z-40 rounded-lg border border-neutral-800 bg-neutral-900/90 p-1.5 text-neutral-400 hover:text-neutral-200 shadow-xl backdrop-blur transition-all hide-in-focus"
           title="Expand Sidebar"
         >
           <Menu size={16} />
