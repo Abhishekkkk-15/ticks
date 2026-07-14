@@ -22,6 +22,7 @@ function NoteOrganizePanel({
     const folder = folderDraft.trim() || null
     if (folder === note.folder) return
     onUpdated(await setNoteFolder(workspaceId, note.id, folder))
+    window.dispatchEvent(new CustomEvent('notes-updated'))
   }
 
   async function commitTags(): Promise<void> {

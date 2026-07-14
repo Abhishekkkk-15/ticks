@@ -71,7 +71,17 @@ export function useNotes(workspaceId: string): UseNotesResult {
         listFolders(workspaceId),
         listTags(workspaceId)
       ])
-      setFolders(nextFolders)
+      const flattenedFolders = new Set<string>()
+      for (const folder of nextFolders) {
+        if (!folder) continue
+        const parts = folder.split('/').filter(Boolean)
+        let current = ''
+        for (const part of parts) {
+          current = current ? `${current}/${part}` : part
+          flattenedFolders.add(current)
+        }
+      }
+      setFolders(Array.from(flattenedFolders).sort())
       setTags(nextTags)
     } catch {
       // Folder/tag lists are a secondary affordance — a failure here
@@ -131,12 +141,21 @@ export function useNotes(workspaceId: string): UseNotesResult {
           listTags(workspaceId)
         ])
         if (!cancelled) {
-          setFolders(nextFolders)
+          const flattenedFolders = new Set<string>()
+          for (const folder of nextFolders) {
+            if (!folder) continue
+            const parts = folder.split('/').filter(Boolean)
+            let current = ''
+            for (const part of parts) {
+              current = current ? `${current}/${part}` : part
+              flattenedFolders.add(current)
+            }
+          }
+          setFolders(Array.from(flattenedFolders).sort())
           setTags(nextTags)
         }
       } catch {
-        // Folder/tag lists are a secondary affordance — a failure here
-        // shouldn't block the note list itself from working.
+        // Folder/tag lists are a secondary affordance
       }
     }
 
@@ -146,6 +165,12 @@ export function useNotes(workspaceId: string): UseNotesResult {
       cancelled = true
     }
   }, [workspaceId])
+
+  useEffect(() => {
+    const handleUpdate = () => refresh()
+    window.addEventListener('notes-updated', handleUpdate)
+    return () => window.removeEventListener('notes-updated', handleUpdate)
+  }, [refresh])
 
   const create = useCallback(
     async (title: string): Promise<Note | null> => {

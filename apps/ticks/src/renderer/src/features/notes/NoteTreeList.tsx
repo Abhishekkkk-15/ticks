@@ -14,6 +14,7 @@ interface NoteTreeListProps {
   onRemove: (id: string) => void
   onRestore: (id: string) => void
   onPurge: (id: string) => void
+  onMoveNote: (noteId: string, newFolder: string | null) => void
 }
 
 interface TreeFolder {
@@ -32,13 +33,46 @@ export default function NoteTreeList({
   onToggleFavorite,
   onRemove,
   onRestore,
-  onPurge
+  onPurge,
+  onMoveNote
 }: NoteTreeListProps): React.JSX.Element {
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({})
 
   const toggleFolder = (path: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    setExpandedFolders(prev => ({ ...prev, [path]: !prev[path] }))
+    setExpandedFolders((prev) => ({ ...prev, [path]: !prev[path] }))
+  }
+
+  const handleDragStart = (e: React.DragEvent, noteId: string) => {
+    e.dataTransfer.setData('application/ticks-note-id', noteId)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    if (e.dataTransfer.types.includes('application/ticks-note-id')) {
+      e.preventDefault()
+      e.dataTransfer.dropEffect = 'move'
+      e.currentTarget.classList.add('bg-neutral-800/40')
+    }
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.currentTarget.classList.remove('bg-neutral-800/40')
+  }
+
+  const handleDropFolder = (e: React.DragEvent, folderPath: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    e.currentTarget.classList.remove('bg-neutral-800/40')
+    const noteId = e.dataTransfer.getData('application/ticks-note-id')
+    if (noteId) onMoveNote(noteId, folderPath)
+  }
+
+  const handleDropRoot = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.currentTarget.classList.remove('bg-neutral-800/40')
+    const noteId = e.dataTransfer.getData('application/ticks-note-id')
+    if (noteId) onMoveNote(noteId, null)
   }
 
   const root = useMemo(() => {
@@ -70,6 +104,8 @@ export default function NoteTreeList({
   const renderNote = (note: NoteListItem, depth: number) => (
     <div
       key={note.id}
+      draggable
+      onDragStart={(e) => handleDragStart(e, note.id)}
       className={`group flex items-start justify-between gap-1 rounded-md px-2 py-1.5 text-sm ${
         note.id === selectedNoteId
           ? 'bg-neutral-800 text-neutral-100'
@@ -151,12 +187,15 @@ export default function NoteTreeList({
         <button
           type="button"
           onClick={(e) => toggleFolder(folder.path, e)}
-          className="flex items-center gap-1.5 rounded-md py-1.5 px-2 text-sm text-neutral-300 hover:bg-neutral-800"
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={(e) => handleDropFolder(e, folder.path)}
+          className="flex items-center gap-1.5 rounded-md py-1.5 px-2 text-sm text-neutral-300 hover:bg-neutral-800 transition-colors"
           style={{ paddingLeft: `${depth * 12 + 8}px` }}
         >
           {expanded ? <ChevronDown size={14} className="shrink-0" /> : <ChevronRight size={14} className="shrink-0" />}
           <FolderIcon size={14} className="shrink-0 text-blue-400" />
-          <span className="truncate">{folder.name}</span>
+          <span className="truncate pointer-events-none">{folder.name}</span>
         </button>
         
         {expanded && (
@@ -170,7 +209,12 @@ export default function NoteTreeList({
   }
 
   return (
-    <div className="flex flex-col w-full space-y-0.5">
+    <div 
+      className="flex flex-col w-full space-y-0.5 min-h-full pb-16"
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDropRoot}
+    >
       {Object.values(root.children).map(folder => renderFolder(folder, 0))}
       {root.notes.map(note => renderNote(note, 0))}
     </div>

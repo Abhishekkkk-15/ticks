@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, Clock, List, Pin, RotateCcw, Star, Trash2, Upload, X, RefreshCw, FolderTree } from 'lucide-react'
 import { useNotes } from './useNotes'
 import type { NoteView } from './useNotes'
+import { setNoteFolder } from './api'
 import { highlightMatch } from './highlightMatch'
 import type { Note } from './types'
 import Select from '../../components/ui/Select'
@@ -211,6 +212,14 @@ function NoteList({
             onRemove={remove}
             onRestore={restore}
             onPurge={purge}
+            onMoveNote={async (noteId, newFolder) => {
+              try {
+                await setNoteFolder(workspaceId, noteId, newFolder)
+                window.dispatchEvent(new CustomEvent('notes-updated'))
+              } catch (err) {
+                console.error(err)
+              }
+            }}
           />
         ) : (
           <ul className="space-y-0.5">
