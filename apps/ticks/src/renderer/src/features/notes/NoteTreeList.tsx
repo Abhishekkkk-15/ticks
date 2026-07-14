@@ -53,12 +53,14 @@ export default function NoteTreeList({
   }
 
   const handleDragStart = (e: React.DragEvent, noteId: string) => {
-    e.dataTransfer.setData('application/ticks-note-id', noteId)
+    const ids = selectedNoteIds.has(noteId) ? Array.from(selectedNoteIds) : [noteId]
+    e.dataTransfer.setData('application/ticks-note-ids', JSON.stringify(ids))
+    e.dataTransfer.setData('application/ticks-note-id', noteId) // fallback
     e.dataTransfer.effectAllowed = 'move'
   }
 
   const handleDragOver = (e: React.DragEvent) => {
-    if (e.dataTransfer.types.includes('application/ticks-note-id')) {
+    if (e.dataTransfer.types.includes('application/ticks-note-ids') || e.dataTransfer.types.includes('application/ticks-note-id')) {
       e.preventDefault()
       e.dataTransfer.dropEffect = 'move'
       e.currentTarget.classList.add('bg-neutral-800/40')
@@ -73,15 +75,31 @@ export default function NoteTreeList({
     e.preventDefault()
     e.stopPropagation()
     e.currentTarget.classList.remove('bg-neutral-800/40')
-    const noteId = e.dataTransfer.getData('application/ticks-note-id')
-    if (noteId) onMoveNote(noteId, folderPath)
+    const idsData = e.dataTransfer.getData('application/ticks-note-ids')
+    if (idsData) {
+      try {
+        const ids = JSON.parse(idsData)
+        ids.forEach((id: string) => onMoveNote(id, folderPath))
+      } catch (err) {}
+    } else {
+      const noteId = e.dataTransfer.getData('application/ticks-note-id')
+      if (noteId) onMoveNote(noteId, folderPath)
+    }
   }
 
   const handleDropRoot = (e: React.DragEvent) => {
     e.preventDefault()
     e.currentTarget.classList.remove('bg-neutral-800/40')
-    const noteId = e.dataTransfer.getData('application/ticks-note-id')
-    if (noteId) onMoveNote(noteId, null)
+    const idsData = e.dataTransfer.getData('application/ticks-note-ids')
+    if (idsData) {
+      try {
+        const ids = JSON.parse(idsData)
+        ids.forEach((id: string) => onMoveNote(id, null))
+      } catch (err) {}
+    } else {
+      const noteId = e.dataTransfer.getData('application/ticks-note-id')
+      if (noteId) onMoveNote(noteId, null)
+    }
   }
 
   const root = useMemo(() => {
