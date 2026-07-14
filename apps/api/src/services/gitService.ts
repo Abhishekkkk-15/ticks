@@ -50,7 +50,9 @@ export async function getGitStatus(workspaceId: string) {
       branch: gitSync.branch || 'main',
       auto_sync_on_save: !!gitSync.auto_sync_on_save,
       uncommitted_changes: [],
-      last_commit: null
+      last_commit: null,
+      author_name: gitSync.author_name || '',
+      author_email: gitSync.author_email || ''
     };
   }
 
@@ -86,7 +88,9 @@ export async function getGitStatus(workspaceId: string) {
     branch: gitSync.branch || 'main',
     auto_sync_on_save: !!gitSync.auto_sync_on_save,
     uncommitted_changes,
-    last_commit
+    last_commit,
+    author_name: gitSync.author_name || '',
+    author_email: gitSync.author_email || ''
   };
 }
 
@@ -117,6 +121,13 @@ export async function configureGitRemote(workspaceId: string, syncConfig: GitSyn
       } catch (e) {
         // Ignore
       }
+    }
+
+    if (syncConfig.author_name) {
+      try { await executeGit(workspaceId, ['config', 'local', 'user.name', syncConfig.author_name]); } catch (e) {}
+    }
+    if (syncConfig.author_email) {
+      try { await executeGit(workspaceId, ['config', 'local', 'user.email', syncConfig.author_email]); } catch (e) {}
     }
   }
 
@@ -150,8 +161,17 @@ export async function syncGit(workspaceId: string) {
   }
 
   if (!hasUser) {
-    await executeGit(workspaceId, ['config', 'local', 'user.name', 'Ticks Sync']);
-    await executeGit(workspaceId, ['config', 'local', 'user.email', 'sync@ticks.local']);
+    const authorName = status.author_name || 'Ticks Sync';
+    const authorEmail = status.author_email || 'sync@ticks.local';
+    await executeGit(workspaceId, ['config', 'local', 'user.name', authorName]);
+    await executeGit(workspaceId, ['config', 'local', 'user.email', authorEmail]);
+  } else {
+    if (status.author_name) {
+      try { await executeGit(workspaceId, ['config', 'local', 'user.name', status.author_name]); } catch (e) {}
+    }
+    if (status.author_email) {
+      try { await executeGit(workspaceId, ['config', 'local', 'user.email', status.author_email]); } catch (e) {}
+    }
   }
 
   // 3. Ensure remote is correctly set in git configuration
@@ -206,7 +226,7 @@ export async function syncGit(workspaceId: string) {
       if (remoteBranchExists) {
         try {
           // Pull remote changes
-          await executeGit(workspaceId, ['pull', 'origin', branch, '--no-edit']);
+          await executeGit(workspaceId, ['pull', 'origin', branch, '--no-edit', '--allow-unrelated-histories']);
           pulled = true;
         } catch (err: any) {
           const errMsg = err.message || '';

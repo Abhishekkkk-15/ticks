@@ -19,7 +19,9 @@ router.post('/workspaces/:workspace_id/sync/git/configure', async (req, res, nex
     const syncConfig = {
       remote_url: req.body.remote_url,
       branch: req.body.branch,
-      auto_sync_on_save: req.body.auto_sync_on_save
+      auto_sync_on_save: req.body.auto_sync_on_save,
+      author_name: req.body.author_name,
+      author_email: req.body.author_email
     };
     const status = await configureGitRemote(req.params.workspace_id, syncConfig);
     res.json(status);

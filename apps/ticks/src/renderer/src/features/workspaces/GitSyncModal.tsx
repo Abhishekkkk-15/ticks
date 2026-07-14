@@ -16,6 +16,8 @@ export default function GitSyncModal({
   const [remoteUrl, setRemoteUrl] = useState('');
   const [branch, setBranch] = useState('main');
   const [autoSyncOnSave, setAutoSyncOnSave] = useState(false);
+  const [authorName, setAuthorName] = useState('');
+  const [authorEmail, setAuthorEmail] = useState('');
   
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -44,6 +46,8 @@ export default function GitSyncModal({
       setRemoteUrl(data.remote_url || '');
       setBranch(data.branch || 'main');
       setAutoSyncOnSave(!!data.auto_sync_on_save);
+      setAuthorName(data.author_name || '');
+      setAuthorEmail(data.author_email || '');
       setLogs([`Git status loaded for workspace: ${workspaceName}`]);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch git status');
@@ -63,7 +67,9 @@ export default function GitSyncModal({
         body: JSON.stringify({
           remote_url: remoteUrl.trim() || null,
           branch: branch.trim() || 'main',
-          auto_sync_on_save: autoSyncOnSave
+          auto_sync_on_save: autoSyncOnSave,
+          author_name: authorName.trim() || null,
+          author_email: authorEmail.trim() || null
         })
       });
       setGitStatus(data);
@@ -96,7 +102,10 @@ export default function GitSyncModal({
         newLogs.push('✓ Pushed local updates to origin.');
       }
 
-      if (result.conflict) {
+      if (result.success === false && result.error) {
+        newLogs.push(`❌ Synchronization failed: ${result.error}`);
+        setError(result.error);
+      } else if (result.conflict) {
         newLogs.push('⚠️ Merge conflict detected! Please resolve conflicts in the affected notes:');
         if (result.conflictedFiles && result.conflictedFiles.length > 0) {
           result.conflictedFiles.forEach((file: string) => {
@@ -121,7 +130,7 @@ export default function GitSyncModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="flex h-[550px] w-[650px] flex-col rounded-lg border border-neutral-800 bg-neutral-900 shadow-xl overflow-hidden">
+      <div className="flex h-[600px] w-[650px] flex-col rounded-lg border border-neutral-800 bg-neutral-900 shadow-xl overflow-hidden">
         
         {/* Header */}
         <div className="flex items-center justify-between border-b border-neutral-800 px-4 py-3">
@@ -229,6 +238,36 @@ export default function GitSyncModal({
                     <label htmlFor="auto-sync" className="text-xs font-medium text-neutral-300">
                       Auto-sync on save
                     </label>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label htmlFor="git-author-name" className="text-xs font-medium text-neutral-400">
+                      Author Name
+                    </label>
+                    <input
+                      id="git-author-name"
+                      type="text"
+                      value={authorName}
+                      onChange={e => setAuthorName(e.target.value)}
+                      placeholder="e.g. John Doe"
+                      className="w-full rounded-md border border-neutral-800 bg-neutral-950 px-3 py-1.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:outline-none focus:border-neutral-700"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label htmlFor="git-author-email" className="text-xs font-medium text-neutral-400">
+                      Author Email
+                    </label>
+                    <input
+                      id="git-author-email"
+                      type="email"
+                      value={authorEmail}
+                      onChange={e => setAuthorEmail(e.target.value)}
+                      placeholder="e.g. john@example.com"
+                      className="w-full rounded-md border border-neutral-800 bg-neutral-950 px-3 py-1.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:outline-none focus:border-neutral-700"
+                    />
                   </div>
                 </div>
 

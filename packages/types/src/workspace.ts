@@ -17,6 +17,8 @@ export interface GitSyncConfig {
   remote_url?: string | null
   branch?: string
   auto_sync_on_save?: boolean
+  author_name?: string
+  author_email?: string
 }
 
 export interface WorkspaceConfig {
