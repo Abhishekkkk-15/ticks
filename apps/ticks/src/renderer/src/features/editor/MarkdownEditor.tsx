@@ -1,10 +1,10 @@
-import { useMemo } from 'react'
+import { useMemo, useRef, useEffect } from 'react'
 import type { Ref } from 'react'
 import CodeMirror, { EditorView } from '@uiw/react-codemirror'
 import type { ReactCodeMirrorRef } from '@uiw/react-codemirror'
-import { markdown } from '@codemirror/lang-markdown'
+import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { languages } from '@codemirror/language-data'
-import { autocompletion, startCompletion, completionKeymap } from '@codemirror/autocomplete'
+import { startCompletion, type CompletionContext } from '@codemirror/autocomplete'
 import { keymap } from '@codemirror/view'
 import { moveLineUp, moveLineDown, copyLineUp, copyLineDown, toggleComment } from '@codemirror/commands'
 import { searchKeymap, selectNextOccurrence, selectSelectionMatches } from '@codemirror/search'
@@ -112,16 +112,20 @@ function MarkdownEditor({
     })
   }, [settings?.editor_font, settings?.font_size])
 
+  const notesRef = useRef(notes)
+  useEffect(() => {
+    notesRef.current = notes
+  }, [notes])
+
   const autocompleteExtension = useMemo(() => {
-    return autocompletion({
-      override: [
-        (context) => {
-          const word = context.matchBefore(/\[\[[^\]]*$/)
-          if (!word) return null
-          
-          if (!notes || notes.length === 0) {
+    return markdownLanguage.data.of({
+      autocomplete: (context: CompletionContext) => {
+        const wikiWord = context.matchBefore(/\[\[[^\]]*$/)
+        if (wikiWord) {
+          const currentNotes = notesRef.current
+          if (!currentNotes || currentNotes.length === 0) {
             return {
-              from: word.from,
+              from: wikiWord.from,
               options: [{
                 label: 'Loading notes...',
                 type: 'keyword',
@@ -131,8 +135,8 @@ function MarkdownEditor({
           }
 
           return {
-            from: word.from,
-            options: notes.map((note) => ({
+            from: wikiWord.from,
+            options: currentNotes.map((note) => ({
               label: note.title,
               displayLabel: note.title,
               type: 'keyword',
@@ -150,13 +154,12 @@ function MarkdownEditor({
               }
             }))
           }
-        },
-        (context) => {
-          const word = context.matchBefore(/\/\w*$/)
-          if (!word) return null
-          
+        }
+
+        const slashWord = context.matchBefore(/\/\w*$/)
+        if (slashWord) {
           return {
-            from: word.from,
+            from: slashWord.from,
             options: [
               { label: 'Heading 1', type: 'text', apply: '# ' },
               { label: 'Heading 2', type: 'text', apply: '## ' },
@@ -170,9 +173,11 @@ function MarkdownEditor({
             ]
           }
         }
-      ]
+
+        return null
+      }
     })
-  }, [notes])
+  }, [])
 
   const domEventHandlers = useMemo(() => {
     return EditorView.domEventHandlers({
@@ -205,7 +210,6 @@ function MarkdownEditor({
 
   const vscodeKeymapExtension = useMemo(() => {
     return keymap.of([
-      ...completionKeymap,
       { key: 'Shift-Space',           run: startCompletion },
       { key: 'Alt-ArrowUp',           run: moveLineUp },
       { key: 'Alt-ArrowDown',         run: moveLineDown },
@@ -289,7 +293,7 @@ function MarkdownEditor({
         indentOnInput: true,
         bracketMatching: true,
         closeBrackets: true,
-        autocompletion: false,
+        autocompletion: true,
         highlightActiveLine: true,
         highlightSelectionMatches: true
       }}
