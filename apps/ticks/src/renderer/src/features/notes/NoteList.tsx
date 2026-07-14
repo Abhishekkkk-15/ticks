@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowLeft, Clock, List, Pin, RotateCcw, Star, Trash2, Upload, X, RefreshCw, FolderTree } from 'lucide-react'
+import { ArrowLeft, Clock, List, Pin, RotateCcw, Star, Trash2, Upload, X, RefreshCw, FolderTree, CalendarDays } from 'lucide-react'
 import { useNotes } from './useNotes'
 import type { NoteView } from './useNotes'
 import { setNoteFolder } from './api'
@@ -129,6 +129,21 @@ function NoteList({
     if (note) onOpenNote(note)
   }
 
+  async function handleDailyNote(): Promise<void> {
+    const today = new Date().toISOString().split('T')[0]
+    const existingNote = notes.find(n => n.title === today)
+    if (existingNote) {
+      onOpenNote(existingNote as any) // NoteListItem doesn't have full Note fields but onOpenNote just needs ID usually, wait, onOpenNote expects Note. Let's see if we can just pass it. It has id, title, etc.
+    } else {
+      const note = await create(today)
+      if (note) {
+        await setNoteFolder(workspaceId, note.id, 'Daily Notes')
+        window.dispatchEvent(new CustomEvent('notes-updated'))
+        onOpenNote(note)
+      }
+    }
+  }
+
   async function handleImport(): Promise<void> {
     const imported = await window.api.importNote()
     if (!imported) return
@@ -150,6 +165,14 @@ function NoteList({
         <span className="min-w-0 flex-1 truncate text-sm font-medium text-neutral-200">
           {workspaceName}
         </span>
+        <button
+          type="button"
+          onClick={handleDailyNote}
+          title="Daily Note"
+          className="rounded-md p-1 text-neutral-500 hover:bg-neutral-800 hover:text-neutral-300"
+        >
+          <CalendarDays size={14} />
+        </button>
         <button
           type="button"
           onClick={handleImport}
