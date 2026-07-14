@@ -118,6 +118,46 @@ function MarkdownEditor({
   }, [notes])
 
   const autocompleteExtension = useMemo(() => {
+    const getSlashOptions = (triggerPos: number) => {
+      return [
+        { label: 'Heading 1', type: 'text', insertText: '# ' },
+        { label: 'Heading 2', type: 'text', insertText: '## ' },
+        { label: 'Heading 3', type: 'text', insertText: '### ' },
+        { label: 'Task List', type: 'text', insertText: '- [ ] ' },
+        { label: 'Bullet List', type: 'text', insertText: '- ' },
+        { label: 'Numbered List', type: 'text', insertText: '1. ' },
+        { label: 'Code Block', type: 'text', insertText: '```\n\n```', cursorOffset: -4 },
+        { label: 'Math Block', type: 'text', insertText: '$$\n\n$$', cursorOffset: -3 },
+        { label: 'Quote', type: 'text', insertText: '> ' },
+        { label: 'Horizontal Rule', type: 'text', insertText: '---\n' },
+        { label: 'Table', type: 'text', insertText: '| Column 1 | Column 2 |\n| -------- | -------- |\n| Text     | Text     |' },
+        { label: 'Bold', type: 'text', insertText: '****', cursorOffset: -2 },
+        { label: 'Italic', type: 'text', insertText: '**', cursorOffset: -1 },
+        { label: 'Strikethrough', type: 'text', insertText: '~~~~', cursorOffset: -2 },
+        { label: 'Link', type: 'text', insertText: '[]()', cursorOffset: -3 },
+        { label: 'Image', type: 'text', insertText: '![]()', cursorOffset: -3 },
+        { label: 'Inline Code', type: 'text', insertText: '``', cursorOffset: -1 },
+        { label: 'Highlight', type: 'text', insertText: '====', cursorOffset: -2 },
+        { label: 'Callout (Info)', type: 'text', insertText: '> [!info]\n> ' },
+        { label: 'Mermaid Diagram', type: 'text', insertText: '```mermaid\ngraph TD;\n    A-->B;\n```\n' },
+        { label: 'Toggle / Accordion', type: 'text', insertText: '<details>\n  <summary>Title</summary>\n  Content\n</details>', cursorOffset: -10 },
+        { label: 'Frontmatter', type: 'text', insertText: '---\ntitle: \n---\n', cursorOffset: -5 },
+        { label: 'Footnote', type: 'text', insertText: '[^1]', cursorOffset: -1 },
+        { label: "Today's Date", type: 'text', insertText: () => new Date().toISOString().split('T')[0] },
+        { label: 'Current Time', type: 'text', insertText: () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
+      ].map((opt: any) => ({
+        label: opt.label,
+        type: opt.type,
+        apply: (view: EditorView, _completion: any, _from: number, to: number) => {
+          const text = typeof opt.insertText === 'function' ? opt.insertText() : opt.insertText
+          view.dispatch({
+            changes: { from: triggerPos, to, insert: text },
+            selection: opt.cursorOffset ? { anchor: triggerPos + text.length + opt.cursorOffset } : undefined
+          })
+        }
+      }))
+    }
+
     return markdownLanguage.data.of({
       autocomplete: (context: CompletionContext) => {
         const wikiWord = context.matchBefore(/\[\[[^\]]*$/)
@@ -125,7 +165,7 @@ function MarkdownEditor({
           const currentNotes = notesRef.current
           if (!currentNotes || currentNotes.length === 0) {
             return {
-              from: wikiWord.from,
+              from: wikiWord.from + 2,
               options: [{
                 label: 'Loading notes...',
                 type: 'keyword',
@@ -135,12 +175,12 @@ function MarkdownEditor({
           }
 
           return {
-            from: wikiWord.from,
+            from: wikiWord.from + 2,
             options: currentNotes.map((note) => ({
               label: note.title,
               displayLabel: note.title,
               type: 'keyword',
-              apply: (view, _completion, from, to) => {
+              apply: (view, _completion, _from, to) => {
                 let end = to
                 const nextChars = view.state.sliceDoc(to, to + 2)
                 if (nextChars === ']]') {
@@ -148,8 +188,8 @@ function MarkdownEditor({
                 }
                 const insertText = `[${note.title}](note://${note.id})`
                 view.dispatch({
-                  changes: { from, to: end, insert: insertText },
-                  selection: { anchor: from + insertText.length }
+                  changes: { from: wikiWord.from, to: end, insert: insertText },
+                  selection: { anchor: wikiWord.from + insertText.length }
                 })
               }
             }))
@@ -159,18 +199,15 @@ function MarkdownEditor({
         const slashWord = context.matchBefore(/\/\w*$/)
         if (slashWord) {
           return {
-            from: slashWord.from,
-            options: [
-              { label: 'Heading 1', type: 'text', apply: '# ' },
-              { label: 'Heading 2', type: 'text', apply: '## ' },
-              { label: 'Heading 3', type: 'text', apply: '### ' },
-              { label: 'Task List', type: 'text', apply: '- [ ] ' },
-              { label: 'Bullet List', type: 'text', apply: '- ' },
-              { label: 'Numbered List', type: 'text', apply: '1. ' },
-              { label: 'Code Block', type: 'text', apply: '```\n\n```' },
-              { label: 'Quote', type: 'text', apply: '> ' },
-              { label: 'Table', type: 'text', apply: '| Column 1 | Column 2 |\n| -------- | -------- |\n| Text     | Text     |' }
-            ]
+            from: slashWord.from + 1,
+            options: getSlashOptions(slashWord.from)
+          }
+        }
+
+        if (context.explicit) {
+          return {
+            from: context.pos,
+            options: getSlashOptions(context.pos)
           }
         }
 
