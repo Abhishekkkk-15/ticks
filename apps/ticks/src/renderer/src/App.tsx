@@ -366,11 +366,12 @@ function App(): React.JSX.Element {
   // the screen edges just looks like a rendering glitch.
   const isMaximized = useIsMaximized()
   const isMac = window.api.platform === 'darwin'
-  const rounded = !isMac && !isMaximized
+  const isWin = window.api.platform === 'win32'
+  const rounded = !isMac && !isWin && !isMaximized
 
   return (
     <div
-      className={`flex h-screen flex-col ${rounded ? 'overflow-hidden rounded-lg shadow-2xl' : ''} ${focusMode ? 'focus-mode' : ''}`}
+      className={`flex h-screen flex-col bg-neutral-950 ${rounded ? 'overflow-hidden rounded-lg shadow-2xl' : ''} ${focusMode ? 'focus-mode' : ''}`}
     >
       <TitleBar />
       <div className="min-h-0 flex-1">

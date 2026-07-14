@@ -16,32 +16,35 @@ function TitleBar(): React.JSX.Element | null {
       onDoubleClick={() => window.api.windowControls.toggleMaximize()}
     >
       <span className="text-xs font-medium tracking-wide">Ticks</span>
-      <div className="flex h-full items-stretch" style={NO_DRAG_REGION}>
-        <button
-          type="button"
-          onClick={() => window.api.windowControls.minimize()}
-          aria-label="Minimize"
-          className="flex w-11 items-center justify-center hover:bg-neutral-800 hover:text-neutral-200"
-        >
-          <Minus size={14} />
-        </button>
-        <button
-          type="button"
-          onClick={() => window.api.windowControls.toggleMaximize()}
-          aria-label={isMaximized ? 'Restore' : 'Maximize'}
-          className="flex w-11 items-center justify-center hover:bg-neutral-800 hover:text-neutral-200"
-        >
-          {isMaximized ? <Copy size={12} /> : <Square size={12} />}
-        </button>
-        <button
-          type="button"
-          onClick={() => window.api.windowControls.close()}
-          aria-label="Close"
-          className="flex w-11 items-center justify-center hover:bg-red-600 hover:text-white"
-        >
-          <X size={14} />
-        </button>
-      </div>
+      
+      {window.api.platform === 'linux' && (
+        <div className="flex h-full items-stretch" style={NO_DRAG_REGION}>
+          <button
+            type="button"
+            onClick={() => window.api.windowControls.minimize()}
+            aria-label="Minimize"
+            className="flex w-11 items-center justify-center hover:bg-neutral-800 hover:text-neutral-200"
+          >
+            <Minus size={14} />
+          </button>
+          <button
+            type="button"
+            onClick={() => window.api.windowControls.toggleMaximize()}
+            aria-label={isMaximized ? 'Restore' : 'Maximize'}
+            className="flex w-11 items-center justify-center hover:bg-neutral-800 hover:text-neutral-200"
+          >
+            {isMaximized ? <Copy size={12} /> : <Square size={12} />}
+          </button>
+          <button
+            type="button"
+            onClick={() => window.api.windowControls.close()}
+            aria-label="Close"
+            className="flex w-11 items-center justify-center hover:bg-red-600 hover:text-white"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
     </div>
   )
 }
