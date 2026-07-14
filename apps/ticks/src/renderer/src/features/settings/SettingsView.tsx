@@ -9,9 +9,7 @@ import FontPicker from './FontPicker'
 import MCPView from '../mcp/MCPView'
 import {
   WORKFLOW_ACTIONS,
-  WORKFLOW_SCOPE_LABELS,
-  WORKFLOW_OUTPUT_MODE_LABELS,
-  DEFAULT_SCOPE_FOR_TRIGGER
+  WORKFLOW_OUTPUT_MODE_LABELS
 } from '../workflows/runWorkflows'
 import type { Workflow, WorkflowTrigger, WorkflowScope, WorkflowOutputMode } from './types'
 
@@ -67,7 +65,6 @@ function SettingsView(): React.JSX.Element {
   const [workflowShortcut, setWorkflowShortcut] = useState('')
   const [workflowActions, setWorkflowActions] = useState<string[]>([])
   const [nextWorkflowAction, setNextWorkflowAction] = useState(WORKFLOW_ACTIONS[0].id)
-  const [workflowScope, setWorkflowScope] = useState<WorkflowScope>('full_note')
   const [workflowOutputMode, setWorkflowOutputMode] = useState<WorkflowOutputMode>('append')
   const [recordingWorkflowShortcut, setRecordingWorkflowShortcut] = useState(false)
 
@@ -228,21 +225,20 @@ function SettingsView(): React.JSX.Element {
     if (workflowTrigger === 'shortcut' && !workflowShortcut) return
     if (workflowActions.length === 0) return
 
-    const workflow: Workflow = {
+    const newWorkflow: Workflow = {
       id: crypto.randomUUID(),
-      name,
+      name: workflowName.trim(),
       trigger: workflowTrigger,
-      scope: workflowScope,
+      scope: 'full_note',
       output_mode: workflowOutputMode,
       shortcut: workflowTrigger === 'shortcut' ? workflowShortcut : null,
       actions: workflowActions
     }
-    updateSettings({ workflows: [...settings.workflows, workflow] })
+    updateSettings({ workflows: [...settings.workflows, newWorkflow] })
     setWorkflowName('')
     setWorkflowTrigger('on_save')
     setWorkflowShortcut('')
     setWorkflowActions([])
-    setWorkflowScope('full_note')
     setWorkflowOutputMode('append')
     setNextWorkflowAction(WORKFLOW_ACTIONS[0].id)
   }
@@ -1185,24 +1181,12 @@ function SettingsView(): React.JSX.Element {
                       onChange={(value) => {
                         const t = value as WorkflowTrigger
                         setWorkflowTrigger(t)
-                        // Auto-set the most sensible scope for this trigger
-                        setWorkflowScope(DEFAULT_SCOPE_FOR_TRIGGER[t])
                       }}
                       options={TRIGGER_OPTIONS.map((t) => ({ value: t.value, label: t.label }))}
                       size="md"
                     />
                   </div>
-                  <div className="flex-1 space-y-1.5">
-                    <label className="text-xs font-medium text-neutral-400">Run on</label>
-                    <Select
-                      value={workflowScope}
-                      onChange={(value) => setWorkflowScope(value as WorkflowScope)}
-                      options={(Object.entries(WORKFLOW_SCOPE_LABELS) as [WorkflowScope, string][]).map(
-                        ([value, label]) => ({ value, label })
-                      )}
-                      size="md"
-                    />
-                  </div>
+
                 </div>
 
                 <div className="space-y-1.5">

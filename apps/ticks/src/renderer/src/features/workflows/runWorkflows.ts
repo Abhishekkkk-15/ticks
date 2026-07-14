@@ -50,6 +50,8 @@ interface RunWorkflowsContext {
   content: string
   /** Text the user has highlighted in the editor (may be empty string). */
   selectedText?: string
+  /** Range of the selected text in the document. */
+  selectionRange?: { from: number; to: number } | null
   /** Text that was just captured or pasted (only set for on_capture/on_paste). */
   clipboardText?: string
 }
@@ -77,40 +79,6 @@ function snapshotKey(workflowId: string, noteId: string): string {
   return `workflow-snapshot:${workflowId}:${noteId}`
 }
 
-/**
- * Extract the text that was appended/added after the common prefix.
- * Simple and fast for the typical note-taking pattern of writing at the end.
- * Falls back to the full content if nothing has been added.
- */
-function extractNewText(previous: string, current: string): string {
-  if (!previous) return current // first run
-  let i = 0
-  const minLen = Math.min(previous.length, current.length)
-  while (i < minLen && previous[i] === current[i]) i++
-  const added = current.slice(i).trim()
-  return added || current // fallback: nothing new → full note
-}
-
-/**
- * Resolve the actual text to feed into the workflow based on its scope.
- * Falls back gracefully so there's always something to send to the AI.
- */
-function resolveInput(workflow: Workflow, ctx: RunWorkflowsContext): string {
-  switch (workflow.scope) {
-    case 'selection':
-      return ctx.selectedText?.trim() ? ctx.selectedText : ctx.content
-    case 'clipboard':
-      return ctx.clipboardText?.trim() ? ctx.clipboardText : ctx.content
-    case 'new_text': {
-      const prev = localStorage.getItem(snapshotKey(workflow.id, ctx.noteId)) ?? ''
-      return extractNewText(prev, ctx.content)
-    }
-    case 'full_note':
-    default:
-      return ctx.content
-  }
-}
-
 /** Persist content to the note and fire the sync event for open editors. */
 async function commitToNote(
   workspaceId: string,
@@ -131,8 +99,40 @@ export async function runWorkflows(
   context: RunWorkflowsContext
 ): Promise<void> {
   const matches = workflows.filter((w) => w.trigger === trigger)
-  for (const workflow of matches) {
-    await runWorkflow(workflow, context)
+  for (const w of matches) {
+    // Override scope based purely on trigger to simplify user experience
+    const effectiveScope =
+      w.trigger === 'on_save' ? 'new_text' :
+      w.trigger === 'shortcut' ? 'selection' :
+      (w.trigger === 'on_capture' || w.trigger === 'on_paste') ? 'clipboard' :
+      w.scope
+
+    let inputText = ''
+    if (effectiveScope === 'new_text') {
+      const lastSnapshot = localStorage.getItem(snapshotKey(w.id, context.noteId)) || ''
+      if (lastSnapshot.length > 0 && context.content.startsWith(lastSnapshot)) {
+        inputText = context.content.slice(lastSnapshot.length)
+      } else {
+        inputText = context.content
+      }
+    } else if (effectiveScope === 'selection') {
+      inputText = context.selectedText && context.selectedText.length > 0 ? context.selectedText : context.content
+    } else if (effectiveScope === 'clipboard') {
+      inputText = context.clipboardText || ''
+    } else {
+      inputText = context.content
+    }
+
+    if (!inputText.trim()) {
+      console.warn(`[Workflows] Skipping ${w.name}: no input text available for scope ${effectiveScope}.`)
+      continue
+    }
+
+    try {
+      await processWorkflow(w, inputText, context, effectiveScope)
+    } catch (err) {
+      console.error(err)
+    }
   }
 }
 
@@ -155,13 +155,15 @@ async function runSingleAction(
 
 // Chains the workflow's actions like n8n: each step's output becomes the
 // next step's input, and only the final step's result is applied to the note.
-export async function runWorkflow(workflow: Workflow, context: RunWorkflowsContext): Promise<void> {
+export async function processWorkflow(
+  workflow: Workflow,
+  inputText: string,
+  context: RunWorkflowsContext,
+  effectiveScope: string
+): Promise<void> {
   const noteContext = { workspaceId: context.workspaceId, noteId: context.noteId }
 
-  // Pick what text to send to the AI based on the workflow's scope setting.
-  const initialInput = resolveInput(workflow, context)
-
-  let stepInput = initialInput
+  let stepInput = inputText
   for (const action of workflow.actions) {
     stepInput = await runSingleAction(action, stepInput, noteContext)
   }
@@ -191,17 +193,49 @@ export async function runWorkflow(workflow: Workflow, context: RunWorkflowsConte
   // Build the updated note content for append / replace modes.
   const detail = await getNote(context.workspaceId, context.noteId)
   const scopeNote =
-    workflow.scope === 'selection' && context.selectedText?.trim()
+    effectiveScope === 'selection' && context.selectedText?.trim()
       ? ' [selection]'
-      : workflow.scope === 'clipboard' && context.clipboardText?.trim()
+      : effectiveScope === 'clipboard' && context.clipboardText?.trim()
         ? ' [clipboard]'
-        : workflow.scope === 'new_text'
+        : effectiveScope === 'new_text'
           ? ' [new text]'
           : ''
 
   let updated: string
   if (outputMode === 'replace') {
-    updated = finalResult.endsWith('\n') ? finalResult : finalResult + '\n'
+    if (effectiveScope === 'selection' && context.selectionRange) {
+      // Replace just the selection
+      updated =
+        detail.content.slice(0, context.selectionRange.from) +
+        finalResult +
+        detail.content.slice(context.selectionRange.to)
+    } else if (effectiveScope === 'clipboard' && context.clipboardText) {
+      // Replace the last occurrence of the clipboard text (which we just appended)
+      const lastIndex = detail.content.lastIndexOf(context.clipboardText)
+      if (lastIndex !== -1) {
+        // Also try to replace the `> ` if it was a capture format
+        const textToReplace = workflow.trigger === 'on_capture' ? `> ${context.clipboardText}\n` : context.clipboardText
+        const formatIndex = detail.content.lastIndexOf(textToReplace)
+        
+        if (formatIndex !== -1) {
+          updated =
+            detail.content.slice(0, formatIndex) +
+            finalResult +
+            detail.content.slice(formatIndex + textToReplace.length)
+        } else {
+          updated =
+            detail.content.slice(0, lastIndex) +
+            finalResult +
+            detail.content.slice(lastIndex + context.clipboardText.length)
+        }
+      } else {
+        // Fallback if not found for some reason
+        updated = finalResult.endsWith('\n') ? finalResult : finalResult + '\n'
+      }
+    } else {
+      // Full note replacement (e.g. on_save / full_note)
+      updated = finalResult.endsWith('\n') ? finalResult : finalResult + '\n'
+    }
   } else {
     // append (default)
     const separator = detail.content.endsWith('\n') || detail.content === '' ? '' : '\n\n'
@@ -211,7 +245,7 @@ export async function runWorkflow(workflow: Workflow, context: RunWorkflowsConte
   await commitToNote(context.workspaceId, context.noteId, updated)
 
   // Snapshot the current content so the next new_text run can diff against it.
-  if (workflow.scope === 'new_text') {
+  if (effectiveScope === 'new_text') {
     localStorage.setItem(snapshotKey(workflow.id, context.noteId), updated)
   }
 }
