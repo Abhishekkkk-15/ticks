@@ -483,37 +483,67 @@ function App(): React.JSX.Element {
                     />
                   </div>
                   {splitMode && (
-                    <div className="flex-1 min-w-0 flex flex-col">
-                      <div className="border-b border-neutral-800 bg-neutral-900/50 px-3 py-1 text-xs flex items-center justify-between shrink-0">
-                        <span className="text-neutral-400 font-medium">Split View</span>
-                        <select 
-                          className="bg-neutral-950 text-neutral-300 border border-neutral-800 rounded px-2 py-1 outline-none focus:border-neutral-600 max-w-[200px]"
-                          value={splitTabId || ''}
-                          onChange={(e) => setSplitTabId(e.target.value || null)}
-                        >
-                          <option value="">Select note...</option>
-                          {tabs.map(t => (
-                            <option key={`opt-${t.note.id}`} value={t.note.id}>{t.note.title}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="flex-1 min-h-0">
-                        {splitTabId ? (
-                          <NoteEditor
-                            key={`split-${splitTabId}`}
-                            workspaceId={tabs.find(t => t.note.id === splitTabId)?.workspaceId || activeTab.workspaceId}
-                            noteId={splitTabId}
-                            onDeleted={() => setSplitTabId(null)}
-                            onDuplicated={(note) => openNote(activeTab.workspaceId, note)}
-                            onRenamed={renameTab}
-                            onSaveStatusChange={(status: SaveStatus) => handleSaveStatusChange(splitTabId, status)}
-                          />
-                        ) : (
-                          <div className="flex h-full items-center justify-center text-sm text-neutral-500">
-                            Select an open tab from the dropdown to view alongside.
+                    <div 
+                      className="flex-1 min-w-0 flex flex-col"
+                      onDragOver={(e) => {
+                        if (e.dataTransfer.types.includes('application/x-ticks-tab') || e.dataTransfer.types.includes('text/plain')) {
+                          e.preventDefault()
+                          e.dataTransfer.dropEffect = 'copy'
+                        }
+                      }}
+                      onDrop={async (e) => {
+                        e.preventDefault()
+                        const tabNoteId = e.dataTransfer.getData('application/x-ticks-tab')
+                        if (tabNoteId && tabs.some(t => t.note.id === tabNoteId)) {
+                           setSplitTabId(tabNoteId)
+                           return
+                        }
+                        
+                        const plainNoteId = e.dataTransfer.getData('text/plain')
+                        if (plainNoteId && selectedWorkspace) {
+                           const { getNote } = await import('./features/notes/api')
+                           try {
+                             const noteDetail = await getNote(selectedWorkspace.id, plainNoteId)
+                             openNote(selectedWorkspace.id, noteDetail)
+                             setSplitTabId(noteDetail.id)
+                           } catch (err) {
+                             console.error('Failed to open dropped note:', err)
+                           }
+                        }
+                      }}
+                    >
+                      {splitTabId ? (
+                        <>
+                          <div className="border-b border-neutral-800 bg-neutral-900/50 px-3 py-1.5 text-xs flex items-center justify-between shrink-0">
+                            <span className="text-neutral-400 font-medium">
+                              {tabs.find(t => t.note.id === splitTabId)?.note.title || 'Split View'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setSplitTabId(null)}
+                              className="text-neutral-500 hover:text-neutral-300 transition-colors p-0.5 rounded hover:bg-neutral-800"
+                              title="Close split view"
+                            >
+                              <X size={12} />
+                            </button>
                           </div>
-                        )}
-                      </div>
+                          <div className="flex-1 min-h-0">
+                            <NoteEditor
+                              key={`split-${splitTabId}`}
+                              workspaceId={tabs.find(t => t.note.id === splitTabId)?.workspaceId || activeTab.workspaceId}
+                              noteId={splitTabId}
+                              onDeleted={() => setSplitTabId(null)}
+                              onDuplicated={(note) => openNote(activeTab.workspaceId, note)}
+                              onRenamed={renameTab}
+                              onSaveStatusChange={(status: SaveStatus) => handleSaveStatusChange(splitTabId, status)}
+                            />
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex-1 m-4 rounded-xl border-2 border-dashed border-neutral-800 bg-neutral-900/30 flex items-center justify-center text-sm text-neutral-500 pointer-events-none">
+                          Drag a note here to view side-by-side
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

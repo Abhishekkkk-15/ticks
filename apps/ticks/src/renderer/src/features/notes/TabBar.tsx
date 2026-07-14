@@ -37,7 +37,11 @@ function TabBar({
           <div
             key={tab.note.id}
             draggable
-            onDragStart={() => setDragIndex(index)}
+            onDragStart={(event) => {
+              setDragIndex(index)
+              event.dataTransfer.setData('application/x-ticks-tab', tab.note.id)
+              event.dataTransfer.effectAllowed = 'copyMove'
+            }}
             onDragOver={(event) => event.preventDefault()}
             onDrop={() => {
               if (dragIndex !== null && dragIndex !== index) onReorder(dragIndex, index)
