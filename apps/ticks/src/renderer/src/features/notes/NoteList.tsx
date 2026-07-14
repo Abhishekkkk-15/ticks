@@ -436,8 +436,9 @@ function NoteList({
                 type="button"
                 className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 transition-colors"
                 onClick={() => {
-                  setRenamePrompt({ type: 'note', targetId: contextMenu.target.noteId!, currentName: contextMenu.target.noteTitle! })
-                  setCreationName(contextMenu.target.noteTitle!)
+                  const target = contextMenu.target as any
+                  setRenamePrompt({ type: 'note', targetId: target.noteId, currentName: target.noteTitle })
+                  setCreationName(target.noteTitle)
                   setContextMenu(null)
                 }}
               >
@@ -447,8 +448,9 @@ function NoteList({
                 type="button"
                 className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors"
                 onClick={async () => {
-                  if (window.confirm(`Move "${contextMenu.target.noteTitle}" to trash?`)) {
-                    await remove(contextMenu.target.noteId!)
+                  const target = contextMenu.target as any
+                  if (window.confirm(`Move "${target.noteTitle}" to trash?`)) {
+                    await remove(target.noteId)
                   }
                   setContextMenu(null)
                 }}
@@ -464,7 +466,8 @@ function NoteList({
                 type="button"
                 className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 transition-colors"
                 onClick={() => {
-                  setCreationPrompt({ type: 'note', folderPath: contextMenu.target.type === 'folder' ? contextMenu.target.path : null })
+                  const target = contextMenu.target as any
+                  setCreationPrompt({ type: 'note', folderPath: contextMenu.target.type === 'folder' ? target.path : null })
                   setContextMenu(null)
                 }}
               >
@@ -474,7 +477,8 @@ function NoteList({
                 type="button"
                 className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 transition-colors"
                 onClick={() => {
-                  setCreationPrompt({ type: 'folder', folderPath: contextMenu.target.type === 'folder' ? contextMenu.target.path : null })
+                  const target = contextMenu.target as any
+                  setCreationPrompt({ type: 'folder', folderPath: contextMenu.target.type === 'folder' ? target.path : null })
                   setContextMenu(null)
                 }}
               >
@@ -490,8 +494,9 @@ function NoteList({
                 type="button"
                 className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 transition-colors"
                 onClick={() => {
-                  const currentName = contextMenu.target.path!.split('/').pop()!
-                  setRenamePrompt({ type: 'folder', targetId: contextMenu.target.path!, currentName })
+                  const target = contextMenu.target as any
+                  const currentName = target.path.split('/').pop()!
+                  setRenamePrompt({ type: 'folder', targetId: target.path, currentName })
                   setCreationName(currentName)
                   setContextMenu(null)
                 }}
@@ -502,8 +507,9 @@ function NoteList({
                 type="button"
                 className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors"
                 onClick={async () => {
-                  if (window.confirm(`Delete folder "${contextMenu.target.path}" and all its contents?`)) {
-                    const folderPath = contextMenu.target.path!
+                  const target = contextMenu.target as any
+                  if (window.confirm(`Delete folder "${target.path}" and all its contents?`)) {
+                    const folderPath = target.path
                     const folderNotes = notes.filter(n => n.folder === folderPath || n.folder?.startsWith(`${folderPath}/`))
                     for (const n of folderNotes) {
                       await remove(n.id)
@@ -560,7 +566,7 @@ function NoteList({
               </button>
               <button
                 type="submit"
-                disabled={!creationName.trim() || (renamePrompt && creationName.trim() === renamePrompt.currentName)}
+                disabled={!creationName.trim() || (renamePrompt ? creationName.trim() === renamePrompt.currentName : false)}
                 className="rounded-md bg-neutral-100 px-3 py-1.5 text-xs font-medium text-neutral-900 hover:bg-neutral-200 disabled:opacity-50 transition-colors"
               >
                 {renamePrompt ? 'Rename' : 'Create'}
