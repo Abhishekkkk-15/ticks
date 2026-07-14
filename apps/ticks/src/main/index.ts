@@ -266,7 +266,6 @@ async function performGlobalCapture(): Promise<void> {
   }
 
   // Send text to the main window renderer
-  const [mainWindow] = BrowserWindow.getAllWindows()
   if (mainWindow) {
     mainWindow.webContents.send('shortcut:capture-text', capturedText)
     if (mainWindow.isMinimized()) mainWindow.restore()
@@ -398,11 +397,13 @@ function registerMiniTrayShortcut(): void {
 const ZOOM_STEP = 0.5
 const ZOOM_LIMIT = 4
 
+let mainWindow: BrowserWindow | null = null
+
 function createWindow(): void {
   const savedState = loadWindowState()
 
   // Create the browser window.
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     title: 'Ticks',
     width: savedState.width,
     height: savedState.height,
@@ -455,6 +456,7 @@ function createWindow(): void {
     // The hidden mini-tray window would otherwise keep 'window-all-closed'
     // from ever firing, silently leaving the app running in the background.
     if (process.platform !== 'darwin') app.quit()
+    mainWindow = null
   })
 
   mainWindow.on('maximize', () => mainWindow.webContents.send('window:maximized-changed', true))
