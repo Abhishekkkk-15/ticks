@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Settings as SettingsIcon, X, Maximize } from 'lucide-react'
+import { Settings as SettingsIcon, X, Maximize, Columns } from 'lucide-react'
 import AppShell from './components/layout/AppShell'
 import TitleBar from './components/layout/TitleBar'
 import DrawingView from './features/drawings/DrawingView'
@@ -60,6 +60,8 @@ function App(): React.JSX.Element {
   const [captureRunningAction, setCaptureRunningAction] = useState<string | null>(null)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [focusMode, setFocusMode] = useState(false)
+  const [splitMode, setSplitMode] = useState(false)
+  const [splitTabId, setSplitTabId] = useState<string | null>(null)
 
   const { settings } = useSettings()
 
@@ -394,6 +396,19 @@ function App(): React.JSX.Element {
               </button>
               <button
                 type="button"
+                onClick={() => setSplitMode(!splitMode)}
+                title="Toggle Split View"
+                aria-pressed={splitMode}
+                className={`rounded-md p-1.5 ${
+                  splitMode
+                    ? 'bg-amber-500/20 text-amber-500 hover:bg-amber-500/30'
+                    : 'text-neutral-500 hover:bg-neutral-800 hover:text-neutral-300'
+                }`}
+              >
+                <Columns size={14} />
+              </button>
+              <button
+                type="button"
                 onClick={() => setFocusMode(!focusMode)}
                 title="Toggle Focus Mode (F11)"
                 aria-pressed={focusMode}
@@ -426,17 +441,55 @@ function App(): React.JSX.Element {
                   workspaceId={selectedWorkspace?.id ?? activeTab?.workspaceId ?? null}
                 />
               ) : activeTab ? (
-                <NoteEditor
-                  key={activeTab.note.id}
-                  workspaceId={activeTab.workspaceId}
-                  noteId={activeTab.note.id}
-                  onDeleted={() => closeTab(activeTab.note.id)}
-                  onDuplicated={(note) => openNote(activeTab.workspaceId, note)}
-                  onRenamed={renameTab}
-                  onSaveStatusChange={(status: SaveStatus) =>
-                    setActiveDirty(status === 'saving' || status === 'unsaved')
-                  }
-                />
+                <div className="flex h-full w-full">
+                  <div className={`flex-1 min-w-0 ${splitMode ? 'border-r border-neutral-800' : ''}`}>
+                    <NoteEditor
+                      key={activeTab.note.id}
+                      workspaceId={activeTab.workspaceId}
+                      noteId={activeTab.note.id}
+                      onDeleted={() => closeTab(activeTab.note.id)}
+                      onDuplicated={(note) => openNote(activeTab.workspaceId, note)}
+                      onRenamed={renameTab}
+                      onSaveStatusChange={(status: SaveStatus) =>
+                        setActiveDirty(status === 'saving' || status === 'unsaved')
+                      }
+                    />
+                  </div>
+                  {splitMode && (
+                    <div className="flex-1 min-w-0 flex flex-col">
+                      <div className="border-b border-neutral-800 bg-neutral-900/50 px-3 py-1 text-xs flex items-center justify-between shrink-0">
+                        <span className="text-neutral-400 font-medium">Split View</span>
+                        <select 
+                          className="bg-neutral-950 text-neutral-300 border border-neutral-800 rounded px-2 py-1 outline-none focus:border-neutral-600 max-w-[200px]"
+                          value={splitTabId || ''}
+                          onChange={(e) => setSplitTabId(e.target.value || null)}
+                        >
+                          <option value="">Select note...</option>
+                          {tabs.map(t => (
+                            <option key={`opt-${t.note.id}`} value={t.note.id}>{t.note.title}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex-1 min-h-0">
+                        {splitTabId ? (
+                          <NoteEditor
+                            key={`split-${splitTabId}`}
+                            workspaceId={tabs.find(t => t.note.id === splitTabId)?.workspaceId || activeTab.workspaceId}
+                            noteId={splitTabId}
+                            onDeleted={() => setSplitTabId(null)}
+                            onDuplicated={(note) => openNote(activeTab.workspaceId, note)}
+                            onRenamed={renameTab}
+                            onSaveStatusChange={() => {}}
+                          />
+                        ) : (
+                          <div className="flex h-full items-center justify-center text-sm text-neutral-500">
+                            Select an open tab from the dropdown to view alongside.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <EmptyState
                   selectedWorkspaceName={selectedWorkspace?.name ?? null}
