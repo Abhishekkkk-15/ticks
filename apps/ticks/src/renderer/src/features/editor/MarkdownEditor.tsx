@@ -113,12 +113,23 @@ function MarkdownEditor({
   }, [settings?.editor_font, settings?.font_size])
 
   const autocompleteExtension = useMemo(() => {
-    if (!notes || notes.length === 0) return []
     return autocompletion({
       override: [
         (context) => {
           const word = context.matchBefore(/\[\[[^\]]*$/)
           if (!word) return null
+          
+          if (!notes || notes.length === 0) {
+            return {
+              from: word.from,
+              options: [{
+                label: 'Loading notes...',
+                type: 'keyword',
+                apply: () => {}
+              }]
+            }
+          }
+
           return {
             from: word.from,
             options: notes.map((note) => ({
