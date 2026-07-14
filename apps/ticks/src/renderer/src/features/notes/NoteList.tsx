@@ -3,12 +3,13 @@ import { createPortal } from 'react-dom'
 import { ArrowLeft, Clock, List, Pin, RotateCcw, Star, Trash2, Upload, X, RefreshCw, FolderTree, CalendarDays } from 'lucide-react'
 import { useNotes } from './useNotes'
 import type { NoteView } from './useNotes'
-import { setNoteFolder } from './api'
+import { setNoteFolder, renameNote } from './api'
 import { highlightMatch } from './highlightMatch'
 import type { Note } from './types'
 import Select from '../../components/ui/Select'
 import GitSyncModal from '../workspaces/GitSyncModal'
 import NoteTreeList from './NoteTreeList'
+import type { ContextMenuTarget } from './NoteTreeList'
 
 interface NoteListProps {
   workspaceId: string
@@ -65,8 +66,9 @@ function NoteList({
   const [newTitle, setNewTitle] = useState('')
   const [isGitSyncModalOpen, setIsGitSyncModalOpen] = useState(false)
   const [isTreeView, setIsTreeView] = useState(true)
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; folderPath: string | null } | null>(null)
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; target: ContextMenuTarget } | null>(null)
   const [creationPrompt, setCreationPrompt] = useState<{ type: 'note' | 'folder'; folderPath: string | null } | null>(null)
+  const [renamePrompt, setRenamePrompt] = useState<{ type: 'note' | 'folder'; targetId: string; currentName: string } | null>(null)
   const [creationName, setCreationName] = useState('')
   const searchInputRef = useRef<HTMLInputElement>(null)
 
@@ -87,10 +89,38 @@ function NoteList({
     return () => window.removeEventListener('click', handleGlobalClick)
   }, [])
 
-  const handleContextMenu = (e: React.MouseEvent, folderPath: string | null) => {
+  const handleContextMenu = (e: React.MouseEvent, target: ContextMenuTarget) => {
     e.preventDefault()
     e.stopPropagation()
-    setContextMenu({ x: e.clientX, y: e.clientY, folderPath })
+    setContextMenu({ x: e.clientX, y: e.clientY, target })
+  }
+
+  const handleRenameConfirm = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!renamePrompt || !creationName.trim()) return
+    
+    const newName = creationName.trim()
+    if (renamePrompt.type === 'note') {
+      await renameNote(workspaceId, renamePrompt.targetId, newName)
+      window.dispatchEvent(new CustomEvent('notes-updated'))
+      window.dispatchEvent(new CustomEvent('note:content-updated', { detail: { noteId: renamePrompt.targetId, content: undefined } }))
+    } else {
+      const oldPath = renamePrompt.targetId
+      const parentPath = oldPath.includes('/') ? oldPath.substring(0, oldPath.lastIndexOf('/')) : null
+      const newPath = parentPath ? `${parentPath}/${newName}` : newName
+      
+      const folderNotes = notes.filter(n => n.folder === oldPath || n.folder?.startsWith(`${oldPath}/`))
+      for (const n of folderNotes) {
+        let noteNewFolder = newPath
+        if (n.folder && n.folder !== oldPath) {
+           noteNewFolder = n.folder.replace(oldPath, newPath)
+        }
+        await setNoteFolder(workspaceId, n.id, noteNewFolder)
+      }
+      window.dispatchEvent(new CustomEvent('notes-updated'))
+    }
+    setRenamePrompt(null)
+    setCreationName('')
   }
 
   const handleCreateConfirm = async (e: React.FormEvent) => {
@@ -289,14 +319,14 @@ function NoteList({
             onContextMenu={handleContextMenu}
           />
         ) : (
-          <ul className="space-y-0.5" onContextMenu={(e) => handleContextMenu(e, null)}>
+          <ul className="space-y-0.5" onContextMenu={(e) => handleContextMenu(e, { type: 'root' })}>
             {notes.map((note) => (
               <li
                 key={note.id}
                 onContextMenu={(e) => {
                   e.preventDefault()
                   e.stopPropagation()
-                  handleContextMenu(e, note.folder)
+                  handleContextMenu(e, { type: 'note', noteId: note.id, noteTitle: note.title })
                 }}
                 className={`group flex items-start justify-between gap-1 rounded-md px-2 py-1.5 text-sm ${
                   note.id === selectedNoteId
@@ -395,71 +425,145 @@ function NoteList({
 
       {contextMenu && createPortal(
         <div 
-          className="fixed z-[100] w-40 rounded-md border border-neutral-700 bg-neutral-800 shadow-xl overflow-hidden py-1 text-sm"
+          className="fixed z-[100] w-48 rounded-md border border-neutral-700 bg-neutral-800 shadow-xl overflow-hidden py-1 text-sm"
           style={{ top: contextMenu.y, left: contextMenu.x }}
           onClick={(e) => e.stopPropagation()}
           onContextMenu={(e) => { e.preventDefault(); e.stopPropagation() }}
         >
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 transition-colors"
-            onClick={() => {
-              setCreationPrompt({ type: 'note', folderPath: contextMenu.folderPath })
-              setContextMenu(null)
-            }}
-          >
-            Create Note
-          </button>
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 transition-colors"
-            onClick={() => {
-              setCreationPrompt({ type: 'folder', folderPath: contextMenu.folderPath })
-              setContextMenu(null)
-            }}
-          >
-            Create Folder
-          </button>
+          {contextMenu.target.type === 'note' && (
+            <>
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 transition-colors"
+                onClick={() => {
+                  setRenamePrompt({ type: 'note', targetId: contextMenu.target.noteId!, currentName: contextMenu.target.noteTitle! })
+                  setCreationName(contextMenu.target.noteTitle!)
+                  setContextMenu(null)
+                }}
+              >
+                Rename Note
+              </button>
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors"
+                onClick={async () => {
+                  if (window.confirm(`Move "${contextMenu.target.noteTitle}" to trash?`)) {
+                    await remove(contextMenu.target.noteId!)
+                  }
+                  setContextMenu(null)
+                }}
+              >
+                Delete Note
+              </button>
+            </>
+          )}
+
+          {(contextMenu.target.type === 'folder' || contextMenu.target.type === 'root') && (
+            <>
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 transition-colors"
+                onClick={() => {
+                  setCreationPrompt({ type: 'note', folderPath: contextMenu.target.type === 'folder' ? contextMenu.target.path : null })
+                  setContextMenu(null)
+                }}
+              >
+                Create Note
+              </button>
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 transition-colors"
+                onClick={() => {
+                  setCreationPrompt({ type: 'folder', folderPath: contextMenu.target.type === 'folder' ? contextMenu.target.path : null })
+                  setContextMenu(null)
+                }}
+              >
+                Create Folder
+              </button>
+            </>
+          )}
+
+          {contextMenu.target.type === 'folder' && (
+            <>
+              <div className="my-1 h-px bg-neutral-700 mx-2" />
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 transition-colors"
+                onClick={() => {
+                  const currentName = contextMenu.target.path!.split('/').pop()!
+                  setRenamePrompt({ type: 'folder', targetId: contextMenu.target.path!, currentName })
+                  setCreationName(currentName)
+                  setContextMenu(null)
+                }}
+              >
+                Rename Folder
+              </button>
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors"
+                onClick={async () => {
+                  if (window.confirm(`Delete folder "${contextMenu.target.path}" and all its contents?`)) {
+                    const folderPath = contextMenu.target.path!
+                    const folderNotes = notes.filter(n => n.folder === folderPath || n.folder?.startsWith(`${folderPath}/`))
+                    for (const n of folderNotes) {
+                      await remove(n.id)
+                    }
+                  }
+                  setContextMenu(null)
+                }}
+              >
+                Delete Folder
+              </button>
+            </>
+          )}
         </div>,
         document.body
       )}
 
-      {creationPrompt && createPortal(
+      {(creationPrompt || renamePrompt) && createPortal(
         <div 
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-          onClick={() => setCreationPrompt(null)}
+          onClick={() => {
+            setCreationPrompt(null)
+            setRenamePrompt(null)
+          }}
           onContextMenu={(e) => { e.preventDefault(); e.stopPropagation() }}
         >
           <form 
-            onSubmit={handleCreateConfirm}
+            onSubmit={renamePrompt ? handleRenameConfirm : handleCreateConfirm}
             className="w-[300px] rounded-lg border border-neutral-800 bg-neutral-900 p-4 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 text-sm font-semibold text-neutral-100">
-              Create {creationPrompt.type === 'note' ? 'Note' : 'Folder'}
-              {creationPrompt.folderPath ? ` in ${creationPrompt.folderPath.split('/').pop()}` : ''}
+              {renamePrompt 
+                ? `Rename ${renamePrompt.type === 'note' ? 'Note' : 'Folder'}`
+                : `Create ${creationPrompt?.type === 'note' ? 'Note' : 'Folder'}${creationPrompt?.folderPath ? ` in ${creationPrompt.folderPath.split('/').pop()}` : ''}`
+              }
             </div>
             <input
               autoFocus
               value={creationName}
               onChange={(e) => setCreationName(e.target.value)}
-              placeholder={`Enter ${creationPrompt.type} name...`}
+              placeholder={`Enter new name...`}
               className="w-full rounded-md border border-neutral-700 bg-neutral-950 px-3 py-1.5 text-sm text-neutral-100 placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500"
             />
             <div className="mt-4 flex justify-end gap-2">
               <button
                 type="button"
-                onClick={() => setCreationPrompt(null)}
+                onClick={() => {
+                  setCreationPrompt(null)
+                  setRenamePrompt(null)
+                }}
                 className="rounded-md px-3 py-1.5 text-xs font-medium text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200 transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                disabled={!creationName.trim()}
+                disabled={!creationName.trim() || (renamePrompt && creationName.trim() === renamePrompt.currentName)}
                 className="rounded-md bg-neutral-100 px-3 py-1.5 text-xs font-medium text-neutral-900 hover:bg-neutral-200 disabled:opacity-50 transition-colors"
               >
-                Create
+                {renamePrompt ? 'Rename' : 'Create'}
               </button>
             </div>
           </form>
