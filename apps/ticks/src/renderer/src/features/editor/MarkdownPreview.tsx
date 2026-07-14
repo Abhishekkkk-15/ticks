@@ -2,6 +2,7 @@ import ReactMarkdown, { defaultUrlTransform } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
 import DrawingEmbed from '../drawings/DrawingEmbed'
+import MermaidChart from './MermaidChart'
 import { useSettings } from '../settings/SettingsContext'
 import { isLightTheme } from '../settings/themeUtils'
 
@@ -53,6 +54,18 @@ function MarkdownPreview({
             : defaultUrlTransform(url)
         }
         components={{
+          code: ({ className, children, ...props }) => {
+            const match = /language-(\w+)/.exec(className || '')
+            // react-markdown passes node which might indicate inline, but usually inline is false when match exists
+            if (match && match[1] === 'mermaid') {
+              return <MermaidChart chart={String(children).replace(/\n$/, '')} />
+            }
+            return (
+              <code className={className} {...props}>
+                {children}
+              </code>
+            )
+          },
           input: ({ node, checked, type, disabled, ...props }) => {
             if (type === 'checkbox') {
               return (
