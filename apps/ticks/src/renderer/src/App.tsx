@@ -382,6 +382,7 @@ function App(): React.JSX.Element {
           onSelectWorkspace={setSelectedWorkspace}
           sidebarCollapsed={sidebarCollapsed}
           onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
+          onOpenCommandPalette={() => setPaletteOpen(true)}
         >
           <div className="flex h-full flex-col">
             <div className="flex shrink-0 items-center gap-1 border-b border-neutral-800 px-3 py-2">

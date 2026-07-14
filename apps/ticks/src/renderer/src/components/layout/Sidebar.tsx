@@ -1,23 +1,11 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, Search } from 'lucide-react'
 import WorkspaceList from '../../features/workspaces/WorkspaceList'
 import NoteList from '../../features/notes/NoteList'
-import { useBackendStatus } from '../../lib/useBackendStatus'
 import type { UseWorkspacesResult } from '../../features/workspaces/useWorkspaces'
 import type { Workspace } from '../../features/workspaces/types'
 import type { Note } from '../../features/notes/types'
-
-const statusStyles: Record<string, string> = {
-  connected: 'bg-emerald-500',
-  connecting: 'bg-amber-500',
-  offline: 'bg-red-500'
-}
-
-const statusLabels: Record<string, string> = {
-  connected: 'Backend connected',
-  connecting: 'Connecting to backend…',
-  offline: 'Backend offline'
-}
+import { useSettings } from '../../features/settings/SettingsContext'
 
 interface SidebarProps {
   selectedNoteId?: string
@@ -26,6 +14,7 @@ interface SidebarProps {
   selectedWorkspace: Workspace | null
   onSelectWorkspace: (workspace: Workspace | null) => void
   onToggleSidebar: () => void
+  onOpenCommandPalette: () => void
 }
 
 function Sidebar({
@@ -34,10 +23,12 @@ function Sidebar({
   workspacesApi,
   selectedWorkspace,
   onSelectWorkspace,
-  onToggleSidebar
+  onToggleSidebar,
+  onOpenCommandPalette
 }: SidebarProps): React.JSX.Element {
-  const status = useBackendStatus()
-
+  const { settings } = useSettings()
+  const shortcutStr = settings?.keyboard_shortcuts?.command_palette || 'Ctrl+P'
+  
   return (
     <aside className="flex w-64 shrink-0 flex-col border-r border-neutral-800/60 bg-neutral-950 h-full">
       <div className="flex items-center justify-between px-4 py-4 text-sm font-medium text-neutral-200">
@@ -84,9 +75,18 @@ function Sidebar({
           )}
         </AnimatePresence>
       </div>
-      <div className="flex items-center gap-2 border-t border-neutral-800 px-4 py-3 text-xs text-neutral-400">
-        <span className={`h-2 w-2 rounded-full ${statusStyles[status]}`} />
-        {statusLabels[status]}
+      <div className="border-t border-neutral-800 p-3">
+        <button
+          type="button"
+          onClick={onOpenCommandPalette}
+          className="flex w-full items-center gap-2 rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-xs text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200 transition-colors group"
+        >
+          <Search size={14} className="text-neutral-500 group-hover:text-neutral-300 transition-colors" />
+          <span>Search or jump...</span>
+          <span className="ml-auto rounded bg-neutral-800 px-1.5 py-0.5 text-[10px] font-medium text-neutral-500">
+            {shortcutStr.replace('Shift+', '⇧')}
+          </span>
+        </button>
       </div>
     </aside>
   )

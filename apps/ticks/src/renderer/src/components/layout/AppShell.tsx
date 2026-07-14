@@ -14,6 +14,7 @@ interface AppShellProps {
   onSelectWorkspace: (workspace: Workspace | null) => void
   sidebarCollapsed: boolean
   onToggleSidebar: () => void
+  onOpenCommandPalette: () => void
 }
 
 function AppShell({
@@ -24,7 +25,8 @@ function AppShell({
   selectedWorkspace,
   onSelectWorkspace,
   sidebarCollapsed,
-  onToggleSidebar
+  onToggleSidebar,
+  onOpenCommandPalette
 }: AppShellProps): React.JSX.Element {
   return (
     <div className="flex h-full bg-neutral-950 text-neutral-100 overflow-hidden relative">
@@ -40,6 +42,7 @@ function AppShell({
           selectedWorkspace={selectedWorkspace}
           onSelectWorkspace={onSelectWorkspace}
           onToggleSidebar={onToggleSidebar}
+          onOpenCommandPalette={onOpenCommandPalette}
         />
       </motion.div>
 
