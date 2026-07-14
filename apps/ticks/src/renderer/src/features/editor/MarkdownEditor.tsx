@@ -150,6 +150,25 @@ function MarkdownEditor({
               }
             }))
           }
+        },
+        (context) => {
+          const word = context.matchBefore(/^\s*\/\w*$/)
+          if (!word) return null
+          
+          return {
+            from: word.from,
+            options: [
+              { label: 'Heading 1', type: 'text', apply: '# ' },
+              { label: 'Heading 2', type: 'text', apply: '## ' },
+              { label: 'Heading 3', type: 'text', apply: '### ' },
+              { label: 'Task List', type: 'text', apply: '- [ ] ' },
+              { label: 'Bullet List', type: 'text', apply: '- ' },
+              { label: 'Numbered List', type: 'text', apply: '1. ' },
+              { label: 'Code Block', type: 'text', apply: '```\n\n```' },
+              { label: 'Quote', type: 'text', apply: '> ' },
+              { label: 'Table', type: 'text', apply: '| Column 1 | Column 2 |\n| -------- | -------- |\n| Text     | Text     |' }
+            ]
+          }
         }
       ]
     })
@@ -201,7 +220,6 @@ function MarkdownEditor({
 
   const autoTriggerExtension = useMemo(() => {
     return EditorView.updateListener.of((update) => {
-      // Only trigger if it was a user typing event
       if (
         update.docChanged &&
         update.selectionSet &&
@@ -211,8 +229,14 @@ function MarkdownEditor({
         const { main } = view.state.selection
         if (main.empty) {
           const textBefore = view.state.sliceDoc(Math.max(0, main.head - 2), main.head)
+          const lineText = view.state.doc.lineAt(main.head).text
+          const textBeforeLine = lineText.slice(0, main.head - view.state.doc.lineAt(main.head).from)
+          
           if (textBefore === '[[') {
-            // Give CM a tiny tick to finish the current transaction, then trigger
+            setTimeout(() => {
+              startCompletion(view)
+            }, 0)
+          } else if (textBeforeLine.trim() === '/') {
             setTimeout(() => {
               startCompletion(view)
             }, 0)
