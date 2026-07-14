@@ -4,7 +4,7 @@ import CodeMirror, { EditorView } from '@uiw/react-codemirror'
 import type { ReactCodeMirrorRef } from '@uiw/react-codemirror'
 import { markdown } from '@codemirror/lang-markdown'
 import { languages } from '@codemirror/language-data'
-import { autocompletion, startCompletion } from '@codemirror/autocomplete'
+import { autocompletion, startCompletion, completionKeymap } from '@codemirror/autocomplete'
 import { keymap } from '@codemirror/view'
 import { moveLineUp, moveLineDown, copyLineUp, copyLineDown, toggleComment } from '@codemirror/commands'
 import { searchKeymap, selectNextOccurrence, selectSelectionMatches } from '@codemirror/search'
@@ -205,6 +205,7 @@ function MarkdownEditor({
 
   const vscodeKeymapExtension = useMemo(() => {
     return keymap.of([
+      ...completionKeymap,
       { key: 'Shift-Space',           run: startCompletion },
       { key: 'Alt-ArrowUp',           run: moveLineUp },
       { key: 'Alt-ArrowDown',         run: moveLineDown },
@@ -222,7 +223,6 @@ function MarkdownEditor({
     return EditorView.updateListener.of((update) => {
       if (
         update.docChanged &&
-        update.selectionSet &&
         update.transactions.some((tr) => tr.isUserEvent('input.type'))
       ) {
         const view = update.view
