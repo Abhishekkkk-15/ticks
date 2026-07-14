@@ -140,18 +140,18 @@ export default function MCPView(): React.JSX.Element {
         </div>
 
         {/* Server Control Panel */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-2 rounded-xl border border-neutral-800 bg-neutral-900/30 p-5 space-y-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 rounded-xl border border-neutral-800 bg-neutral-900/30 p-5 space-y-4">
             <h2 className="text-sm font-medium text-neutral-200 flex items-center gap-2">
               <Shield className="h-4 w-4 text-emerald-400" />
               Server Status & Configuration
             </h2>
 
             <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between bg-neutral-900/50 rounded-lg p-3 border border-neutral-800">
-                <div>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0 bg-neutral-900/50 rounded-lg p-3 border border-neutral-800">
+                <div className="min-w-0">
                   <span className="block text-xs font-semibold text-neutral-300">MCP SSE Connection URL</span>
-                  <span className="text-[11px] font-mono text-neutral-500">{sseUrl}</span>
+                  <span className="text-[11px] font-mono text-neutral-500 break-all">{sseUrl}</span>
                 </div>
                 <button
                   type="button"
@@ -212,11 +212,11 @@ export default function MCPView(): React.JSX.Element {
         </div>
 
         {/* Permissions Management Split */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           
           {/* Notes Permissions Whitelist */}
           <div className="rounded-xl border border-neutral-800 bg-neutral-900/10 p-5 flex flex-col h-[500px]">
-            <div className="flex items-center justify-between border-b border-neutral-800 pb-3 mb-3 shrink-0">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0 border-b border-neutral-800 pb-3 mb-3 shrink-0">
               <div>
                 <h3 className="text-sm font-semibold text-neutral-200">Notes Access Whitelist</h3>
                 <p className="text-[10px] text-neutral-500">
@@ -299,7 +299,7 @@ export default function MCPView(): React.JSX.Element {
 
           {/* Tools Permission List */}
           <div className="rounded-xl border border-neutral-800 bg-neutral-900/10 p-5 flex flex-col h-[500px]">
-            <div className="flex items-center justify-between border-b border-neutral-800 pb-3 mb-3 shrink-0">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0 border-b border-neutral-800 pb-3 mb-3 shrink-0">
               <div>
                 <h3 className="text-sm font-semibold text-neutral-200">Allowed Agent Tools</h3>
                 <p className="text-[10px] text-neutral-500">

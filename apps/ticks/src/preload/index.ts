@@ -7,6 +7,10 @@ const api = {
   getMcpBridgePath: (): Promise<string> => ipcRenderer.invoke('api:get-mcp-bridge-path'),
   exportNote: (defaultName: string, content: string): Promise<boolean> =>
     ipcRenderer.invoke('file:export-note', defaultName, content),
+  exportHtml: (defaultName: string, content: string): Promise<boolean> =>
+    ipcRenderer.invoke('file:export-html', defaultName, content),
+  exportPdf: (defaultName: string, content: string): Promise<boolean> =>
+    ipcRenderer.invoke('file:export-pdf', defaultName, content),
   importNote: (): Promise<{ title: string; content: string } | null> =>
     ipcRenderer.invoke('file:import-note'),
   pickResourceFile: (): Promise<{ name: string; data: Uint8Array } | null> =>

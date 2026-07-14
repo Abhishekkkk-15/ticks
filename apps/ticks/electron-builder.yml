@@ -13,6 +13,7 @@ asarUnpack:
   - resources/**
 win:
   executableName: ticks
+  icon: build/icon.ico
   target:
     - nsis
 nsis:

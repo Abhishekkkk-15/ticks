@@ -13,13 +13,16 @@ import {
   Tag,
   Trash2,
   X,
-  Check
+  Check,
+  FileCode,
+  FileText
 } from 'lucide-react'
 import EditorView from '../editor/EditorView'
 import type { EditorSelection } from '../editor/MarkdownEditor'
 import { useNoteEditor } from './useNoteEditor'
 import type { SaveStatus } from './useNoteEditor'
 import { deleteNote, duplicateNote, renameNote, setNoteFlags, listNotes } from './api'
+import { exportNoteContent } from './exportUtils'
 import ResourcesPanel from '../resources/ResourcesPanel'
 import NoteDrawingsPanel from '../drawings/NoteDrawingsPanel'
 import NoteOrganizePanel from './NoteOrganizePanel'
@@ -85,6 +88,8 @@ function NoteEditor({
   >(null)
   const [selection, setSelection] = useState<EditorSelection | null>(null)
   const [contextMenu, setContextMenu] = useState<AiContextMenuPosition | null>(null)
+  const [exportMenuOpen, setExportMenuOpen] = useState(false)
+  const exportMenuRef = useRef<HTMLDivElement>(null)
   const [autoTriggerAction, setAutoTriggerAction] = useState<string | null>(null)
   const editorAreaRef = useRef<HTMLDivElement>(null)
   const mediaInputRef = useRef<HTMLInputElement>(null)
@@ -243,9 +248,19 @@ function NoteEditor({
     onDeleted()
   }
 
-  async function handleExport(): Promise<void> {
+  const handleExport = async () => {
     if (!meta) return
     await window.api.exportNote(`${meta.title}.md`, content)
+  }
+
+  const handleExportHtml = async () => {
+    if (!meta) return
+    await exportNoteContent(meta, content, 'html', workspaceId, noteId)
+  }
+
+  const handleExportPdf = async () => {
+    if (!meta) return
+    await exportNoteContent(meta, content, 'pdf', workspaceId, noteId)
   }
 
   function handleInsertDrawingEmbed(drawing: Drawing): void {
@@ -359,6 +374,17 @@ function NoteEditor({
     setContextMenu(null)
   }, [])
 
+  // Close export menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+        setExportMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
   function handleApplyReview(mode: 'append' | 'replace'): void {
     if (!pendingReview || !meta) return
     const { result, chainLabel, workflowName, selectionRange } = pendingReview
@@ -466,14 +492,58 @@ function NoteEditor({
           >
             <Copy size={16} />
           </button>
-          <button
-            type="button"
-            onClick={handleExport}
-            title="Export as Markdown"
-            className={`${TOOLBAR_BTN} ${TOOLBAR_BTN_IDLE}`}
-          >
-            <Download size={16} />
-          </button>
+          <div className="relative" ref={exportMenuRef}>
+            <button
+              type="button"
+              onClick={() => setExportMenuOpen(!exportMenuOpen)}
+              title="Export Options"
+              className={`${TOOLBAR_BTN} ${exportMenuOpen ? TOOLBAR_BTN_ACTIVE : TOOLBAR_BTN_IDLE}`}
+            >
+              <Download size={16} />
+            </button>
+            <AnimatePresence>
+              {exportMenuOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: 4, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 4, scale: 0.95 }}
+                  transition={{ duration: 0.1 }}
+                  className="absolute right-0 top-full mt-1 w-48 rounded-md border border-neutral-800 bg-neutral-900 p-1 shadow-lg z-50"
+                >
+                  <button
+                    onClick={() => {
+                      handleExport()
+                      setExportMenuOpen(false)
+                    }}
+                    className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100"
+                  >
+                    <Download size={14} />
+                    Export as Markdown
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleExportHtml()
+                      setExportMenuOpen(false)
+                    }}
+                    className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100"
+                  >
+                    <FileCode size={14} />
+                    Export as HTML
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleExportPdf()
+                      setExportMenuOpen(false)
+                    }}
+                    className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100"
+                  >
+                    <FileText size={14} />
+                    Export as PDF
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
           {/* Upload Image / Video */}
           <button
             type="button"

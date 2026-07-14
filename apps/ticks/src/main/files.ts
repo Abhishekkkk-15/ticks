@@ -1,4 +1,4 @@
-import { dialog } from 'electron'
+import { dialog, BrowserWindow } from 'electron'
 import { readFile, writeFile } from 'fs/promises'
 import { basename, extname } from 'path'
 
@@ -17,6 +17,51 @@ export async function exportNoteFile(defaultName: string, content: string): Prom
 
   await writeFile(filePath, content, 'utf-8')
   return true
+}
+
+export async function exportHtmlFile(defaultName: string, content: string): Promise<boolean> {
+  const { canceled, filePath } = await dialog.showSaveDialog({
+    defaultPath: defaultName,
+    filters: [{ name: 'HTML', extensions: ['html', 'htm'] }]
+  })
+
+  if (canceled || !filePath) return false
+
+  await writeFile(filePath, content, 'utf-8')
+  return true
+}
+
+export async function exportPdfFile(defaultName: string, content: string): Promise<boolean> {
+  const { canceled, filePath } = await dialog.showSaveDialog({
+    defaultPath: defaultName,
+    filters: [{ name: 'PDF', extensions: ['pdf'] }]
+  })
+
+  if (canceled || !filePath) return false
+
+  // Create an offscreen window
+  const win = new BrowserWindow({ show: false, webPreferences: { offscreen: true } })
+  
+  try {
+    // Load the fully self-contained HTML
+    await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(content)}`)
+    
+    // Give it a tiny bit of time just in case some sync rendering happens
+    await new Promise(resolve => setTimeout(resolve, 100))
+
+    const pdfBuffer = await win.webContents.printToPDF({
+      printBackground: true,
+      pageSize: 'A4'
+    })
+    
+    await writeFile(filePath, pdfBuffer)
+    return true
+  } catch (error) {
+    console.error('Failed to export PDF:', error)
+    return false
+  } finally {
+    win.destroy()
+  }
 }
 
 export interface ImportedNoteFile {

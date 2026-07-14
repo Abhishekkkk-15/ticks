@@ -1,9 +1,11 @@
 import { app, shell, BrowserWindow, ipcMain, globalShortcut, clipboard, screen } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import icon from '../../resources/icon.png?asset'
+import iconPng from '../../resources/icon.png?asset'
+import iconIco from '../../resources/icon.ico?asset'
+const icon = process.platform === 'win32' ? iconIco : iconPng
 import { getApiBaseUrl, getMcpBridgePath, startBackend, stopBackend } from './backend'
-import { exportNoteFile, importNoteFile, pickResourceFile } from './files'
+import { exportNoteFile, exportHtmlFile, exportPdfFile, importNoteFile, pickResourceFile } from './files'
 import fs from 'fs'
 import os from 'os'
 import { exec, execFile } from 'child_process'
@@ -524,6 +526,12 @@ if (!gotSingleInstanceLock) {
     ipcMain.handle('api:get-mcp-bridge-path', () => getMcpBridgePath())
     ipcMain.handle('file:export-note', (_event, defaultName: string, content: string) =>
       exportNoteFile(defaultName, content)
+    )
+    ipcMain.handle('file:export-html', (_event, defaultName: string, content: string) =>
+      exportHtmlFile(defaultName, content)
+    )
+    ipcMain.handle('file:export-pdf', (_event, defaultName: string, content: string) =>
+      exportPdfFile(defaultName, content)
     )
     ipcMain.handle('file:import-note', () => importNoteFile())
     ipcMain.handle('file:pick-resource', () => pickResourceFile())

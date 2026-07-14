@@ -638,7 +638,7 @@ function App(): React.JSX.Element {
             initial={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.8, ease: 'easeInOut' }}
-            className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#f1ead9] select-none"
+            className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-neutral-950 select-none"
           >
             {/* Logo / Animation container */}
             <div className="relative mb-10 flex h-32 w-32 items-center justify-center">
@@ -646,21 +646,21 @@ function App(): React.JSX.Element {
               <motion.div
                 animate={{ scale: [1, 1.25, 1], opacity: [0.15, 0.35, 0.15] }}
                 transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-                className="absolute inset-0 rounded-full bg-[#002b36]/10 blur-2xl"
+                className="absolute inset-0 rounded-full bg-amber-500/10 blur-2xl"
               />
 
               {/* Pulsing outer ring */}
               <motion.div
                 animate={{ scale: [1, 1.15, 1], opacity: [0.3, 0.6, 0.3] }}
                 transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-                className="absolute inset-2 rounded-full border border-[#002b36]/20"
+                className="absolute inset-2 rounded-full border border-neutral-800"
               />
 
               {/* Rotating outer dash ring */}
               <motion.div
                 animate={{ rotate: 360 }}
                 transition={{ duration: 16, repeat: Infinity, ease: 'linear' }}
-                className="absolute inset-0 rounded-full border border-dashed border-[#002b36]/10"
+                className="absolute inset-0 rounded-full border border-dashed border-neutral-800/60"
               />
 
               {/* Symmetrical cozy notepad SVG */}
@@ -669,11 +669,11 @@ function App(): React.JSX.Element {
                 height="56"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="#002b36"
+                stroke="currentColor"
                 strokeWidth="1.2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="relative z-10 filter drop-shadow-[0_0_8px_rgba(0,43,54,0.15)]"
+                className="relative z-10 text-neutral-300 filter drop-shadow-[0_0_8px_rgba(245,158,11,0.2)]"
               >
                 {/* Page outline */}
                 <motion.path
@@ -716,7 +716,7 @@ function App(): React.JSX.Element {
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 1.2, delay: 0.2, ease: 'easeOut' }}
-              className="text-3xl font-light tracking-[0.3em] text-[#002b36] uppercase font-sans mb-3"
+              className="text-3xl font-light tracking-[0.3em] text-neutral-200 uppercase font-sans mb-3"
             >
               Ticks
             </motion.h1>
@@ -733,9 +733,9 @@ function App(): React.JSX.Element {
                 <motion.div
                   animate={{ rotate: 360 }}
                   transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
-                  className="h-3 w-3 rounded-full border border-[#002b36]/30 border-t-[#002b36]"
+                  className="h-3 w-3 rounded-full border border-neutral-700 border-t-amber-500"
                 />
-                <span className="text-xs font-light tracking-wide text-[#073642]">
+                <span className="text-xs font-light tracking-wide text-neutral-400">
                   {backendStatus === 'connecting'
                     ? 'Loading backend service...'
                     : 'Establishing secure API connection...'}
@@ -747,7 +747,7 @@ function App(): React.JSX.Element {
                 <motion.p
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="mt-6 max-w-sm text-center text-[11px] font-light leading-relaxed text-[#586e75] px-4"
+                  className="mt-6 max-w-sm text-center text-[11px] font-light leading-relaxed text-neutral-500 px-4"
                 >
                   The database or API server is taking longer than usual to boot. 
                   This can happen during first-time initialization or file lock checks.
