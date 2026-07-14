@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeft, Clock, List, Pin, RotateCcw, Star, Trash2, Upload, X, RefreshCw } from 'lucide-react'
+import { ArrowLeft, Clock, List, Pin, RotateCcw, Star, Trash2, Upload, X, RefreshCw, FolderTree } from 'lucide-react'
 import { useNotes } from './useNotes'
 import type { NoteView } from './useNotes'
 import { highlightMatch } from './highlightMatch'
 import type { Note } from './types'
 import Select from '../../components/ui/Select'
 import GitSyncModal from '../workspaces/GitSyncModal'
+import NoteTreeList from './NoteTreeList'
 
 interface NoteListProps {
   workspaceId: string
@@ -61,6 +62,7 @@ function NoteList({
   } = useNotes(workspaceId)
   const [newTitle, setNewTitle] = useState('')
   const [isGitSyncModalOpen, setIsGitSyncModalOpen] = useState(false)
+  const [isTreeView, setIsTreeView] = useState(true)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
   const canCreate = view !== 'recent' && view !== 'trash'
@@ -139,6 +141,17 @@ function NoteList({
             <Icon size={14} />
           </button>
         ))}
+        <div className="flex-1" />
+        <button
+          type="button"
+          onClick={() => setIsTreeView(!isTreeView)}
+          title={isTreeView ? 'Switch to List View' : 'Switch to Tree View'}
+          className={`rounded-md p-1.5 ${
+            isTreeView ? 'bg-neutral-800 text-neutral-100' : 'text-neutral-500 hover:bg-neutral-800 hover:text-neutral-300'
+          }`}
+        >
+          {isTreeView ? <FolderTree size={14} /> : <List size={14} />}
+        </button>
       </div>
 
       {canSearch && (
@@ -187,6 +200,18 @@ function NoteList({
           <div className="px-2 py-4 text-center text-sm text-neutral-500">
             {EMPTY_MESSAGES[view]}
           </div>
+        ) : isTreeView ? (
+          <NoteTreeList
+            notes={notes}
+            selectedNoteId={selectedNoteId}
+            query={query}
+            view={view}
+            onOpenNote={onOpenNote}
+            onToggleFavorite={toggleFavorite}
+            onRemove={remove}
+            onRestore={restore}
+            onPurge={purge}
+          />
         ) : (
           <ul className="space-y-0.5">
             {notes.map((note) => (

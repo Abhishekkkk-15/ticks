@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { setNoteFolder, setNoteTags } from './api'
+import { useNotes } from './useNotes'
 import type { Note } from './types'
 
 interface NoteOrganizePanelProps {
@@ -15,6 +16,7 @@ function NoteOrganizePanel({
 }: NoteOrganizePanelProps): React.JSX.Element {
   const [folderDraft, setFolderDraft] = useState(note.folder ?? '')
   const [tagsDraft, setTagsDraft] = useState(note.tags.join(', '))
+  const { folders } = useNotes(workspaceId)
 
   async function commitFolder(): Promise<void> {
     const folder = folderDraft.trim() || null
@@ -39,6 +41,7 @@ function NoteOrganizePanel({
         <div>
           <label className="mb-1 block text-xs text-neutral-500">Folder</label>
           <input
+            list="existing-folders"
             value={folderDraft}
             onChange={(event) => setFolderDraft(event.target.value)}
             onBlur={commitFolder}
@@ -48,6 +51,11 @@ function NoteOrganizePanel({
             placeholder="e.g. System Design/networking"
             className="w-full rounded-md border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs text-neutral-200 placeholder:text-neutral-500 focus:ring-1 focus:ring-neutral-500 focus:outline-none"
           />
+          <datalist id="existing-folders">
+            {folders.map((f) => (
+              <option key={f} value={f} />
+            ))}
+          </datalist>
         </div>
         <div>
           <label className="mb-1 block text-xs text-neutral-500">Tags (comma-separated)</label>
