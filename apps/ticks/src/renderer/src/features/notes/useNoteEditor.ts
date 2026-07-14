@@ -155,5 +155,28 @@ export function useNoteEditor(workspaceId: string, noteId: string): UseNoteEdito
     }
   }, [noteId])
 
+  useEffect(() => {
+    function handleDiscard(event: Event): void {
+      const customEvent = event as CustomEvent<{ noteId: string }>
+      if (customEvent.detail.noteId === noteId) {
+        pendingSaveRef.current = null
+        clearTimeout(saveTimerRef.current)
+        setSaveStatus('saved') // or idle
+      }
+    }
+    function handleForceSave(event: Event): void {
+      const customEvent = event as CustomEvent<{ noteId: string }>
+      if (customEvent.detail.noteId === noteId) {
+        save()
+      }
+    }
+    window.addEventListener('editor:discard-save', handleDiscard)
+    window.addEventListener('editor:force-save', handleForceSave)
+    return () => {
+      window.removeEventListener('editor:discard-save', handleDiscard)
+      window.removeEventListener('editor:force-save', handleForceSave)
+    }
+  }, [noteId, save])
+
   return { note, content, onChange, loading, error, saveStatus, save }
 }

@@ -49,7 +49,8 @@ function App(): React.JSX.Element {
   const [selectedWorkspace, setSelectedWorkspace] = useState<Workspace | null>(null)
   const [tabs, setTabs] = useState<OpenTab[]>([])
   const [activeTabId, setActiveTabId] = useState<string | null>(null)
-  const [activeDirty, setActiveDirty] = useState(false)
+  const [dirtyTabs, setDirtyTabs] = useState<Record<string, boolean>>({})
+  const [closingTabId, setClosingTabId] = useState<string | null>(null)
   const [view, setView] = useState<MainView>('notes')
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [captureNotification, setCaptureNotification] = useState<string | null>(null)
@@ -230,7 +231,15 @@ function App(): React.JSX.Element {
     }
   }, [workspacesApi])
 
-  const closeTab = useCallback(
+  const handleSaveStatusChange = useCallback((noteId: string, status: SaveStatus) => {
+    setDirtyTabs(prev => {
+      const isDirty = status === 'saving' || status === 'unsaved'
+      if (prev[noteId] === isDirty) return prev
+      return { ...prev, [noteId]: isDirty }
+    })
+  }, [])
+
+  const forceCloseTab = useCallback(
     (noteId: string) => {
       setTabs((prev) => {
         const index = prev.findIndex((t) => t.note.id === noteId)
@@ -241,8 +250,26 @@ function App(): React.JSX.Element {
         }
         return next
       })
+      setSplitTabId(prev => prev === noteId ? null : prev)
+      setDirtyTabs(prev => {
+        if (!prev[noteId]) return prev
+        const next = { ...prev }
+        delete next[noteId]
+        return next
+      })
     },
     [activeTabId]
+  )
+
+  const closeTab = useCallback(
+    (noteId: string) => {
+      if (dirtyTabs[noteId]) {
+        setClosingTabId(noteId)
+      } else {
+        forceCloseTab(noteId)
+      }
+    },
+    [dirtyTabs, forceCloseTab]
   )
 
   const reorderTabs = useCallback((fromIndex: number, toIndex: number) => {
@@ -426,7 +453,7 @@ function App(): React.JSX.Element {
                 <TabBar
                   tabs={tabs}
                   activeId={activeTabId}
-                  activeDirty={activeDirty}
+                  activeDirty={activeTabId ? (dirtyTabs[activeTabId] || false) : false}
                   onSelect={setActiveTabId}
                   onClose={closeTab}
                   onReorder={reorderTabs}
@@ -450,9 +477,7 @@ function App(): React.JSX.Element {
                       onDeleted={() => closeTab(activeTab.note.id)}
                       onDuplicated={(note) => openNote(activeTab.workspaceId, note)}
                       onRenamed={renameTab}
-                      onSaveStatusChange={(status: SaveStatus) =>
-                        setActiveDirty(status === 'saving' || status === 'unsaved')
-                      }
+                      onSaveStatusChange={(status: SaveStatus) => handleSaveStatusChange(activeTab.note.id, status)}
                     />
                   </div>
                   {splitMode && (
@@ -479,7 +504,7 @@ function App(): React.JSX.Element {
                             onDeleted={() => setSplitTabId(null)}
                             onDuplicated={(note) => openNote(activeTab.workspaceId, note)}
                             onRenamed={renameTab}
-                            onSaveStatusChange={() => {}}
+                            onSaveStatusChange={(status: SaveStatus) => handleSaveStatusChange(splitTabId, status)}
                           />
                         ) : (
                           <div className="flex h-full items-center justify-center text-sm text-neutral-500">
@@ -698,6 +723,53 @@ function App(): React.JSX.Element {
               )}
             </motion.div>
           </motion.div>
+        )}
+      <AnimatePresence>
+        {closingTabId && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-sm rounded-xl border border-neutral-800 bg-neutral-900 p-6 shadow-2xl"
+            >
+              <h3 className="mb-2 text-lg font-semibold text-neutral-100">Unsaved Changes</h3>
+              <p className="mb-6 text-sm text-neutral-400">
+                You have unsaved changes in this note. Do you want to save them before closing?
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setClosingTabId(null)}
+                  className="rounded-md px-3 py-1.5 text-sm font-medium text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('editor:discard-save', { detail: { noteId: closingTabId } }))
+                    forceCloseTab(closingTabId)
+                    setClosingTabId(null)
+                  }}
+                  className="rounded-md px-3 py-1.5 text-sm font-medium text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
+                >
+                  Discard
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('editor:force-save', { detail: { noteId: closingTabId } }))
+                    forceCloseTab(closingTabId)
+                    setClosingTabId(null)
+                  }}
+                  className="rounded-md bg-amber-500 px-3 py-1.5 text-sm font-semibold text-neutral-950 hover:bg-amber-600 transition-colors"
+                >
+                  Save
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>
