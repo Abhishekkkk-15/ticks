@@ -192,6 +192,14 @@ export async function processWorkflow(
 
   // Build the updated note content for append / replace modes.
   const detail = await getNote(context.workspaceId, context.noteId)
+  
+  let baseContent = detail.content
+  if (effectiveScope === 'clipboard' && context.clipboardText && !baseContent.includes(context.clipboardText)) {
+    // If the DB is stale and hasn't saved the appended capture text yet, 
+    // fall back to the in-memory content which we know has it.
+    baseContent = context.content
+  }
+
   const scopeNote =
     effectiveScope === 'selection' && context.selectedText?.trim()
       ? ' [selection]'
@@ -206,27 +214,27 @@ export async function processWorkflow(
     if (effectiveScope === 'selection' && context.selectionRange) {
       // Replace just the selection
       updated =
-        detail.content.slice(0, context.selectionRange.from) +
+        baseContent.slice(0, context.selectionRange.from) +
         finalResult +
-        detail.content.slice(context.selectionRange.to)
+        baseContent.slice(context.selectionRange.to)
     } else if (effectiveScope === 'clipboard' && context.clipboardText) {
       // Replace the last occurrence of the clipboard text (which we just appended)
-      const lastIndex = detail.content.lastIndexOf(context.clipboardText)
+      const lastIndex = baseContent.lastIndexOf(context.clipboardText)
       if (lastIndex !== -1) {
         // Also try to replace the `> ` if it was a capture format
         const textToReplace = workflow.trigger === 'on_capture' ? `> ${context.clipboardText}\n` : context.clipboardText
-        const formatIndex = detail.content.lastIndexOf(textToReplace)
+        const formatIndex = baseContent.lastIndexOf(textToReplace)
         
         if (formatIndex !== -1) {
           updated =
-            detail.content.slice(0, formatIndex) +
+            baseContent.slice(0, formatIndex) +
             finalResult +
-            detail.content.slice(formatIndex + textToReplace.length)
+            baseContent.slice(formatIndex + textToReplace.length)
         } else {
           updated =
-            detail.content.slice(0, lastIndex) +
+            baseContent.slice(0, lastIndex) +
             finalResult +
-            detail.content.slice(lastIndex + context.clipboardText.length)
+            baseContent.slice(lastIndex + context.clipboardText.length)
         }
       } else {
         // Fallback if not found for some reason
@@ -238,8 +246,8 @@ export async function processWorkflow(
     }
   } else {
     // append (default)
-    const separator = detail.content.endsWith('\n') || detail.content === '' ? '' : '\n\n'
-    updated = `${detail.content}${separator}**${chainLabel}${scopeNote} (${workflow.name}):**\n${finalResult}\n`
+    const separator = baseContent.endsWith('\n') || baseContent === '' ? '' : '\n\n'
+    updated = `${baseContent}${separator}**${chainLabel}${scopeNote} (${workflow.name}):**\n${finalResult}\n`
   }
 
   await commitToNote(context.workspaceId, context.noteId, updated)
