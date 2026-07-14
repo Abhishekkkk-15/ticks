@@ -229,8 +229,6 @@ function MarkdownEditor({
         const { main } = view.state.selection
         if (main.empty) {
           const textBefore = view.state.sliceDoc(Math.max(0, main.head - 2), main.head)
-          const lineText = view.state.doc.lineAt(main.head).text
-          const textBeforeLine = lineText.slice(0, main.head - view.state.doc.lineAt(main.head).from)
           
           if (textBefore === '[[') {
             setTimeout(() => {
