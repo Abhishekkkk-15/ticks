@@ -403,7 +403,7 @@ function createWindow(): void {
   const savedState = loadWindowState()
 
   // Create the browser window.
-  mainWindow = new BrowserWindow({
+  const win = new BrowserWindow({
     title: 'Ticks',
     width: savedState.width,
     height: savedState.height,
@@ -436,11 +436,12 @@ function createWindow(): void {
       sandbox: true
     }
   })
+  mainWindow = win
 
-  if (savedState.isMaximized) mainWindow.maximize()
+  if (savedState.isMaximized) win.maximize()
 
   if (is.dev) {
-    mainWindow.webContents.on('console-message', (_event, _level, message, line, sourceId) => {
+    win.webContents.on('console-message', (_event, _level, message, line, sourceId) => {
       console.log(`[renderer console] ${message} (from ${sourceId}:${line})`)
     })
   }
@@ -450,45 +451,45 @@ function createWindow(): void {
   let saveStateTimer: ReturnType<typeof setTimeout> | undefined
   const scheduleSaveState = (): void => {
     clearTimeout(saveStateTimer)
-    saveStateTimer = setTimeout(() => saveWindowState(mainWindow), 500)
+    saveStateTimer = setTimeout(() => saveWindowState(win), 500)
   }
-  mainWindow.on('resize', scheduleSaveState)
-  mainWindow.on('move', scheduleSaveState)
-  mainWindow.on('close', () => {
+  win.on('resize', scheduleSaveState)
+  win.on('move', scheduleSaveState)
+  win.on('close', () => {
     clearTimeout(saveStateTimer)
-    saveWindowState(mainWindow)
+    saveWindowState(win)
   })
 
-  mainWindow.on('ready-to-show', () => {
-    mainWindow.show()
+  win.on('ready-to-show', () => {
+    win.show()
   })
 
-  mainWindow.on('closed', () => {
+  win.on('closed', () => {
     // The hidden mini-tray window would otherwise keep 'window-all-closed'
     // from ever firing, silently leaving the app running in the background.
     if (process.platform !== 'darwin') app.quit()
     mainWindow = null
   })
 
-  mainWindow.on('maximize', () => mainWindow.webContents.send('window:maximized-changed', true))
-  mainWindow.on('unmaximize', () => mainWindow.webContents.send('window:maximized-changed', false))
+  win.on('maximize', () => win.webContents.send('window:maximized-changed', true))
+  win.on('unmaximize', () => win.webContents.send('window:maximized-changed', false))
 
-  mainWindow.webContents.on('before-input-event', (event, input) => {
+  win.webContents.on('before-input-event', (event, input) => {
     if (input.type !== 'keyDown' || !(input.control || input.meta)) return
-    const zoom = mainWindow.webContents.getZoomLevel()
+    const zoom = win.webContents.getZoomLevel()
     if (input.key === '=' || input.key === '+') {
       event.preventDefault()
-      mainWindow.webContents.setZoomLevel(Math.min(zoom + ZOOM_STEP, ZOOM_LIMIT))
+      win.webContents.setZoomLevel(Math.min(zoom + ZOOM_STEP, ZOOM_LIMIT))
     } else if (input.key === '-') {
       event.preventDefault()
-      mainWindow.webContents.setZoomLevel(Math.max(zoom - ZOOM_STEP, -ZOOM_LIMIT))
+      win.webContents.setZoomLevel(Math.max(zoom - ZOOM_STEP, -ZOOM_LIMIT))
     } else if (input.key === '0') {
       event.preventDefault()
-      mainWindow.webContents.setZoomLevel(0)
+      win.webContents.setZoomLevel(0)
     }
   })
 
-  mainWindow.webContents.setWindowOpenHandler((details) => {
+  win.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }
   })
@@ -496,9 +497,9 @@ function createWindow(): void {
   // HMR for renderer base on electron-vite cli.
   // Load the remote URL for development or the local html file for production.
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
+    win.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+    win.loadFile(join(__dirname, '../renderer/index.html'))
   }
 }
 
