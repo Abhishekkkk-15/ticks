@@ -11,7 +11,8 @@ export type ContextMenuTarget =
 
 interface NoteTreeListProps {
   notes: NoteListItem[]
-  selectedNoteId?: string
+  selectedNoteIds: Set<string>
+  onSelectNote: (noteId: string, multi: boolean) => void
   query: string
   view: NoteView
   onOpenNote: (note: NoteListItem) => void
@@ -32,7 +33,8 @@ interface TreeFolder {
 
 export default function NoteTreeList({
   notes,
-  selectedNoteId,
+  selectedNoteIds,
+  onSelectNote,
   query,
   view,
   onOpenNote,
@@ -115,7 +117,7 @@ export default function NoteTreeList({
       onDragStart={(e) => handleDragStart(e, note.id)}
       onContextMenu={(e) => onContextMenu(e, { type: 'note', noteId: note.id, noteTitle: note.title })}
       className={`group flex items-start justify-between gap-1 rounded-md px-2 py-1.5 text-sm ${
-        note.id === selectedNoteId
+        selectedNoteIds.has(note.id)
           ? 'bg-neutral-800 text-neutral-100'
           : 'text-neutral-300 hover:bg-neutral-800'
       }`}
@@ -123,7 +125,15 @@ export default function NoteTreeList({
     >
       <button
         type="button"
-        onClick={() => onOpenNote(note)}
+        onClick={(e) => {
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            onSelectNote(note.id, true);
+          } else {
+            onSelectNote(note.id, false);
+            onOpenNote(note);
+          }
+        }}
         className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
       >
         <File size={14} className="shrink-0 text-neutral-500" />

@@ -66,6 +66,8 @@ function NoteList({
   const [newTitle, setNewTitle] = useState('')
   const [isGitSyncModalOpen, setIsGitSyncModalOpen] = useState(false)
   const [isTreeView, setIsTreeView] = useState(true)
+  const [selectedNoteIds, setSelectedNoteIds] = useState<Set<string>>(new Set())
+  const [movePrompt, setMovePrompt] = useState(false)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; target: ContextMenuTarget } | null>(null)
   const [creationPrompt, setCreationPrompt] = useState<{ type: 'note' | 'folder'; folderPath: string | null } | null>(null)
   const [renamePrompt, setRenamePrompt] = useState<{ type: 'note' | 'folder'; targetId: string; currentName: string } | null>(null)
@@ -89,9 +91,34 @@ function NoteList({
     return () => window.removeEventListener('click', handleGlobalClick)
   }, [])
 
+  useEffect(() => {
+    if (selectedNoteId && !selectedNoteIds.has(selectedNoteId)) {
+      setSelectedNoteIds(new Set([selectedNoteId]))
+    }
+  }, [selectedNoteId])
+
+  const handleSelectNote = (noteId: string, multi: boolean) => {
+    setSelectedNoteIds((prev) => {
+      const next = new Set(prev)
+      if (multi) {
+        if (next.has(noteId)) next.delete(noteId)
+        else next.add(noteId)
+      } else {
+        next.clear()
+        next.add(noteId)
+      }
+      return next
+    })
+  }
+
   const handleContextMenu = (e: React.MouseEvent, target: ContextMenuTarget) => {
     e.preventDefault()
     e.stopPropagation()
+    
+    if (target.type === 'note' && !selectedNoteIds.has(target.noteId)) {
+      setSelectedNoteIds(new Set([target.noteId]))
+    }
+    
     setContextMenu({ x: e.clientX, y: e.clientY, target })
   }
 
@@ -300,7 +327,8 @@ function NoteList({
         ) : isTreeView ? (
           <NoteTreeList
             notes={notes}
-            selectedNoteId={selectedNoteId}
+            selectedNoteIds={selectedNoteIds}
+            onSelectNote={handleSelectNote}
             query={query}
             view={view}
             onOpenNote={onOpenNote}
@@ -329,14 +357,22 @@ function NoteList({
                   handleContextMenu(e, { type: 'note', noteId: note.id, noteTitle: note.title })
                 }}
                 className={`group flex items-start justify-between gap-1 rounded-md px-2 py-1.5 text-sm ${
-                  note.id === selectedNoteId
+                  selectedNoteIds.has(note.id)
                     ? 'bg-neutral-800 text-neutral-100'
                     : 'text-neutral-300 hover:bg-neutral-800'
                 }`}
               >
                 <button
                   type="button"
-                  onClick={() => onOpenNote(note)}
+                  onClick={(e) => {
+                    if (e.ctrlKey || e.metaKey) {
+                      e.preventDefault();
+                      handleSelectNote(note.id, true);
+                    } else {
+                      handleSelectNote(note.id, false);
+                      onOpenNote(note);
+                    }
+                  }}
                   className="flex min-w-0 flex-1 flex-col items-start text-left"
                 >
                   <span className="flex w-full items-center gap-1.5">
@@ -446,16 +482,28 @@ function NoteList({
               </button>
               <button
                 type="button"
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 transition-colors"
+                onClick={() => {
+                  setMovePrompt(true)
+                  setContextMenu(null)
+                }}
+              >
+                Move To...
+              </button>
+              <button
+                type="button"
                 className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors"
                 onClick={async () => {
-                  const target = contextMenu.target as any
-                  if (window.confirm(`Move "${target.noteTitle}" to trash?`)) {
-                    await remove(target.noteId)
+                  const count = selectedNoteIds.size > 1 ? selectedNoteIds.size : 1
+                  if (window.confirm(`Move ${count} note(s) to trash?`)) {
+                    for (const id of Array.from(selectedNoteIds)) {
+                      await remove(id)
+                    }
                   }
                   setContextMenu(null)
                 }}
               >
-                Delete Note
+                Delete Note{selectedNoteIds.size > 1 ? 's' : ''}
               </button>
             </>
           )}
@@ -573,6 +621,64 @@ function NoteList({
               </button>
             </div>
           </form>
+        </div>,
+        document.body
+      )}
+
+      {movePrompt && createPortal(
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={() => setMovePrompt(false)}
+          onContextMenu={(e) => { e.preventDefault(); e.stopPropagation() }}
+        >
+          <div 
+            className="flex w-[300px] flex-col rounded-lg border border-neutral-800 bg-neutral-900 p-4 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 text-sm font-semibold text-neutral-100">
+              Move {selectedNoteIds.size} note(s) to...
+            </div>
+            <div className="flex max-h-[300px] flex-col gap-1 overflow-y-auto">
+              <button
+                type="button"
+                onClick={async () => {
+                  for (const id of Array.from(selectedNoteIds)) {
+                    await setNoteFolder(workspaceId, id, null)
+                  }
+                  window.dispatchEvent(new CustomEvent('notes-updated'))
+                  setMovePrompt(false)
+                }}
+                className="rounded-md px-2 py-1.5 text-left text-sm text-neutral-300 hover:bg-neutral-800"
+              >
+                [Root]
+              </button>
+              {folders.map(folder => (
+                <button
+                  key={folder}
+                  type="button"
+                  onClick={async () => {
+                    for (const id of Array.from(selectedNoteIds)) {
+                      await setNoteFolder(workspaceId, id, folder)
+                    }
+                    window.dispatchEvent(new CustomEvent('notes-updated'))
+                    setMovePrompt(false)
+                  }}
+                  className="rounded-md px-2 py-1.5 text-left text-sm text-neutral-300 hover:bg-neutral-800"
+                >
+                  {folder}
+                </button>
+              ))}
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setMovePrompt(false)}
+                className="rounded-md px-3 py-1.5 text-xs font-medium text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>,
         document.body
       )}

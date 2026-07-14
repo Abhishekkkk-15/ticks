@@ -2,7 +2,7 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { getSettingsInfo, updateSettings } from '../services/settingsService.js';
 import { listWorkspaces, createWorkspace, deleteWorkspace } from '../services/workspaceService.js';
-import { listNotes, getNote, createNote, updateContent, searchNotes, trashNote } from '../services/noteService.js';
+import { listNotes, getNote, createNote, updateContent, searchNotes, trashNote, setFolder } from '../services/noteService.js';
 import { listDrawings, getDrawing, saveScene, createDrawing } from '../services/drawingService.js';
 import { listResources, getResourceFilePath } from '../services/resourceService.js';
 import fs from 'fs';
@@ -50,6 +50,18 @@ const TOOLS = [
         workspace_id: { type: 'string', description: 'The unique ID of the workspace to delete' },
       },
       required: ['workspace_id'],
+    },
+  },
+  {
+    name: 'create_folder',
+    description: 'Creates a nested folder inside a workspace.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        workspace_id: { type: 'string', description: 'The workspace ID' },
+        folder_path: { type: 'string', description: 'The nested folder path (e.g. docs/api)' },
+      },
+      required: ['workspace_id', 'folder_path'],
     },
   },
   {
@@ -119,6 +131,19 @@ const TOOLS = [
         note_id: { type: 'string', description: 'The unique ID of the note to delete' },
       },
       required: ['workspace_id', 'note_id'],
+    },
+  },
+  {
+    name: 'move_note',
+    description: 'Moves a note to a specific folder path.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        workspace_id: { type: 'string', description: 'The workspace ID' },
+        note_id: { type: 'string', description: 'The unique ID of the note to move' },
+        folder_path: { type: 'string', description: 'The destination folder path (use null or empty string for root)' },
+      },
+      required: ['workspace_id', 'note_id', 'folder_path'],
     },
   },
   {
@@ -236,6 +261,20 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
       
+      case 'create_folder': {
+        const { workspace_id, folder_path } = args as { workspace_id: string; folder_path: string };
+        const cleanPath = folder_path.replace(/^\/+|\/+$/g, '').trim();
+        if (!cleanPath) {
+          throw new Error('Folder path cannot be empty');
+        }
+        // Create a dummy note to instantiate the folder (matches UI behavior)
+        const note = createNote(workspace_id, { title: 'Untitled', content: '' });
+        setFolder(workspace_id, note.id, cleanPath);
+        return {
+          content: [{ type: 'text', text: `Folder "${cleanPath}" created successfully in workspace "${workspace_id}".` }],
+        };
+      }
+      
       case 'list_notes': {
         const permittedIds = currentSettings.mcp_permitted_notes;
         const allWorkspaces = listWorkspaces();
@@ -335,6 +374,21 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         trashNote(workspace_id, note_id);
         return {
           content: [{ type: 'text', text: `Note "${note_id}" deleted successfully.` }],
+        };
+      }
+
+      case 'move_note': {
+        const { workspace_id, note_id, folder_path } = args as { workspace_id: string; note_id: string; folder_path: string | null };
+        if (!isNotePermitted(note_id)) {
+          return {
+            isError: true,
+            content: [{ type: 'text', text: `Access denied. Note "${note_id}" is not permitted.` }],
+          };
+        }
+        const cleanPath = folder_path ? folder_path.replace(/^\/+|\/+$/g, '').trim() : null;
+        setFolder(workspace_id, note_id, cleanPath);
+        return {
+          content: [{ type: 'text', text: `Note "${note_id}" successfully moved to ${cleanPath ? `folder "${cleanPath}"` : 'root'}.` }],
         };
       }
 
