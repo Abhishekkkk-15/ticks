@@ -17,6 +17,7 @@ interface EditorViewProps {
   onSelectionChange?: (selection: EditorSelection) => void
   notes?: { id: string; title: string }[]
   onPaste?: (event: ClipboardEvent) => void
+  editorRef?: React.RefObject<ReactCodeMirrorRef | null>
 }
 
 const modes: { id: EditorMode; label: string }[] = [
@@ -31,7 +32,8 @@ function EditorView({
   noteId,
   onSelectionChange,
   notes = [],
-  onPaste
+  onPaste,
+  editorRef: externalEditorRef
 }: EditorViewProps): React.JSX.Element {
   const { settings } = useSettings()
   const [mode, setMode] = useState<EditorMode>('edit')
@@ -43,7 +45,8 @@ function EditorView({
       return true
     }
   })
-  const editorRef = useRef<ReactCodeMirrorRef>(null)
+  const internalRef = useRef<ReactCodeMirrorRef>(null)
+  const editorRef = externalEditorRef || internalRef
 
   function toggleMinimap(): void {
     setMinimapVisible((v) => {

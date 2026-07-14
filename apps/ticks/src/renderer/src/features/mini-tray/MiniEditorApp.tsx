@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ReactCodeMirrorRef } from '@uiw/react-codemirror'
-import MarkdownEditor from '../editor/MarkdownEditor'
+import EditorView from '../editor/EditorView'
 import { useNoteEditor } from '../notes/useNoteEditor'
 import { getClipboardImageFile, uploadPastedImage } from '../notes/pasteImage'
 
@@ -38,8 +38,14 @@ function MiniNoteEditor({ workspaceId, noteId }: ActiveNote): React.JSX.Element 
   }
 
   return (
-    <div className="min-h-0 flex-1" style={NO_DRAG_REGION} onPaste={handlePasteImage}>
-      <MarkdownEditor value={content} onChange={onChange} editorRef={editorRef} />
+    <div className="min-h-0 flex-1 flex flex-col" style={NO_DRAG_REGION} onPaste={handlePasteImage}>
+      <EditorView 
+        value={content} 
+        onChange={onChange} 
+        workspaceId={workspaceId} 
+        noteId={noteId} 
+        editorRef={editorRef} 
+      />
     </div>
   )
 }
