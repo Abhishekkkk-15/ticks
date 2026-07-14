@@ -15,6 +15,23 @@ interface MarkdownPreviewProps {
 const DRAWING_SCHEME = 'drawing://'
 const NOTE_SCHEME = 'note://'
 
+function addPositionsToInputs(node: any, parent?: any) {
+  if (node.type === 'element' && node.tagName === 'input' && node.properties?.type === 'checkbox') {
+    if (!node.position && parent?.position) {
+      node.position = parent.position
+    }
+  }
+  if (node.children && Array.isArray(node.children)) {
+    node.children.forEach((child: any) => addPositionsToInputs(child, node))
+  }
+}
+
+function rehypeCheckboxPositions() {
+  return (tree: any) => {
+    addPositionsToInputs(tree)
+  }
+}
+
 function MarkdownPreview({
   content,
   workspaceId,
@@ -29,7 +46,7 @@ function MarkdownPreview({
     <div className={`${proseClass} prose h-full max-w-none overflow-auto px-6 py-4`}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeHighlight]}
+        rehypePlugins={[rehypeHighlight, rehypeCheckboxPositions]}
         urlTransform={(url) =>
           url.startsWith(DRAWING_SCHEME) || url.startsWith(NOTE_SCHEME)
             ? url
