@@ -15,6 +15,7 @@ interface NoteTreeListProps {
   onRestore: (id: string) => void
   onPurge: (id: string) => void
   onMoveNote: (noteId: string, newFolder: string | null) => void
+  onContextMenu: (e: React.MouseEvent, folderPath: string | null) => void
 }
 
 interface TreeFolder {
@@ -34,7 +35,8 @@ export default function NoteTreeList({
   onRemove,
   onRestore,
   onPurge,
-  onMoveNote
+  onMoveNote,
+  onContextMenu
 }: NoteTreeListProps): React.JSX.Element {
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({})
 
@@ -190,6 +192,7 @@ export default function NoteTreeList({
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={(e) => handleDropFolder(e, folder.path)}
+          onContextMenu={(e) => onContextMenu(e, folder.path)}
           className="flex items-center gap-1.5 rounded-md py-1.5 px-2 text-sm text-neutral-300 hover:bg-neutral-800 transition-colors"
           style={{ paddingLeft: `${depth * 12 + 8}px` }}
         >
@@ -214,6 +217,7 @@ export default function NoteTreeList({
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDropRoot}
+      onContextMenu={(e) => onContextMenu(e, null)}
     >
       {Object.values(root.children).map(folder => renderFolder(folder, 0))}
       {root.notes.map(note => renderNote(note, 0))}

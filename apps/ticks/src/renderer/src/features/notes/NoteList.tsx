@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { ArrowLeft, Clock, List, Pin, RotateCcw, Star, Trash2, Upload, X, RefreshCw, FolderTree } from 'lucide-react'
 import { useNotes } from './useNotes'
 import type { NoteView } from './useNotes'
@@ -64,6 +65,9 @@ function NoteList({
   const [newTitle, setNewTitle] = useState('')
   const [isGitSyncModalOpen, setIsGitSyncModalOpen] = useState(false)
   const [isTreeView, setIsTreeView] = useState(true)
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; folderPath: string | null } | null>(null)
+  const [creationPrompt, setCreationPrompt] = useState<{ type: 'note' | 'folder'; folderPath: string | null } | null>(null)
+  const [creationName, setCreationName] = useState('')
   const searchInputRef = useRef<HTMLInputElement>(null)
 
   const canCreate = view !== 'recent' && view !== 'trash'
@@ -76,6 +80,45 @@ function NoteList({
     window.addEventListener('sidebar:focus-search', handleFocusSearch)
     return () => window.removeEventListener('sidebar:focus-search', handleFocusSearch)
   }, [])
+
+  useEffect(() => {
+    const handleGlobalClick = () => setContextMenu(null)
+    window.addEventListener('click', handleGlobalClick)
+    return () => window.removeEventListener('click', handleGlobalClick)
+  }, [])
+
+  const handleContextMenu = (e: React.MouseEvent, folderPath: string | null) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setContextMenu({ x: e.clientX, y: e.clientY, folderPath })
+  }
+
+  const handleCreateConfirm = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!creationPrompt || !creationName.trim()) return
+
+    const name = creationName.trim()
+    
+    if (creationPrompt.type === 'folder') {
+      const fullFolderPath = creationPrompt.folderPath ? `${creationPrompt.folderPath}/${name}` : name
+      const note = await create('Untitled')
+      if (note) {
+        await setNoteFolder(workspaceId, note.id, fullFolderPath)
+        window.dispatchEvent(new CustomEvent('notes-updated'))
+      }
+    } else {
+      const note = await create(name)
+      if (note) {
+        if (creationPrompt.folderPath) {
+          await setNoteFolder(workspaceId, note.id, creationPrompt.folderPath)
+          window.dispatchEvent(new CustomEvent('notes-updated'))
+        }
+        onOpenNote(note)
+      }
+    }
+    setCreationPrompt(null)
+    setCreationName('')
+  }
 
   async function handleCreate(event: React.FormEvent): Promise<void> {
     event.preventDefault()
@@ -220,12 +263,18 @@ function NoteList({
                 console.error(err)
               }
             }}
+            onContextMenu={handleContextMenu}
           />
         ) : (
-          <ul className="space-y-0.5">
+          <ul className="space-y-0.5" onContextMenu={(e) => handleContextMenu(e, null)}>
             {notes.map((note) => (
               <li
                 key={note.id}
+                onContextMenu={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  handleContextMenu(e, note.folder)
+                }}
                 className={`group flex items-start justify-between gap-1 rounded-md px-2 py-1.5 text-sm ${
                   note.id === selectedNoteId
                     ? 'bg-neutral-800 text-neutral-100'
@@ -319,6 +368,80 @@ function NoteList({
           workspaceName={workspaceName}
           onClose={() => setIsGitSyncModalOpen(false)}
         />
+      )}
+
+      {contextMenu && createPortal(
+        <div 
+          className="fixed z-[100] w-40 rounded-md border border-neutral-700 bg-neutral-800 shadow-xl overflow-hidden py-1 text-sm"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+          onClick={(e) => e.stopPropagation()}
+          onContextMenu={(e) => { e.preventDefault(); e.stopPropagation() }}
+        >
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 transition-colors"
+            onClick={() => {
+              setCreationPrompt({ type: 'note', folderPath: contextMenu.folderPath })
+              setContextMenu(null)
+            }}
+          >
+            Create Note
+          </button>
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 transition-colors"
+            onClick={() => {
+              setCreationPrompt({ type: 'folder', folderPath: contextMenu.folderPath })
+              setContextMenu(null)
+            }}
+          >
+            Create Folder
+          </button>
+        </div>,
+        document.body
+      )}
+
+      {creationPrompt && createPortal(
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={() => setCreationPrompt(null)}
+          onContextMenu={(e) => { e.preventDefault(); e.stopPropagation() }}
+        >
+          <form 
+            onSubmit={handleCreateConfirm}
+            className="w-[300px] rounded-lg border border-neutral-800 bg-neutral-900 p-4 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 text-sm font-semibold text-neutral-100">
+              Create {creationPrompt.type === 'note' ? 'Note' : 'Folder'}
+              {creationPrompt.folderPath ? ` in ${creationPrompt.folderPath.split('/').pop()}` : ''}
+            </div>
+            <input
+              autoFocus
+              value={creationName}
+              onChange={(e) => setCreationName(e.target.value)}
+              placeholder={`Enter ${creationPrompt.type} name...`}
+              className="w-full rounded-md border border-neutral-700 bg-neutral-950 px-3 py-1.5 text-sm text-neutral-100 placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500"
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setCreationPrompt(null)}
+                className="rounded-md px-3 py-1.5 text-xs font-medium text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={!creationName.trim()}
+                className="rounded-md bg-neutral-100 px-3 py-1.5 text-xs font-medium text-neutral-900 hover:bg-neutral-200 disabled:opacity-50 transition-colors"
+              >
+                Create
+              </button>
+            </div>
+          </form>
+        </div>,
+        document.body
       )}
     </div>
   )
