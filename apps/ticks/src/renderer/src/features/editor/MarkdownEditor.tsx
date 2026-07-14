@@ -188,6 +188,29 @@ function MarkdownEditor({
     ])
   }, [])
 
+  const autoTriggerExtension = useMemo(() => {
+    return EditorView.updateListener.of((update) => {
+      // Only trigger if it was a user typing event
+      if (
+        update.docChanged &&
+        update.selectionSet &&
+        update.transactions.some((tr) => tr.isUserEvent('input.type'))
+      ) {
+        const view = update.view
+        const { main } = view.state.selection
+        if (main.empty) {
+          const textBefore = view.state.sliceDoc(Math.max(0, main.head - 2), main.head)
+          if (textBefore === '[[') {
+            // Give CM a tiny tick to finish the current transaction, then trigger
+            setTimeout(() => {
+              startCompletion(view)
+            }, 0)
+          }
+        }
+      }
+    })
+  }, [])
+
   const minimapExtension = useMemo(() => {
     if (!showMinimap) return []
     return minimapFacet.of({
@@ -206,9 +229,10 @@ function MarkdownEditor({
       autocompleteExtension,
       domEventHandlers,
       vscodeKeymapExtension,
+      autoTriggerExtension,
       minimapExtension
     ]
-  }, [fontTheme, autocompleteExtension, domEventHandlers, vscodeKeymapExtension, minimapExtension])
+  }, [fontTheme, autocompleteExtension, domEventHandlers, vscodeKeymapExtension, autoTriggerExtension, minimapExtension])
 
   function handleUpdate(viewUpdate: MinimalViewUpdate): void {
     if (!onSelectionChange || !viewUpdate.selectionSet) return
