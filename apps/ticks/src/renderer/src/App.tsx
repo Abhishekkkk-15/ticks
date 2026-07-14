@@ -10,6 +10,7 @@ import type { Note, NoteDetail } from './features/notes/types'
 import type { SaveStatus } from './features/notes/useNoteEditor'
 import { useWorkspaces } from './features/workspaces/useWorkspaces'
 import type { Workspace } from './features/workspaces/types'
+import { runWorkflows } from './features/workflows/runWorkflows'
 import CommandPalette from './features/command-palette/CommandPalette'
 import SettingsView from './features/settings/SettingsView'
 
@@ -166,6 +167,16 @@ function App(): React.JSX.Element {
 
         setCaptureTargetNote({ workspaceId: activeWorkspace.id, noteId: targetNoteId })
         openNote(activeWorkspace.id, noteDetail)
+        
+        const workflows = settings?.workflows ?? []
+        if (workflows.some((w) => w.trigger === 'on_capture')) {
+          runWorkflows('on_capture', workflows, {
+            workspaceId: activeWorkspace.id,
+            noteId: targetNoteId,
+            content: updatedContent,
+            clipboardText: text
+          }).catch(() => {})
+        }
       } catch (err) {
         console.error('Failed to append global capture to recent note:', err)
       }
@@ -175,7 +186,7 @@ function App(): React.JSX.Element {
       unsubscribe()
       clearTimeout(timeoutId)
     }
-  }, [selectedWorkspace, activeTabId, tabs, workspacesApi.workspaces, openNote])
+  }, [selectedWorkspace, activeTabId, tabs, workspacesApi.workspaces, openNote, settings])
 
   const runQuickCaptureAction = useCallback(
     async (action: AiAction) => {

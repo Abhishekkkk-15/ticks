@@ -328,16 +328,7 @@ function NoteEditor({
     onChange(`${content}${separator}${result}\n`)
   }
 
-  function handleCopy(): void {
-    if (!meta || !workflows.some((w) => w.trigger === 'on_copy')) return
-    const copied = selection?.text ?? window.getSelection()?.toString() ?? ''
-    runWorkflows('on_copy', workflows, {
-      workspaceId,
-      noteId: meta.id,
-      content,
-      clipboardText: copied
-    }).catch(() => {})
-  }
+
 
   async function handlePaste(event: ClipboardEvent | React.ClipboardEvent): Promise<void> {
     await handlePasteImage(event)
@@ -664,7 +655,6 @@ function NoteEditor({
         ref={editorAreaRef}
         className="min-h-0 flex-1"
         onContextMenu={handleContextMenu}
-        onCopy={handleCopy}
         onPaste={handlePaste}
       >
         <EditorView

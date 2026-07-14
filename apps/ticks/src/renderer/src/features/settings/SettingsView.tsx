@@ -19,7 +19,7 @@ type SettingsTab = 'general' | 'editor' | 'ai' | 'shortcuts' | 'workflows' | 'mc
 
 const TRIGGER_OPTIONS: { value: WorkflowTrigger; label: string }[] = [
   { value: 'on_save', label: 'On save' },
-  { value: 'on_copy', label: 'On copy' },
+  { value: 'on_capture', label: 'On Global Text Capture' },
   { value: 'on_paste', label: 'On paste' },
   { value: 'shortcut', label: 'Keyboard shortcut' }
 ]

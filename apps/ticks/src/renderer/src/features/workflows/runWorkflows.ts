@@ -35,7 +35,7 @@ export const WORKFLOW_OUTPUT_MODE_LABELS: Record<WorkflowOutputMode, string> = {
 export const DEFAULT_SCOPE_FOR_TRIGGER: Record<WorkflowTrigger, WorkflowScope> = {
   on_save: 'new_text',
   shortcut: 'selection',
-  on_copy: 'clipboard',
+  on_capture: 'clipboard',
   on_paste: 'clipboard'
 }
 
@@ -50,7 +50,7 @@ interface RunWorkflowsContext {
   content: string
   /** Text the user has highlighted in the editor (may be empty string). */
   selectedText?: string
-  /** Text that was just copied or pasted (only set for on_copy/on_paste). */
+  /** Text that was just captured or pasted (only set for on_capture/on_paste). */
   clipboardText?: string
 }
 

@@ -127,13 +127,23 @@ export function useNoteEditor(workspaceId: string, noteId: string): UseNoteEdito
       const separator = content.endsWith('\n') || content === '' ? '' : '\n\n'
       const newContent = content + separator + `> ${capturedText}\n`
       onChange(newContent)
+      
+      const workflows = settings?.workflows ?? []
+      if (workflows.some((w) => w.trigger === 'on_capture')) {
+        runWorkflows('on_capture', workflows, {
+          workspaceId,
+          noteId,
+          content: newContent,
+          clipboardText: capturedText
+        }).catch(() => {})
+      }
     }
 
     window.addEventListener('shortcut:captured', handleCapture)
     return () => {
       window.removeEventListener('shortcut:captured', handleCapture)
     }
-  }, [content, onChange])
+  }, [content, onChange, settings, workspaceId, noteId, note?.title])
 
   // A quick-capture AI action (App.tsx) saves its result straight through the
   // API rather than this hook's own onChange, since the note that received

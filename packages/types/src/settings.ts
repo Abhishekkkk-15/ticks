@@ -1,5 +1,5 @@
 // ─── Settings ─────────────────────────────────────────────────────────────────
-export type WorkflowTrigger = 'on_save' | 'on_copy' | 'on_paste' | 'shortcut'
+export type WorkflowTrigger = 'on_save' | 'on_capture' | 'on_paste' | 'shortcut'
 
 /** full_note — run on entire note content (good for on_save summaries)
  *  selection  — run on currently selected text; falls back to full note if nothing selected
