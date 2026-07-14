@@ -408,46 +408,47 @@ function App(): React.JSX.Element {
               >
                 Whiteboard
               </button>
-              <span className="ml-auto text-xs text-neutral-600">Ctrl+Shift+P for commands</span>
-              <button
-                type="button"
-                onClick={() => setView('settings')}
-                title="Settings"
-                aria-pressed={view === 'settings'}
-                className={`rounded-md p-1.5 ${
-                  view === 'settings'
-                    ? 'bg-neutral-800 text-neutral-100'
-                    : 'text-neutral-500 hover:bg-neutral-800 hover:text-neutral-300'
-                }`}
-              >
-                <SettingsIcon size={14} />
-              </button>
-              <button
-                type="button"
-                onClick={() => setSplitMode(!splitMode)}
-                title="Toggle Split View"
-                aria-pressed={splitMode}
-                className={`rounded-md p-1.5 ${
-                  splitMode
-                    ? 'bg-amber-500/20 text-amber-500 hover:bg-amber-500/30'
-                    : 'text-neutral-500 hover:bg-neutral-800 hover:text-neutral-300'
-                }`}
-              >
-                <Columns size={14} />
-              </button>
-              <button
-                type="button"
-                onClick={() => setFocusMode(!focusMode)}
-                title="Toggle Focus Mode (F11)"
-                aria-pressed={focusMode}
-                className={`rounded-md p-1.5 ${
-                  focusMode
-                    ? 'bg-amber-500/20 text-amber-500 hover:bg-amber-500/30'
-                    : 'text-neutral-500 hover:bg-neutral-800 hover:text-neutral-300'
-                }`}
-              >
-                <Maximize size={14} />
-              </button>
+              <div className="ml-auto flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setView('settings')}
+                  title="Settings"
+                  aria-pressed={view === 'settings'}
+                  className={`rounded-md p-1.5 ${
+                    view === 'settings'
+                      ? 'bg-neutral-800 text-neutral-100'
+                      : 'text-neutral-500 hover:bg-neutral-800 hover:text-neutral-300'
+                  }`}
+                >
+                  <SettingsIcon size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSplitMode(!splitMode)}
+                  title="Toggle Split View"
+                  aria-pressed={splitMode}
+                  className={`rounded-md p-1.5 ${
+                    splitMode
+                      ? 'bg-amber-500/20 text-amber-500 hover:bg-amber-500/30'
+                      : 'text-neutral-500 hover:bg-neutral-800 hover:text-neutral-300'
+                  }`}
+                >
+                  <Columns size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFocusMode(!focusMode)}
+                  title="Toggle Focus Mode (F11)"
+                  aria-pressed={focusMode}
+                  className={`rounded-md p-1.5 ${
+                    focusMode
+                      ? 'bg-amber-500/20 text-amber-500 hover:bg-amber-500/30'
+                      : 'text-neutral-500 hover:bg-neutral-800 hover:text-neutral-300'
+                  }`}
+                >
+                  <Maximize size={14} />
+                </button>
+              </div>
             </div>
             {view === 'notes' && (
               <div className="shrink-0 hide-in-focus">
