@@ -9,6 +9,7 @@ interface MarkdownPreviewProps {
   content: string
   workspaceId: string
   noteId: string
+  onChange?: (value: string) => void
 }
 
 const DRAWING_SCHEME = 'drawing://'
@@ -17,7 +18,8 @@ const NOTE_SCHEME = 'note://'
 function MarkdownPreview({
   content,
   workspaceId,
-  noteId
+  noteId,
+  onChange
 }: MarkdownPreviewProps): React.JSX.Element {
   const { settings } = useSettings()
   const isLight = isLightTheme(settings?.theme)
@@ -34,6 +36,35 @@ function MarkdownPreview({
             : defaultUrlTransform(url)
         }
         components={{
+          input: ({ node, checked, type, disabled, ...props }) => {
+            if (type === 'checkbox') {
+              return (
+                <input
+                  {...props}
+                  type="checkbox"
+                  checked={checked}
+                  disabled={!onChange}
+                  onChange={(e) => {
+                    if (!onChange || !node?.position) return
+                    const isChecked = e.target.checked
+                    const lineIndex = node.position.start.line - 1
+                    const lines = content.split('\n')
+                    const line = lines[lineIndex]
+                    if (line !== undefined) {
+                      if (isChecked) {
+                        lines[lineIndex] = line.replace(/\[ \]/, '[x]')
+                      } else {
+                        lines[lineIndex] = line.replace(/\[[xX]\]/, '[ ]')
+                      }
+                      onChange(lines.join('\n'))
+                    }
+                  }}
+                  className={onChange ? 'cursor-pointer' : ''}
+                />
+              )
+            }
+            return <input type={type} checked={checked} disabled={disabled} {...props} />
+          },
           img: ({ src, alt }) => {
             if (typeof src === 'string' && src.startsWith(DRAWING_SCHEME)) {
               return (

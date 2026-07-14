@@ -165,7 +165,7 @@ function EditorView({
           </div>
         ) : (
           <div className="h-full w-full">
-            <MarkdownPreview content={value} workspaceId={workspaceId} noteId={noteId} />
+            <MarkdownPreview content={value} onChange={onChange} workspaceId={workspaceId} noteId={noteId} />
           </div>
         )}
       </div>
