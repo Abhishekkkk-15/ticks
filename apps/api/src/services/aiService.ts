@@ -8,6 +8,11 @@ const FAITHFULNESS_RULE =
   "numbers, or claims that aren't in it. If something is ambiguous or " +
   'missing, say so instead of guessing.';
 
+const ANTI_CHATTER_RULE =
+  'Output nothing but the requested format. Do not include any conversational filler, ' +
+  'introductory remarks, or concluding remarks (e.g. do not say "Here is the summary:" ' +
+  'or "I have created the table:").';
+
 const SYSTEM_CONTEXT =
   'You are the AI companion inside Ticks, a modern, local-first markdown ' +
   'note-taking and knowledge management desktop application. Ticks helps users learn ' +
@@ -15,32 +20,32 @@ const SYSTEM_CONTEXT =
   'material, and use AI utilities to edit and process notes.';
 
 export const PROMPTS: Record<string, string> = {
-  summarize: `Summarize the following text concisely. ${FAITHFULNESS_RULE}`,
-  explain: `Explain the following text in simple, plain terms, as if to someone new to the subject. ${FAITHFULNESS_RULE}`,
-  'key-points': `Extract the key points from the following text as a concise Markdown bulleted list. ${FAITHFULNESS_RULE}`,
-  questions: `Write quiz questions (no answers) that test understanding of the following text, as a Markdown numbered list. ${FAITHFULNESS_RULE}`,
-  flashcards: `Turn the following text into flashcards. Format each as 'Q: ...' then 'A: ...' on the next line, separated by blank lines. ${FAITHFULNESS_RULE}`,
-  checklist: `Convert the following text into an actionable Markdown checklist (\`- [ ] ...\` items). ${FAITHFULNESS_RULE}`,
-  table: `Convert the following text into a Markdown table with sensible columns for its content. ${FAITHFULNESS_RULE}`,
-  expand: `Expand the following text with more detail and explanation, without changing its meaning. ${FAITHFULNESS_RULE}`,
-  shorten: `Shorten the following text as much as possible while preserving its full meaning. ${FAITHFULNESS_RULE}`,
-  examples: `Add concrete, illustrative examples to the following text. ${FAITHFULNESS_RULE}`,
-  'process-resource': `Summarize the following external source material faithfully, preserving its key facts and structure so it can be referenced later. ${FAITHFULNESS_RULE}`,
-  format: `Reformat the following text as a clean, beautiful Markdown document. Add appropriate Markdown elements such as headers, bold text, lists, task lists, and code blocks to structure it nicely. Do not summarize or expand it. Do not change the meaning. Do not include any introductory or concluding remarks. Return ONLY the reformatted Markdown content.`
+  summarize: `Summarize the following text concisely. ${FAITHFULNESS_RULE} ${ANTI_CHATTER_RULE}`,
+  explain: `Explain the following text in simple, plain terms, as if to someone new to the subject. ${FAITHFULNESS_RULE} ${ANTI_CHATTER_RULE}`,
+  'key-points': `Extract the key points from the following text as a Markdown bulleted list. Each bullet must be a single, punchy sentence focusing on actionable insights or core facts. ${FAITHFULNESS_RULE} ${ANTI_CHATTER_RULE}`,
+  questions: `Write quiz questions (no answers) that test understanding of the following text. Format as a strict Markdown numbered list (1., 2., etc.). ${FAITHFULNESS_RULE} ${ANTI_CHATTER_RULE}`,
+  flashcards: `Turn the following text into flashcards.\n\nStrictly use this exact format for every card:\nQ: [Question here]\nA: [Answer here]\n\nSeparate each flashcard with a single blank line. Do not number the questions. ${FAITHFULNESS_RULE} ${ANTI_CHATTER_RULE}`,
+  checklist: `Convert the following text into an actionable Markdown checklist (\`- [ ] ...\` items). ${FAITHFULNESS_RULE} ${ANTI_CHATTER_RULE}`,
+  table: `Convert the following text into a Markdown table with sensible columns for its content. ${FAITHFULNESS_RULE} ${ANTI_CHATTER_RULE}`,
+  expand: `Elaborate on the concepts presented in the following text by providing deeper context, analogies, and logical continuations, while staying faithful to the original intent. ${FAITHFULNESS_RULE} ${ANTI_CHATTER_RULE}`,
+  shorten: `Shorten the following text as much as possible while preserving its full core meaning. ${FAITHFULNESS_RULE} ${ANTI_CHATTER_RULE}`,
+  examples: `Add concrete, illustrative examples to the following text to clarify its points. ${FAITHFULNESS_RULE} ${ANTI_CHATTER_RULE}`,
+  'process-resource': `Process the following external source material to serve as optimal RAG context. Provide a high-level summary, followed by a structured list of key entities, definitions, and facts. ${FAITHFULNESS_RULE} ${ANTI_CHATTER_RULE}`,
+  format: `Reformat the following text as a clean, beautiful Markdown document. Add appropriate Markdown elements such as headers, bold text, lists, task lists, and code blocks to structure it nicely. Do not summarize or expand it. Do not change the meaning. ${ANTI_CHATTER_RULE}`
 };
 
 export const REWRITE_MODES = new Set(['expand', 'shorten', 'examples', 'format']);
 
 function stylePrompt(styleExamples: string[]): string {
   if (!styleExamples || styleExamples.length === 0) {
-    return `Rewrite the following text to improve clarity and flow. ${FAITHFULNESS_RULE}`;
+    return `Rewrite the following text to improve clarity and flow. ${FAITHFULNESS_RULE} ${ANTI_CHATTER_RULE}`;
   }
   const examplesBlock = styleExamples.map((ex, i) => `Example ${i + 1}:\n${ex}`).join('\n\n');
   return (
     'Rewrite the following text to match the writing style demonstrated ' +
     `in these examples from the user (tone, sentence length, phrasing):\n\n` +
     `${examplesBlock}\n\n` +
-    `Only match the *style* — do not copy their content. ${FAITHFULNESS_RULE}`
+    `Only match the *style* — do not copy their content. ${FAITHFULNESS_RULE} ${ANTI_CHATTER_RULE}`
   );
 }
 
@@ -69,7 +74,11 @@ export async function openActionStream(
 
   let systemPrompt = resolvePrompt(action, styleExamples);
   let userContent = text;
-  if (resourceContext) {
+  
+  // Structural actions shouldn't pull in outside information, so we ignore context
+  const IGNORE_CONTEXT_ACTIONS = new Set(['format', 'table', 'checklist', 'flashcards']);
+  
+  if (resourceContext && !IGNORE_CONTEXT_ACTIONS.has(action)) {
     systemPrompt =
       `${systemPrompt} The user has attached reference material below for additional context ` +
       'and accuracy — use it to inform your answer where relevant, but perform the task only ' +

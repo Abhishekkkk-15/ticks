@@ -241,7 +241,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 title: note.title,
                 workspace_id: ws.id,
                 workspace_name: ws.name,
-                snippet: note.content.substring(0, 200),
+                snippet: note.snippet,
               });
             }
           }
@@ -389,7 +389,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             };
           }
           const content = fs.readFileSync(path);
-          const isText = resource.type === 'text' || resource.filename.endsWith('.txt') || resource.filename.endsWith('.md') || resource.filename.endsWith('.json');
+          const isText = resource.type === 'markdown' || resource.type === 'website' || resource.type === 'doc' || resource.type === 'blog' || path.endsWith('.txt') || path.endsWith('.md') || path.endsWith('.json');
           if (isText) {
             return {
               content: [{ type: 'text', text: content.toString('utf-8') }],
@@ -399,7 +399,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
               content: [
                 {
                   type: 'text',
-                  text: `Binary resource: ${resource.title} (${resource.filename})\nType: ${resource.type}\nBase64 encoded content: ${content.toString('base64').substring(0, 10000)}...`,
+                  text: `Binary resource: ${resource.title} (${resource.source})\nType: ${resource.type}\nBase64 encoded content: ${content.toString('base64').substring(0, 10000)}...`,
                 },
               ],
             };

@@ -11,7 +11,7 @@ import {
   WORKFLOW_ACTIONS,
   WORKFLOW_OUTPUT_MODE_LABELS
 } from '../workflows/runWorkflows'
-import type { Workflow, WorkflowTrigger, WorkflowScope, WorkflowOutputMode } from './types'
+import type { Workflow, WorkflowTrigger, WorkflowOutputMode } from './types'
 
 type SettingsTab = 'general' | 'editor' | 'ai' | 'shortcuts' | 'workflows' | 'mcp'
 
