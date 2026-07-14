@@ -78,7 +78,9 @@ export default function GitSyncModal({
     setError(null);
     setLogs(prev => [...prev, 'Starting Git synchronization...']);
     try {
-      const result = await apiFetch<any>(`/workspaces/${workspaceId}/sync/git/sync`);
+      const result = await apiFetch<any>(`/workspaces/${workspaceId}/sync/git/sync`, {
+        method: 'POST'
+      });
       
       const newLogs = [...logs, 'Sync process completed:'];
       if (result.committed) {
