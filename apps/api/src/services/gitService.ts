@@ -35,7 +35,14 @@ export function isGitRepo(workspaceId: string): boolean {
 export async function getGitStatus(workspaceId: string) {
   const dir = getWorkspaceDir(workspaceId);
   const configPath = path.join(dir, CONFIG_FILENAME);
-  const config = fs.existsSync(configPath) ? JSON.parse(fs.readFileSync(configPath, 'utf-8')) : {};
+  let config: any = {};
+  if (fs.existsSync(configPath)) {
+    try {
+      config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    } catch (err) {
+      console.warn(`[getGitStatus] Failed to parse config.json at ${configPath}:`, err);
+    }
+  }
   const gitSync: GitSyncConfig = config.git_sync || {
     remote_url: null,
     branch: 'main',
@@ -97,7 +104,14 @@ export async function getGitStatus(workspaceId: string) {
 export async function configureGitRemote(workspaceId: string, syncConfig: GitSyncConfig) {
   const dir = getWorkspaceDir(workspaceId);
   const configPath = path.join(dir, CONFIG_FILENAME);
-  const config = fs.existsSync(configPath) ? JSON.parse(fs.readFileSync(configPath, 'utf-8')) : {};
+  let config: any = {};
+  if (fs.existsSync(configPath)) {
+    try {
+      config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    } catch (err) {
+      console.warn(`[configureGitRemote] Failed to parse config.json at ${configPath}:`, err);
+    }
+  }
   
   config.git_sync = {
     ...config.git_sync,
