@@ -152,7 +152,7 @@ function MarkdownEditor({
           }
         },
         (context) => {
-          const word = context.matchBefore(/^\s*\/\w*$/)
+          const word = context.matchBefore(/\/\w*$/)
           if (!word) return null
           
           return {
@@ -236,7 +236,7 @@ function MarkdownEditor({
             setTimeout(() => {
               startCompletion(view)
             }, 0)
-          } else if (textBeforeLine.trim() === '/') {
+          } else if (textBefore.endsWith('/')) {
             setTimeout(() => {
               startCompletion(view)
             }, 0)
@@ -291,7 +291,7 @@ function MarkdownEditor({
         indentOnInput: true,
         bracketMatching: true,
         closeBrackets: true,
-        autocompletion: true,
+        autocompletion: false,
         highlightActiveLine: true,
         highlightSelectionMatches: true
       }}

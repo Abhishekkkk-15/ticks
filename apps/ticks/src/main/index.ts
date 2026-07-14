@@ -414,22 +414,11 @@ function createWindow(): void {
     minHeight: 600,
     show: false,
     autoHideMenuBar: true,
-    frame: process.platform === 'linux' ? false : true,
-    transparent: process.platform === 'linux',
-    titleBarStyle:
-      process.platform === 'darwin'
-        ? 'hiddenInset'
-        : process.platform === 'win32'
-          ? 'hidden'
-          : 'default',
-    titleBarOverlay:
-      process.platform === 'win32'
-        ? {
-            color: '#0a0a0a',
-            symbolColor: '#737373',
-            height: 32
-          }
-        : false,
+    frame: process.platform === 'darwin',
+    // Frameless windows are otherwise an opaque rectangle, so the renderer's
+    // own rounded corners need a transparent window to actually show through.
+    transparent: process.platform !== 'darwin',
+    ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset' as const } : {}),
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
