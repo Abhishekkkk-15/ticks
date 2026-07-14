@@ -13,6 +13,8 @@ interface WorkspaceNotes {
 
 const ALL_TOOLS = [
   { name: 'list_workspaces', category: 'Read', description: 'Lists all available workspaces.' },
+  { name: 'create_workspace', category: 'Write', description: 'Creates a new workspace.' },
+  { name: 'delete_workspace', category: 'Write', description: 'Deletes a workspace and its contents.' },
   { name: 'list_notes', category: 'Read', description: 'Lists whitelisted note IDs, titles, and workspaces.' },
   { name: 'read_note', category: 'Read', description: 'Reads the complete text content of a permitted note.' },
   { name: 'search_notes', category: 'Read', description: 'Performs a full-text search across permitted notes.' },
@@ -21,6 +23,7 @@ const ALL_TOOLS = [
   { name: 'create_note', category: 'Write', description: 'Creates a new note (automatically auto-whitelisted).' },
   { name: 'update_note', category: 'Write', description: 'Overwrites the complete markdown content of a note.' },
   { name: 'patch_note', category: 'Write', description: 'Patches a specific block of text in a note.' },
+  { name: 'delete_note', category: 'Write', description: 'Moves a note to the trash.' },
   { name: 'write_drawing', category: 'Write', description: 'Overwrites Excalidraw JSON canvas data for a note.' }
 ]
 

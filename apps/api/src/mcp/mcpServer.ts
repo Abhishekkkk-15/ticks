@@ -1,8 +1,8 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { getSettingsInfo, updateSettings } from '../services/settingsService.js';
-import { listWorkspaces } from '../services/workspaceService.js';
-import { listNotes, getNote, createNote, updateContent, searchNotes } from '../services/noteService.js';
+import { listWorkspaces, createWorkspace, deleteWorkspace } from '../services/workspaceService.js';
+import { listNotes, getNote, createNote, updateContent, searchNotes, trashNote } from '../services/noteService.js';
 import { listDrawings, getDrawing, saveScene, createDrawing } from '../services/drawingService.js';
 import { listResources, getResourceFilePath } from '../services/resourceService.js';
 import fs from 'fs';
@@ -28,6 +28,28 @@ const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {},
+    },
+  },
+  {
+    name: 'create_workspace',
+    description: 'Creates a new workspace.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'The name of the new workspace' },
+      },
+      required: ['name'],
+    },
+  },
+  {
+    name: 'delete_workspace',
+    description: 'Deletes a workspace and all of its contents.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        workspace_id: { type: 'string', description: 'The unique ID of the workspace to delete' },
+      },
+      required: ['workspace_id'],
     },
   },
   {
@@ -85,6 +107,18 @@ const TOOLS = [
         content: { type: 'string', description: 'The new markdown content' },
       },
       required: ['note_id', 'workspace_id', 'content'],
+    },
+  },
+  {
+    name: 'delete_note',
+    description: 'Deletes (moves to trash) a permitted note.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        workspace_id: { type: 'string', description: 'The workspace ID' },
+        note_id: { type: 'string', description: 'The unique ID of the note to delete' },
+      },
+      required: ['workspace_id', 'note_id'],
     },
   },
   {
@@ -186,6 +220,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
       
+      case 'create_workspace': {
+        const { name: wsName } = args as { name: string };
+        const workspace = createWorkspace({ name: wsName });
+        return {
+          content: [{ type: 'text', text: `Workspace created successfully.\nID: ${workspace.id}\nName: ${workspace.name}` }],
+        };
+      }
+
+      case 'delete_workspace': {
+        const { workspace_id } = args as { workspace_id: string };
+        deleteWorkspace(workspace_id);
+        return {
+          content: [{ type: 'text', text: `Workspace "${workspace_id}" deleted successfully.` }],
+        };
+      }
+      
       case 'list_notes': {
         const permittedIds = currentSettings.mcp_permitted_notes;
         const allWorkspaces = listWorkspaces();
@@ -271,6 +321,20 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         updateContent(workspace_id, note_id, content);
         return {
           content: [{ type: 'text', text: `Note "${note_id}" updated successfully.` }],
+        };
+      }
+
+      case 'delete_note': {
+        const { workspace_id, note_id } = args as { workspace_id: string; note_id: string };
+        if (!isNotePermitted(note_id)) {
+          return {
+            isError: true,
+            content: [{ type: 'text', text: `Access denied. Note "${note_id}" is not permitted.` }],
+          };
+        }
+        trashNote(workspace_id, note_id);
+        return {
+          content: [{ type: 'text', text: `Note "${note_id}" deleted successfully.` }],
         };
       }
 
