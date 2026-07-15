@@ -67,6 +67,7 @@ function NoteList({
   const [isGitSyncModalOpen, setIsGitSyncModalOpen] = useState(false)
   const [isTreeView, setIsTreeView] = useState(true)
   const [selectedNoteIds, setSelectedNoteIds] = useState<Set<string>>(new Set())
+  const [selectedFolderPaths, setSelectedFolderPaths] = useState<Set<string>>(new Set())
   const [movePrompt, setMovePrompt] = useState(false)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; target: ContextMenuTarget } | null>(null)
   const [creationPrompt, setCreationPrompt] = useState<{ type: 'note' | 'folder'; folderPath: string | null } | null>(null)
@@ -98,17 +99,66 @@ function NoteList({
   }, [selectedNoteId])
 
   const handleSelectNote = (noteId: string, multi: boolean) => {
-    setSelectedNoteIds((prev) => {
-      const next = new Set(prev)
-      if (multi) {
-        if (next.has(noteId)) next.delete(noteId)
-        else next.add(noteId)
-      } else {
-        next.clear()
-        next.add(noteId)
-      }
-      return next
-    })
+    if (multi) {
+      setSelectedNoteIds((prev) => {
+        const next = new Set(prev)
+        if (next.has(noteId)) {
+          next.delete(noteId)
+        } else {
+          next.add(noteId)
+        }
+        return next
+      })
+    } else {
+      setSelectedNoteIds(new Set([noteId]))
+      setSelectedFolderPaths(new Set()) // clear folder selection when selecting a note
+    }
+  }
+
+  const handleSelectFolder = (path: string, multi: boolean) => {
+    if (multi) {
+      setSelectedFolderPaths((prev) => {
+        const next = new Set(prev)
+        if (next.has(path)) {
+          next.delete(path)
+        } else {
+          next.add(path)
+        }
+        return next
+      })
+    } else {
+      setSelectedFolderPaths(new Set([path]))
+      setSelectedNoteIds(new Set()) // clear note selection when selecting a folder
+    }
+  }
+
+  const handleMoveNote = async (noteId: string, newFolder: string | null) => {
+    await setNoteFolder(workspaceId, noteId, newFolder)
+    window.dispatchEvent(new CustomEvent('notes-updated'))
+  }
+
+  const handleMoveFolder = async (folderPath: string, newParentPath: string | null) => {
+    const folderName = folderPath.includes('/') ? folderPath.substring(folderPath.lastIndexOf('/') + 1) : folderPath
+    const newPath = newParentPath ? `${newParentPath}/${folderName}` : folderName
+    
+    if (folderPath === newPath) return // Same path, do nothing
+    if (newPath.startsWith(`${folderPath}/`)) return // Prevent moving into itself
+    
+    const folderNotes = notes.filter(n => n.folder === folderPath || n.folder?.startsWith(`${folderPath}/`))
+    for (const note of folderNotes) {
+      const newNotePath = newPath + note.folder!.substring(folderPath.length)
+      await setNoteFolder(workspaceId, note.id, newNotePath)
+    }
+    
+    // Migrate explicit folders
+    const subfolders = folders.filter(f => f === folderPath || f.startsWith(`${folderPath}/`))
+    for (const f of subfolders) {
+      const newSubfolderPath = newPath + f.substring(folderPath.length)
+      await createFolderApi(workspaceId, newSubfolderPath)
+      await deleteFolderApi(workspaceId, f)
+    }
+    
+    window.dispatchEvent(new CustomEvent('notes-updated'))
   }
 
   const handleContextMenu = (e: React.MouseEvent, target: ContextMenuTarget) => {
@@ -138,11 +188,17 @@ function NoteList({
       
       const folderNotes = notes.filter(n => n.folder === oldPath || n.folder?.startsWith(`${oldPath}/`))
       for (const note of folderNotes) {
-        const newNotePath = note.folder!.replace(oldPath, newPath)
+        const newNotePath = newPath + note.folder!.substring(oldPath.length)
         await setNoteFolder(workspaceId, note.id, newNotePath)
       }
-      await deleteFolderApi(workspaceId, oldPath)
-      await createFolderApi(workspaceId, newPath)
+      
+      const subfolders = folders.filter(f => f === oldPath || f.startsWith(`${oldPath}/`))
+      for (const f of subfolders) {
+        const newSubfolderPath = newPath + f.substring(oldPath.length)
+        await createFolderApi(workspaceId, newSubfolderPath)
+        await deleteFolderApi(workspaceId, f)
+      }
+      
       window.dispatchEvent(new CustomEvent('notes-updated'))
     }
     setRenamePrompt(null)
@@ -335,17 +391,13 @@ function NoteList({
             onRemove={remove}
             onRestore={restore}
             onPurge={purge}
-            onMoveNote={async (noteId, newFolder) => {
-              try {
-                await setNoteFolder(workspaceId, noteId, newFolder)
-                window.dispatchEvent(new CustomEvent('notes-updated'))
-              } catch (err) {
-                console.error(err)
-              }
-            }}
             onContextMenu={handleContextMenu}
             folders={folders}
             workspaceId={workspaceId}
+            selectedFolderPaths={selectedFolderPaths}
+            onSelectFolder={handleSelectFolder}
+            onMoveNote={handleMoveNote}
+            onMoveFolder={handleMoveFolder}
           />
         ) : (
           <ul className="space-y-0.5">

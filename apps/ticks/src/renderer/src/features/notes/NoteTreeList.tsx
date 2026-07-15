@@ -21,9 +21,12 @@ interface NoteTreeListProps {
   onRestore: (id: string) => void
   onPurge: (id: string) => void
   onMoveNote: (noteId: string, newFolder: string | null) => void
+  onMoveFolder: (folderPath: string, newParentPath: string | null) => void
   onContextMenu: (e: React.MouseEvent, target: ContextMenuTarget) => void
   folders: string[]
   workspaceId: string
+  selectedFolderPaths: Set<string>
+  onSelectFolder: (path: string, multi: boolean) => void
 }
 
 interface TreeFolder {
@@ -45,9 +48,12 @@ export default function NoteTreeList({
   onRestore,
   onPurge,
   onMoveNote,
+  onMoveFolder,
   onContextMenu,
   folders,
-  workspaceId
+  workspaceId,
+  selectedFolderPaths,
+  onSelectFolder
 }: NoteTreeListProps): React.JSX.Element {
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>(() => {
     try {
@@ -93,14 +99,26 @@ export default function NoteTreeList({
   }
 
   const handleDragStart = (e: React.DragEvent, noteId: string) => {
+    e.stopPropagation()
     const ids = selectedNoteIds.has(noteId) ? Array.from(selectedNoteIds) : [noteId]
     e.dataTransfer.setData('application/ticks-note-ids', JSON.stringify(ids))
     e.dataTransfer.setData('application/ticks-note-id', noteId) // fallback
     e.dataTransfer.effectAllowed = 'move'
   }
 
+  const handleFolderDragStart = (e: React.DragEvent, folderPath: string) => {
+    e.stopPropagation()
+    const paths = selectedFolderPaths.has(folderPath) ? Array.from(selectedFolderPaths) : [folderPath]
+    e.dataTransfer.setData('application/ticks-folder-paths', JSON.stringify(paths))
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
   const handleDragOver = (e: React.DragEvent) => {
-    if (e.dataTransfer.types.includes('application/ticks-note-ids') || e.dataTransfer.types.includes('application/ticks-note-id')) {
+    if (
+      e.dataTransfer.types.includes('application/ticks-note-ids') || 
+      e.dataTransfer.types.includes('application/ticks-note-id') ||
+      e.dataTransfer.types.includes('application/ticks-folder-paths')
+    ) {
       e.preventDefault()
       e.dataTransfer.dropEffect = 'move'
       e.currentTarget.classList.add('bg-neutral-800/40')
@@ -115,6 +133,21 @@ export default function NoteTreeList({
     e.preventDefault()
     e.stopPropagation()
     e.currentTarget.classList.remove('bg-neutral-800/40')
+    
+    const folderPathsData = e.dataTransfer.getData('application/ticks-folder-paths')
+    if (folderPathsData) {
+      try {
+        const paths = JSON.parse(folderPathsData)
+        paths.forEach((path: string) => {
+          // Prevent dropping a folder into itself or its own subfolders
+          if (path !== folderPath && !folderPath.startsWith(`${path}/`)) {
+            onMoveFolder(path, folderPath)
+          }
+        })
+      } catch (err) {}
+      return
+    }
+
     const idsData = e.dataTransfer.getData('application/ticks-note-ids')
     if (idsData) {
       try {
@@ -130,6 +163,21 @@ export default function NoteTreeList({
   const handleDropRoot = (e: React.DragEvent) => {
     e.preventDefault()
     e.currentTarget.classList.remove('bg-neutral-800/40')
+    
+    const folderPathsData = e.dataTransfer.getData('application/ticks-folder-paths')
+    if (folderPathsData) {
+      try {
+        const paths = JSON.parse(folderPathsData)
+        paths.forEach((path: string) => {
+          // If a folder is already at root (no slashes), moving it to root does nothing
+          if (path.includes('/')) {
+            onMoveFolder(path, null)
+          }
+        })
+      } catch (err) {}
+      return
+    }
+
     const idsData = e.dataTransfer.getData('application/ticks-note-ids')
     if (idsData) {
       try {
@@ -269,15 +317,37 @@ export default function NoteTreeList({
       <div key={folder.path} className="flex flex-col">
         <button
           type="button"
-          onClick={(e) => toggleFolder(folder.path, e)}
+          draggable
+          onDragStart={(e) => handleFolderDragStart(e, folder.path)}
+          onClick={(e) => {
+            if (e.ctrlKey || e.metaKey) {
+              onSelectFolder(folder.path, true)
+            } else {
+              onSelectFolder(folder.path, false)
+              toggleFolder(folder.path, e)
+            }
+          }}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={(e) => handleDropFolder(e, folder.path)}
           onContextMenu={(e) => onContextMenu(e, { type: 'folder', path: folder.path })}
-          className="flex items-center gap-1.5 rounded-md py-1.5 px-2 text-sm text-neutral-300 hover:bg-neutral-800 transition-colors"
+          className={`group flex items-center gap-1.5 rounded-md py-1.5 px-2 text-sm transition-colors ${
+            selectedFolderPaths.has(folder.path)
+              ? 'bg-neutral-800 text-neutral-100'
+              : 'text-neutral-300 hover:bg-neutral-800'
+          }`}
           style={{ paddingLeft: `${depth * 12 + 8}px` }}
         >
-          {expanded ? <ChevronDown size={14} className="shrink-0" /> : <ChevronRight size={14} className="shrink-0" />}
+          {/* Prevent the chevron from triggering selection, keep it just for toggling */}
+          <div 
+            className="shrink-0 p-0.5 rounded hover:bg-neutral-700/50 text-neutral-400"
+            onClick={(e) => {
+              e.stopPropagation()
+              toggleFolder(folder.path, e)
+            }}
+          >
+            {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          </div>
           <FolderIcon size={14} className="shrink-0 text-blue-400" />
           <span className="truncate pointer-events-none">{folder.name}</span>
         </button>
