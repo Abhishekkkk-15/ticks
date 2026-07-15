@@ -128,10 +128,40 @@ export function listTrash(workspaceId: string): NoteListItem[] {
 export function listFolders(workspaceId: string): string[] {
   const workspaceDir = getWorkspaceDir(workspaceId);
   const folders = new Set<string>();
+  
+  // Folders from notes
   for (const entry of readAllNotes(workspaceDir)) {
     if (entry.folder) folders.add(entry.folder);
   }
+  
+  // Explicit folders
+  const foldersPath = path.join(workspaceDir, 'folders.jsonl');
+  if (fs.existsSync(foldersPath)) {
+    for (const f of readJsonl(foldersPath)) {
+      if (f.name) folders.add(f.name);
+    }
+  }
+  
   return Array.from(folders).sort();
+}
+
+export function createFolder(workspaceId: string, folderName: string): void {
+  const workspaceDir = getWorkspaceDir(workspaceId);
+  const foldersPath = path.join(workspaceDir, 'folders.jsonl');
+  const folders = fs.existsSync(foldersPath) ? readJsonl(foldersPath) : [];
+  if (!folders.some(f => f.name === folderName)) {
+    folders.push({ name: folderName, created_at: new Date().toISOString() });
+    writeJsonl(foldersPath, folders);
+  }
+}
+
+export function deleteFolder(workspaceId: string, folderName: string): void {
+  const workspaceDir = getWorkspaceDir(workspaceId);
+  const foldersPath = path.join(workspaceDir, 'folders.jsonl');
+  if (fs.existsSync(foldersPath)) {
+    const folders = readJsonl(foldersPath).filter(f => f.name !== folderName);
+    writeJsonl(foldersPath, folders);
+  }
 }
 
 export function listTags(workspaceId: string): string[] {

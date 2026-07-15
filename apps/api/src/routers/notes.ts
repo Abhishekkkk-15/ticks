@@ -17,6 +17,8 @@ import {
   purgeNote,
   trashNote,
   listFolders,
+  createFolder,
+  deleteFolder,
   listTags
 } from '../services/noteService.js';
 import { getGitStatus, syncGit } from '../services/gitService.js';
@@ -219,6 +221,30 @@ router.get('/workspaces/:workspace_id/folders', (req, res, next) => {
   try {
     const folders = listFolders(req.params.workspace_id);
     res.json(folders);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /workspaces/:workspace_id/folders
+router.post('/workspaces/:workspace_id/folders', (req, res, next) => {
+  try {
+    const { name } = req.body;
+    if (!name) throw { status: 422, message: 'Folder name is required' };
+    createFolder(req.params.workspace_id, name);
+    res.status(201).json({ success: true, name });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /workspaces/:workspace_id/folders
+router.delete('/workspaces/:workspace_id/folders', (req, res, next) => {
+  try {
+    const { name } = req.body;
+    if (!name) throw { status: 422, message: 'Folder name is required' };
+    deleteFolder(req.params.workspace_id, name);
+    res.status(204).end();
   } catch (err) {
     next(err);
   }

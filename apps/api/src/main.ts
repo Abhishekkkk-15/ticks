@@ -11,6 +11,7 @@ import settingsRouter from './routers/settings.js';
 import aiRouter from './routers/ai.js';
 import gitSyncRouter from './routers/gitSync.js';
 import mcpRouter from './routers/mcp.js';
+import { syncRouter } from './routers/sync.js';
 
 // Ensure workspaces root directory exists
 fs.mkdirSync(settings.workspacesRoot, { recursive: true });
@@ -35,6 +36,7 @@ app.use(drawingsRouter);
 app.use(settingsRouter);
 app.use(aiRouter);
 app.use(gitSyncRouter);
+app.use('/api/sync', syncRouter);
 
 // Global exception and error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

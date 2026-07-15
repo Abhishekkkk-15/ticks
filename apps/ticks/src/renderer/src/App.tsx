@@ -89,6 +89,19 @@ function App(): React.JSX.Element {
     }
   }, [settings?.default_workspace_id, workspacesApi.workspaces, selectedWorkspace])
 
+  // Dropbox Background Auto-Sync
+  useEffect(() => {
+    if (!settings?.dropbox_connected || !settings?.dropbox_auto_sync) return
+    const interval = setInterval(() => {
+      import('./lib/api').then(({ apiFetch }) => {
+        apiFetch('/api/sync/dropbox/trigger', { method: 'POST' }).catch((err) => {
+          console.error('[Dropbox Auto-Sync] failed:', err)
+        })
+      })
+    }, 5 * 60 * 1000) // 5 minutes
+    return () => clearInterval(interval)
+  }, [settings?.dropbox_connected, settings?.dropbox_auto_sync])
+
   const openNote = useCallback((workspaceId: string, note: Note) => {
     setTabs((prev) =>
       prev.some((t) => t.note.id === note.id) ? prev : [...prev, { workspaceId, note }]

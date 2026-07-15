@@ -46,7 +46,11 @@ const DEFAULT_DATA = {
     'update_note',
     'patch_note',
     'write_drawing'
-  ] as string[]
+  ] as string[],
+  dropbox_app_key: null as string | null,
+  dropbox_refresh_token: null as string | null,
+  dropbox_auto_sync: false,
+  dropbox_sync_cursor: null as string | null
 };
 
 function readSettingsFile(): any {
@@ -112,14 +116,17 @@ export function getSettingsInfo(): SettingsInfo {
     workflows: data.workflows,
     mcp_enabled: data.mcp_enabled,
     mcp_permitted_notes: data.mcp_permitted_notes || [],
-    mcp_permitted_tools: data.mcp_permitted_tools || []
+    mcp_permitted_tools: data.mcp_permitted_tools || [],
+    dropbox_app_key: data.dropbox_app_key,
+    dropbox_connected: !!data.dropbox_refresh_token,
+    dropbox_auto_sync: !!data.dropbox_auto_sync
   };
 }
 
 export function updateSettings(updateData: any): SettingsInfo {
   const data = readSettingsFile();
   for (const key of Object.keys(updateData)) {
-    const isValidKey = key in DEFAULT_DATA && key !== 'mistral_api_key' && key !== 'style_examples';
+    const isValidKey = key in DEFAULT_DATA && key !== 'mistral_api_key' && key !== 'style_examples' && key !== 'dropbox_refresh_token' && key !== 'dropbox_sync_cursor';
     if (isValidKey) {
       if (key === 'keyboard_shortcuts' && typeof updateData[key] === 'object' && updateData[key] !== null) {
         data[key] = { ...data[key], ...updateData[key] };
@@ -130,4 +137,24 @@ export function updateSettings(updateData: any): SettingsInfo {
   }
   writeSettingsFile(data);
   return getSettingsInfo();
+}
+
+export function getDropboxToken(): string | null {
+  return readSettingsFile().dropbox_refresh_token || null;
+}
+
+export function setDropboxToken(token: string | null): void {
+  const data = readSettingsFile();
+  data.dropbox_refresh_token = token;
+  writeSettingsFile(data);
+}
+
+export function getDropboxCursor(): string | null {
+  return readSettingsFile().dropbox_sync_cursor || null;
+}
+
+export function setDropboxCursor(cursor: string | null): void {
+  const data = readSettingsFile();
+  data.dropbox_sync_cursor = cursor;
+  writeSettingsFile(data);
 }

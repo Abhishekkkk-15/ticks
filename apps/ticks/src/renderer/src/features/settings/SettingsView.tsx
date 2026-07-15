@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Check, Keyboard, Monitor, Sparkles, Sliders, Trash2, Terminal, X, Zap } from 'lucide-react'
+import { Check, Keyboard, Monitor, Sparkles, Sliders, Trash2, Terminal, X, Zap, Cloud } from 'lucide-react'
 import { useSettings } from './SettingsContext'
 import { setMistralApiKey, setStyleExamples } from './api'
 import { useAiAction } from '../ai/useAiAction'
@@ -7,13 +7,14 @@ import { useWorkspaces } from '../workspaces/useWorkspaces'
 import Select from '../../components/ui/Select'
 import FontPicker from './FontPicker'
 import MCPView from '../mcp/MCPView'
+import CloudSyncView from './CloudSyncView'
 import {
   WORKFLOW_ACTIONS,
   WORKFLOW_OUTPUT_MODE_LABELS
 } from '../workflows/runWorkflows'
 import type { Workflow, WorkflowTrigger, WorkflowOutputMode } from './types'
 
-type SettingsTab = 'general' | 'editor' | 'ai' | 'shortcuts' | 'workflows' | 'mcp'
+type SettingsTab = 'general' | 'editor' | 'ai' | 'shortcuts' | 'workflows' | 'mcp' | 'cloud'
 
 const TRIGGER_OPTIONS: { value: WorkflowTrigger; label: string }[] = [
   { value: 'on_save', label: 'On save' },
@@ -327,6 +328,18 @@ function SettingsView(): React.JSX.Element {
           >
             <Terminal size={16} />
             MCP Server
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('cloud')}
+            className={`flex shrink-0 w-auto md:w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+              activeTab === 'cloud'
+                ? 'bg-neutral-800 text-neutral-100'
+                : 'text-neutral-400 hover:bg-neutral-800/40 hover:text-neutral-200'
+            }`}
+          >
+            <Cloud size={16} />
+            Cloud Sync
           </button>
         </nav>
       </aside>
@@ -1299,6 +1312,9 @@ function SettingsView(): React.JSX.Element {
         )}
         {activeTab === 'mcp' && (
           <MCPView />
+        )}
+        {activeTab === 'cloud' && (
+          <CloudSyncView />
         )}
         </div>
       </main>

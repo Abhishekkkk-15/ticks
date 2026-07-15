@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { ArrowLeft, Clock, List, Pin, RotateCcw, Star, Trash2, Upload, X, RefreshCw, FolderTree, CalendarDays } from 'lucide-react'
 import { useNotes } from './useNotes'
 import type { NoteView } from './useNotes'
-import { setNoteFolder, renameNote } from './api'
+import { setNoteFolder, renameNote, createFolder as createFolderApi, deleteFolder as deleteFolderApi } from './api'
 import { highlightMatch } from './highlightMatch'
 import type { Note } from './types'
 import Select from '../../components/ui/Select'
@@ -137,13 +137,12 @@ function NoteList({
       const newPath = parentPath ? `${parentPath}/${newName}` : newName
       
       const folderNotes = notes.filter(n => n.folder === oldPath || n.folder?.startsWith(`${oldPath}/`))
-      for (const n of folderNotes) {
-        let noteNewFolder = newPath
-        if (n.folder && n.folder !== oldPath) {
-           noteNewFolder = n.folder.replace(oldPath, newPath)
-        }
-        await setNoteFolder(workspaceId, n.id, noteNewFolder)
+      for (const note of folderNotes) {
+        const newNotePath = note.folder!.replace(oldPath, newPath)
+        await setNoteFolder(workspaceId, note.id, newNotePath)
       }
+      await deleteFolderApi(workspaceId, oldPath)
+      await createFolderApi(workspaceId, newPath)
       window.dispatchEvent(new CustomEvent('notes-updated'))
     }
     setRenamePrompt(null)
@@ -158,11 +157,8 @@ function NoteList({
     
     if (creationPrompt.type === 'folder') {
       const fullFolderPath = creationPrompt.folderPath ? `${creationPrompt.folderPath}/${name}` : name
-      const note = await create('Untitled')
-      if (note) {
-        await setNoteFolder(workspaceId, note.id, fullFolderPath)
-        window.dispatchEvent(new CustomEvent('notes-updated'))
-      }
+      await createFolderApi(workspaceId, fullFolderPath)
+      window.dispatchEvent(new CustomEvent('notes-updated'))
     } else {
       const note = await create(name)
       if (note) {
@@ -562,6 +558,8 @@ function NoteList({
                     for (const n of folderNotes) {
                       await remove(n.id)
                     }
+                    await deleteFolderApi(workspaceId, folderPath)
+                    window.dispatchEvent(new CustomEvent('notes-updated'))
                   }
                   setContextMenu(null)
                 }}

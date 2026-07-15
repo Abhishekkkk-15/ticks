@@ -40,6 +40,9 @@ export interface SettingsInfo {
   mcp_enabled: boolean
   mcp_permitted_notes: string[]
   mcp_permitted_tools: string[]
+  dropbox_app_key: string | null
+  dropbox_connected: boolean
+  dropbox_auto_sync: boolean
 }
 
 export interface SettingsUpdate {
@@ -56,6 +59,8 @@ export interface SettingsUpdate {
   mcp_enabled?: boolean
   mcp_permitted_notes?: string[]
   mcp_permitted_tools?: string[]
+  dropbox_app_key?: string | null
+  dropbox_auto_sync?: boolean
 }
 
 export interface MistralApiKeyUpdate {

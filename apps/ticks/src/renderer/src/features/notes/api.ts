@@ -33,6 +33,22 @@ export function listFolders(workspaceId: string): Promise<string[]> {
   return apiFetch<string[]>(`/workspaces/${workspaceId}/folders`)
 }
 
+export function createFolder(workspaceId: string, name: string): Promise<void> {
+  return apiFetch<void>(`/workspaces/${workspaceId}/folders`, {
+    method: 'POST',
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ name })
+  })
+}
+
+export function deleteFolder(workspaceId: string, name: string): Promise<void> {
+  return apiFetch<void>(`/workspaces/${workspaceId}/folders`, {
+    method: 'DELETE',
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ name })
+  })
+}
+
 export function listTags(workspaceId: string): Promise<string[]> {
   return apiFetch<string[]>(`/workspaces/${workspaceId}/tags`)
 }
