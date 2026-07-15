@@ -22,6 +22,7 @@ interface NoteTreeListProps {
   onPurge: (id: string) => void
   onMoveNote: (noteId: string, newFolder: string | null) => void
   onContextMenu: (e: React.MouseEvent, target: ContextMenuTarget) => void
+  folders: string[]
 }
 
 interface TreeFolder {
@@ -43,7 +44,8 @@ export default function NoteTreeList({
   onRestore,
   onPurge,
   onMoveNote,
-  onContextMenu
+  onContextMenu,
+  folders
 }: NoteTreeListProps): React.JSX.Element {
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({})
 
@@ -105,13 +107,8 @@ export default function NoteTreeList({
   const root = useMemo(() => {
     const rootNode: TreeFolder = { name: 'root', path: '', children: {}, notes: [] }
     
-    for (const note of notes) {
-      if (!note.folder) {
-        rootNode.notes.push(note)
-        continue
-      }
-      
-      const parts = note.folder.split('/').filter(Boolean)
+    const ensureFolder = (folderPath: string) => {
+      const parts = folderPath.split('/').filter(Boolean)
       let current = rootNode
       let currentPath = ''
       
@@ -122,11 +119,26 @@ export default function NoteTreeList({
         }
         current = current.children[part]
       }
-      current.notes.push(note)
+      return current
+    }
+
+    // First ensure all explicit folders exist
+    for (const folder of folders) {
+      ensureFolder(folder)
+    }
+    
+    // Then place all notes
+    for (const note of notes) {
+      if (!note.folder) {
+        rootNode.notes.push(note)
+        continue
+      }
+      const folderNode = ensureFolder(note.folder)
+      folderNode.notes.push(note)
     }
     
     return rootNode
-  }, [notes])
+  }, [notes, folders])
 
   const renderNote = (note: NoteListItem, depth: number) => (
     <div
@@ -212,9 +224,6 @@ export default function NoteTreeList({
 
   const renderFolder = (folder: TreeFolder, depth: number) => {
     const isExpanded = expandedFolders[folder.path] !== false
-    const hasChildren = Object.keys(folder.children).length > 0 || folder.notes.length > 0
-    
-    if (!hasChildren) return null
 
     const expanded = query ? true : isExpanded
 

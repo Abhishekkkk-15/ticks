@@ -341,6 +341,7 @@ function NoteList({
               }
             }}
             onContextMenu={handleContextMenu}
+            folders={folders}
           />
         ) : (
           <ul className="space-y-0.5" onContextMenu={(e) => handleContextMenu(e, { type: 'root' })}>
