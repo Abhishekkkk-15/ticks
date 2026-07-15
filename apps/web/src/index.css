@@ -1,0 +1,38 @@
+@import "tailwindcss";
+
+@theme {
+  --color-stone-900: #1c1917;
+  --color-stone-800: #292524;
+  --color-stone-700: #44403c;
+  --color-stone-600: #57534e;
+  --color-stone-500: #78716c;
+  --color-stone-400: #a8a29e;
+  --color-stone-300: #d6d3d1;
+  --color-stone-200: #e7e5e4;
+  --color-stone-100: #f5f5f4;
+  --color-stone-50: #fafaf9;
+  
+  --color-primary: var(--color-stone-200);
+  --color-primary-dark: var(--color-stone-400);
+  --color-background: var(--color-stone-900);
+  --color-foreground: var(--color-stone-100);
+  --color-card: var(--color-stone-800);
+  
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
