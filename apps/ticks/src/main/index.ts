@@ -416,11 +416,20 @@ function createWindow(): void {
     minHeight: 600,
     show: false,
     autoHideMenuBar: true,
-    frame: process.platform === 'darwin',
-    // Frameless windows are otherwise an opaque rectangle, so the renderer's
-    // own rounded corners need a transparent window to actually show through.
-    transparent: process.platform !== 'darwin',
+    frame: process.platform !== 'linux',
+    // Transparent breaks Windows window snapping (Aero Snap)
+    transparent: process.platform === 'linux',
     ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset' as const } : {}),
+    ...(process.platform === 'win32'
+      ? {
+          titleBarStyle: 'hidden' as const,
+          titleBarOverlay: {
+            color: '#0a0a0a',
+            symbolColor: '#a3a3a3',
+            height: 32
+          }
+        }
+      : {}),
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
