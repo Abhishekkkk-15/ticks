@@ -424,8 +424,8 @@ function createWindow(): void {
     minHeight: 600,
     show: false,
     autoHideMenuBar: true,
-    frame: process.platform !== 'linux' && !isWindowsNative,
-    transparent: process.platform !== 'darwin' && !isWindowsNative,
+    frame: process.platform === 'darwin',
+    transparent: process.platform === 'linux',
     ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset' as const } : {}),
     ...(isWindowsNative
       ? {
