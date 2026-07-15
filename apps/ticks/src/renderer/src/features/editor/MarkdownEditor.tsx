@@ -49,7 +49,8 @@ const baseExtensions = [
     spellcheck: 'true',
     autocorrect: 'on',
     autocapitalize: 'sentences'
-  })
+  }),
+  EditorView.lineWrapping
 ]
 
 // Overrides CodeMirror's built-in 'light'/'dark' chrome (background, gutters,
