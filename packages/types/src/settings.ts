@@ -43,6 +43,7 @@ export interface SettingsInfo {
   dropbox_app_key: string | null
   dropbox_connected: boolean
   dropbox_auto_sync: boolean
+  windows_native_snapping: boolean
 }
 
 export interface SettingsUpdate {
@@ -61,6 +62,7 @@ export interface SettingsUpdate {
   mcp_permitted_tools?: string[]
   dropbox_app_key?: string | null
   dropbox_auto_sync?: boolean
+  windows_native_snapping?: boolean
 }
 
 export interface MistralApiKeyUpdate {

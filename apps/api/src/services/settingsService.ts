@@ -50,7 +50,8 @@ const DEFAULT_DATA = {
   dropbox_app_key: null as string | null,
   dropbox_refresh_token: null as string | null,
   dropbox_auto_sync: false,
-  dropbox_sync_cursor: null as string | null
+  dropbox_sync_cursor: null as string | null,
+  windows_native_snapping: false
 };
 
 function readSettingsFile(): any {
@@ -119,7 +120,8 @@ export function getSettingsInfo(): SettingsInfo {
     mcp_permitted_tools: data.mcp_permitted_tools || [],
     dropbox_app_key: data.dropbox_app_key,
     dropbox_connected: !!data.dropbox_refresh_token,
-    dropbox_auto_sync: !!data.dropbox_auto_sync
+    dropbox_auto_sync: !!data.dropbox_auto_sync,
+    windows_native_snapping: !!data.windows_native_snapping
   };
 }
 

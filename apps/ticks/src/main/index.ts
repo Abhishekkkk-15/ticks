@@ -34,6 +34,12 @@ function readSetting(key: string, fallback: string): string {
   return typeof value === 'string' && value ? value : fallback
 }
 
+function readBooleanSetting(key: string, fallback: boolean): boolean {
+  const data = readSettingsFile()
+  const value = data?.[key]
+  return typeof value === 'boolean' ? value : fallback
+}
+
 function getGlobalCaptureShortcut(): string {
   return readKeyboardShortcut('global_capture', 'Ctrl+Alt+Shift+C')
 }
@@ -403,6 +409,8 @@ let mainWindow: BrowserWindow | null = null
 
 function createWindow(): void {
   const savedState = loadWindowState()
+  const nativeSnapping = readBooleanSetting('windows_native_snapping', false)
+  const isWindowsNative = process.platform === 'win32' && nativeSnapping
 
   // Create the browser window.
   const win = new BrowserWindow({
@@ -416,11 +424,10 @@ function createWindow(): void {
     minHeight: 600,
     show: false,
     autoHideMenuBar: true,
-    frame: process.platform !== 'linux',
-    // Transparent breaks Windows window snapping (Aero Snap)
-    transparent: process.platform === 'linux',
+    frame: process.platform !== 'linux' && !isWindowsNative,
+    transparent: process.platform !== 'darwin' && !isWindowsNative,
     ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset' as const } : {}),
-    ...(process.platform === 'win32'
+    ...(isWindowsNative
       ? {
           titleBarStyle: 'hidden' as const,
           titleBarOverlay: {
