@@ -13,7 +13,8 @@ import {
   ListChecks,
   Quote,
   Link as LinkIcon,
-  Code2
+  Code2,
+  Highlighter
 } from 'lucide-react'
 import { formatActions, type FormatAction } from './formatting'
 
@@ -21,6 +22,7 @@ const icons: Record<string, React.ComponentType<{ size?: number }>> = {
   bold: Bold,
   italic: Italic,
   strikethrough: Strikethrough,
+  highlight: Highlighter,
   code: Code,
   h1: Heading1,
   h2: Heading2,

@@ -84,6 +84,39 @@ function wrapInline(marker: string) {
   }
 }
 
+// Wraps the selection with asymmetric tags (e.g., <mark> and </mark>)
+function wrapTags(openTag: string, closeTag: string) {
+  return (view: EditorView): boolean => {
+    const range = view.state.selection.main
+    const selectedText = view.state.sliceDoc(range.from, range.to)
+
+    const alreadyWrapped =
+      selectedText.length >= openTag.length + closeTag.length &&
+      selectedText.startsWith(openTag) &&
+      selectedText.endsWith(closeTag)
+
+    if (alreadyWrapped) {
+      const inner = selectedText.slice(openTag.length, selectedText.length - closeTag.length)
+      view.dispatch({
+        changes: { from: range.from, to: range.to, insert: inner },
+        selection: { anchor: range.from, head: range.from + inner.length },
+        scrollIntoView: true
+      })
+      return true
+    }
+
+    view.dispatch({
+      changes: { from: range.from, to: range.to, insert: `${openTag}${selectedText}${closeTag}` },
+      selection: {
+        anchor: range.from + openTag.length,
+        head: range.from + openTag.length + selectedText.length
+      },
+      scrollIntoView: true
+    })
+    return true
+  }
+}
+
 function toggleHeading(level: number) {
   const prefix = `${'#'.repeat(level)} `
   return (view: EditorView): boolean =>
@@ -168,6 +201,7 @@ export const formatActions: FormatAction[] = [
   { id: 'bold', label: 'Bold', shortcut: 'Ctrl+B', run: wrapInline('**') },
   { id: 'italic', label: 'Italic', shortcut: 'Ctrl+I', run: wrapInline('*') },
   { id: 'strikethrough', label: 'Strikethrough', shortcut: 'Ctrl+Shift+X', run: wrapInline('~~') },
+  { id: 'highlight', label: 'Highlight', shortcut: 'Ctrl+Shift+H', run: wrapTags('<mark>', '</mark>') },
   { id: 'code', label: 'Inline code', shortcut: 'Ctrl+Shift+M', run: wrapInline('`') },
   { id: 'h1', label: 'Heading 1', shortcut: 'Ctrl+1', run: toggleHeading(1) },
   { id: 'h2', label: 'Heading 2', shortcut: 'Ctrl+2', run: toggleHeading(2) },

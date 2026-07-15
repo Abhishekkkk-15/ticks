@@ -8,6 +8,7 @@ const keyByActionId: Record<string, string> = {
   bold: 'Mod-b',
   italic: 'Mod-i',
   strikethrough: 'Mod-Shift-x',
+  highlight: 'Mod-Shift-h',
   code: 'Mod-Shift-m',
   h1: 'Mod-1',
   h2: 'Mod-2',
