@@ -345,6 +345,7 @@ function NoteList({
             }}
             onContextMenu={handleContextMenu}
             folders={folders}
+            workspaceId={workspaceId}
           />
         ) : (
           <ul className="space-y-0.5">

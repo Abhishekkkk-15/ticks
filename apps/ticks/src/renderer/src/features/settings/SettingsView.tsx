@@ -3,7 +3,6 @@ import { Check, Keyboard, Monitor, Sparkles, Sliders, Trash2, Terminal, X, Zap, 
 import { useSettings } from './SettingsContext'
 import { setMistralApiKey, setStyleExamples } from './api'
 import { useAiAction } from '../ai/useAiAction'
-import { useWorkspaces } from '../workspaces/useWorkspaces'
 import Select from '../../components/ui/Select'
 import FontPicker from './FontPicker'
 import MCPView from '../mcp/MCPView'
@@ -32,7 +31,6 @@ function rangeFillStyle(value: number, min: number, max: number): React.CSSPrope
 
 function SettingsView(): React.JSX.Element {
   const { settings, updateSettings, loading: settingsLoading } = useSettings()
-  const { workspaces } = useWorkspaces()
 
   const [activeTab, setActiveTab] = useState<SettingsTab>('general')
 
@@ -529,26 +527,6 @@ function SettingsView(): React.JSX.Element {
                   </div>
                 </button>
               </div>
-            </section>
-
-            {/* Launch Workspace */}
-            <section className="space-y-2">
-              <span className="block text-sm font-medium text-neutral-200">
-                Default Workspace on Startup
-              </span>
-              <p className="text-xs text-neutral-500">
-                Automatically load this workspace when opening the app.
-              </p>
-              <Select
-                className="max-w-md"
-                size="md"
-                value={settings.default_workspace_id || ''}
-                onChange={(value) => updateSettings({ default_workspace_id: value || null })}
-                options={[
-                  { value: '', label: 'None (Show Workspace Selection)' },
-                  ...workspaces.map((ws) => ({ value: ws.id, label: ws.name }))
-                ]}
-              />
             </section>
 
             {/* Markdown Preferences */}

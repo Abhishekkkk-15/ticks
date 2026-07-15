@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { ChevronRight, ChevronDown, File, Folder as FolderIcon, Pin, Star, X, RotateCcw, Trash2 } from 'lucide-react'
 import type { NoteListItem } from './types'
 import { highlightMatch } from './highlightMatch'
@@ -23,6 +23,7 @@ interface NoteTreeListProps {
   onMoveNote: (noteId: string, newFolder: string | null) => void
   onContextMenu: (e: React.MouseEvent, target: ContextMenuTarget) => void
   folders: string[]
+  workspaceId: string
 }
 
 interface TreeFolder {
@@ -45,13 +46,50 @@ export default function NoteTreeList({
   onPurge,
   onMoveNote,
   onContextMenu,
-  folders
+  folders,
+  workspaceId
 }: NoteTreeListProps): React.JSX.Element {
-  const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({})
+  const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem(`ticks:tree:${workspaceId}`)
+      if (saved) return JSON.parse(saved)
+    } catch {}
+    return {}
+  })
+
+  useEffect(() => {
+    if (selectedNoteIds.size === 0) return
+    setExpandedFolders(prev => {
+      const next = { ...prev }
+      let changed = false
+      selectedNoteIds.forEach(id => {
+        const note = notes.find(n => n.id === id)
+        if (note?.folder) {
+          const parts = note.folder.split('/').filter(Boolean)
+          let current = ''
+          for (const part of parts) {
+             current = current ? `${current}/${part}` : part
+             if (!next[current]) {
+               next[current] = true
+               changed = true
+             }
+          }
+        }
+      })
+      if (changed) {
+        localStorage.setItem(`ticks:tree:${workspaceId}`, JSON.stringify(next))
+      }
+      return changed ? next : prev
+    })
+  }, [selectedNoteIds, notes, workspaceId])
 
   const toggleFolder = (path: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    setExpandedFolders((prev) => ({ ...prev, [path]: !prev[path] }))
+    setExpandedFolders((prev) => {
+      const next = { ...prev, [path]: !prev[path] }
+      localStorage.setItem(`ticks:tree:${workspaceId}`, JSON.stringify(next))
+      return next
+    })
   }
 
   const handleDragStart = (e: React.DragEvent, noteId: string) => {
@@ -223,7 +261,7 @@ export default function NoteTreeList({
   )
 
   const renderFolder = (folder: TreeFolder, depth: number) => {
-    const isExpanded = expandedFolders[folder.path] !== false
+    const isExpanded = !!expandedFolders[folder.path]
 
     const expanded = query ? true : isExpanded
 

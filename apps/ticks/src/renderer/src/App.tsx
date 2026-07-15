@@ -67,27 +67,60 @@ function App(): React.JSX.Element {
 
   const { settings } = useSettings()
 
-  // Only auto-select the default workspace once on startup — without this
-  // guard, backing out to the workspace list (selectedWorkspace -> null)
-  // would immediately re-trigger this effect and snap the user right back in.
-  const autoSelectedDefaultRef = useRef(false)
-
+  // Load initial state from localStorage
+  const stateLoadedRef = useRef(false)
+  
   useEffect(() => {
-    if (
-      !autoSelectedDefaultRef.current &&
-      !selectedWorkspace &&
-      settings?.default_workspace_id &&
-      workspacesApi.workspaces.length > 0
-    ) {
-      const defaultWs = workspacesApi.workspaces.find((w) => w.id === settings.default_workspace_id)
-      if (defaultWs) {
-        autoSelectedDefaultRef.current = true
-        Promise.resolve().then(() => {
-          setSelectedWorkspace(defaultWs)
-        })
+    if (stateLoadedRef.current || workspacesApi.workspaces.length === 0) return
+    stateLoadedRef.current = true
+
+    const loadState = async () => {
+      try {
+        const savedStateStr = localStorage.getItem('ticks:app-state')
+        if (!savedStateStr) return
+        
+        const savedState = JSON.parse(savedStateStr)
+        if (savedState.workspaceId) {
+          const ws = workspacesApi.workspaces.find((w) => w.id === savedState.workspaceId)
+          if (ws) setSelectedWorkspace(ws)
+        }
+        
+        if (savedState.tabs && Array.isArray(savedState.tabs)) {
+          const { getNote } = await import('./features/notes/api')
+          const loadedTabs: OpenTab[] = []
+          for (const t of savedState.tabs) {
+             try {
+               const note = await getNote(t.workspaceId, t.noteId)
+               loadedTabs.push({ workspaceId: t.workspaceId, note })
+             } catch (e) {
+               // Note might be deleted
+             }
+          }
+          if (loadedTabs.length > 0) {
+            setTabs(loadedTabs)
+            if (savedState.activeTabId && loadedTabs.some(t => t.note.id === savedState.activeTabId)) {
+              setActiveTabId(savedState.activeTabId)
+            } else {
+              setActiveTabId(loadedTabs[0].note.id)
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load app state:', e)
       }
     }
-  }, [settings?.default_workspace_id, workspacesApi.workspaces, selectedWorkspace])
+    loadState()
+  }, [workspacesApi.workspaces])
+
+  useEffect(() => {
+    if (!stateLoadedRef.current) return
+    const state = {
+      workspaceId: selectedWorkspace?.id || null,
+      tabs: tabs.map(t => ({ workspaceId: t.workspaceId, noteId: t.note.id })),
+      activeTabId
+    }
+    localStorage.setItem('ticks:app-state', JSON.stringify(state))
+  }, [selectedWorkspace, tabs, activeTabId])
 
   // Dropbox Background Auto-Sync
   useEffect(() => {
