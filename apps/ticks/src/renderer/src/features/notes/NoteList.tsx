@@ -313,10 +313,13 @@ function NoteList({
         </div>
       )}
 
-      <div className="flex-1 overflow-auto px-2 py-2">
+      <div 
+        className="flex-1 overflow-auto px-2 py-2"
+        onContextMenu={(e) => handleContextMenu(e, { type: 'root' })}
+      >
         {loading ? (
           <div className="px-2 py-4 text-center text-sm text-neutral-500">Loading…</div>
-        ) : notes.length === 0 ? (
+        ) : notes.length === 0 && folders.length === 0 ? (
           <div className="px-2 py-4 text-center text-sm text-neutral-500">
             {EMPTY_MESSAGES[view]}
           </div>
@@ -344,7 +347,7 @@ function NoteList({
             folders={folders}
           />
         ) : (
-          <ul className="space-y-0.5" onContextMenu={(e) => handleContextMenu(e, { type: 'root' })}>
+          <ul className="space-y-0.5">
             {notes.map((note) => (
               <li
                 key={note.id}
