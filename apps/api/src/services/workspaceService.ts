@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import AdmZip from 'adm-zip';
 import { settings } from '../config.js';
 import { Workspace, WorkspaceCreate } from '@ticks/types';
 
@@ -113,4 +114,51 @@ export function renameWorkspace(workspaceId: string, name: string): Workspace {
 export function deleteWorkspace(workspaceId: string): void {
   const workspaceDir = getWorkspaceDir(workspaceId);
   fs.rmSync(workspaceDir, { recursive: true, force: true });
+}
+
+export function exportWorkspace(workspaceId: string): Buffer {
+  const workspaceDir = getWorkspaceDir(workspaceId);
+  const zip = new AdmZip();
+  zip.addLocalFolder(workspaceDir);
+  return zip.toBuffer();
+}
+
+export function importWorkspace(fileBuffer: Buffer, newName: string): Workspace {
+  const name = newName.trim();
+  if (!name) {
+    throw { status: 422, message: 'Workspace name cannot be empty' };
+  }
+
+  const slug = uniqueSlug(slugify(name));
+  const workspaceDir = path.join(settings.workspacesRoot, slug);
+
+  // Extract the zip to the new workspace directory
+  const zip = new AdmZip(fileBuffer);
+  zip.extractAllTo(workspaceDir, true);
+
+  // Make sure the required subdirectories exist
+  for (const subdir of WORKSPACE_SUBDIRS) {
+    const subdirPath = path.join(workspaceDir, subdir);
+    if (!fs.existsSync(subdirPath)) {
+      fs.mkdirSync(subdirPath, { recursive: true });
+    }
+  }
+
+  const configPath = path.join(workspaceDir, CONFIG_FILENAME);
+  const createdAt = new Date().toISOString();
+  let config = { name, created_at: createdAt };
+  
+  if (fs.existsSync(configPath)) {
+    try {
+      config = readConfig(workspaceDir);
+      config.name = name;
+      // keep original created_at if exists
+    } catch (e) {
+      // ignore
+    }
+  }
+  
+  writeConfig(workspaceDir, config);
+
+  return { id: slug, name: config.name, created_at: config.created_at || createdAt };
 }

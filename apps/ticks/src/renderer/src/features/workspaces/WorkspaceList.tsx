@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { Pencil, X } from 'lucide-react'
+import { useRef } from 'react'
+import { Pencil, X, Upload, Download } from 'lucide-react'
+import { getExportWorkspaceUrl } from './api'
 import type { UseWorkspacesResult } from './useWorkspaces'
 import type { Workspace } from './types'
 
@@ -9,10 +11,32 @@ interface WorkspaceListProps {
 }
 
 function WorkspaceList({ workspacesApi, onSelect }: WorkspaceListProps): React.JSX.Element {
-  const { workspaces, loading, error, create, remove, rename } = workspacesApi
+  const { workspaces, loading, error, create, remove, rename, importArchive } = workspacesApi
   const [newName, setNewName] = useState('')
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameDraft, setRenameDraft] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  async function handleExport(workspace: Workspace): Promise<void> {
+    const url = await getExportWorkspaceUrl(workspace.id)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${workspace.id}.zip`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+  }
+
+  async function handleImport(event: React.ChangeEvent<HTMLInputElement>): Promise<void> {
+    const file = event.target.files?.[0]
+    if (!file) return
+    // Default name to file name without extension
+    const name = file.name.replace(/\.zip$/i, '') || 'Imported Workspace'
+    await importArchive(file, name)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
 
   async function handleCreate(event: React.FormEvent): Promise<void> {
     event.preventDefault()
@@ -80,6 +104,14 @@ function WorkspaceList({ workspacesApi, onSelect }: WorkspaceListProps): React.J
                   </button>
                   <button
                     type="button"
+                    onClick={() => handleExport(workspace)}
+                    className="rounded p-0.5 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-200"
+                    aria-label={`Export ${workspace.name}`}
+                  >
+                    <Download size={12} />
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => remove(workspace.id)}
                     className="rounded p-0.5 text-neutral-500 hover:bg-neutral-700 hover:text-red-400"
                     aria-label={`Delete ${workspace.name}`}
@@ -93,13 +125,28 @@ function WorkspaceList({ workspacesApi, onSelect }: WorkspaceListProps): React.J
         </ul>
       )}
 
-      <form onSubmit={handleCreate} className="mt-2 px-1">
+      <form onSubmit={handleCreate} className="mt-2 px-1 flex gap-1">
         <input
           value={newName}
           onChange={(event) => setNewName(event.target.value)}
           placeholder="New workspace…"
           className="w-full rounded-md border border-neutral-700 bg-neutral-800 px-2 py-1.5 text-sm text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500"
         />
+        <input
+          type="file"
+          accept=".zip"
+          ref={fileInputRef}
+          onChange={handleImport}
+          className="hidden"
+        />
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="shrink-0 rounded-md border border-neutral-700 bg-neutral-800 p-1.5 text-neutral-400 hover:text-neutral-200 focus:outline-none focus:ring-1 focus:ring-neutral-500"
+          title="Import Workspace"
+        >
+          <Upload size={16} />
+        </button>
       </form>
 
       {error && <div className="mt-2 px-1 text-xs text-red-400">{error}</div>}
