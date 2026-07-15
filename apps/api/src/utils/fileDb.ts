@@ -7,7 +7,14 @@ export function readJsonl(filePath: string): any[] {
     .split('\n')
     .map(line => line.trim())
     .filter(line => line.length > 0)
-    .map(line => JSON.parse(line));
+    .reduce((acc: any[], line) => {
+      try {
+        acc.push(JSON.parse(line));
+      } catch (e) {
+        console.warn(`[fileDb] Skipping invalid JSON line: ${line}`);
+      }
+      return acc;
+    }, []);
 }
 
 export function writeJsonl(filePath: string, entries: any[]): void {
