@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { AlignLeft, BookOpen, CheckSquare, Sparkles, WandSparkles, Zap } from 'lucide-react'
+import { AlignLeft, BookOpen, CheckSquare, Sparkles, WandSparkles, Zap, Highlighter } from 'lucide-react'
 
 export interface AiContextMenuPosition {
   x: number
@@ -19,7 +19,8 @@ const QUICK_ACTIONS = [
   { id: 'summarize', label: 'Summarize', icon: AlignLeft },
   { id: 'expand', label: 'Expand', icon: Zap },
   { id: 'format', label: 'Format with AI', icon: WandSparkles },
-  { id: 'checklist', label: 'To checklist', icon: CheckSquare }
+  { id: 'checklist', label: 'To checklist', icon: CheckSquare },
+  { id: 'highlight', label: 'Highlight text', icon: Highlighter }
 ]
 
 function AiContextMenu({

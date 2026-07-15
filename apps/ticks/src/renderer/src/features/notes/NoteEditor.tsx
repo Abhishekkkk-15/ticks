@@ -38,6 +38,8 @@ import { matchShortcut } from '../../lib/shortcuts'
 import { useSettings } from '../settings/SettingsContext'
 import { runWorkflows, WORKFLOW_ACTIONS, runDirectAiAction } from '../workflows/runWorkflows'
 import type { WorkflowReviewPayload } from '../workflows/runWorkflows'
+import { formatActions } from '../editor/formatting'
+import type { ReactCodeMirrorRef } from '@uiw/react-codemirror'
 
 interface NoteEditorProps {
   workspaceId: string
@@ -96,6 +98,7 @@ function NoteEditor({
   const [mediaUploading, setMediaUploading] = useState(false)
   const [barsVisible, setBarsVisible] = useState(true)
   const [notesList, setNotesList] = useState<{ id: string; title: string }[]>([])
+  const codeMirrorRef = useRef<ReactCodeMirrorRef>(null)
 
   useEffect(() => {
     function handleToggle(): void {
@@ -357,6 +360,13 @@ function NoteEditor({
   }
 
   const handleContextMenuAction = useCallback((action: string) => {
+    if (action === 'highlight') {
+      const highlightAction = formatActions.find((a) => a.id === 'highlight')
+      if (highlightAction && codeMirrorRef.current?.view) {
+        highlightAction.run(codeMirrorRef.current.view)
+      }
+      return
+    }
     setActivePanel('ai')
     setAutoTriggerAction(action)
   }, [])
@@ -658,6 +668,7 @@ function NoteEditor({
         onPaste={handlePaste}
       >
         <EditorView
+          editorRef={codeMirrorRef}
           value={content}
           onChange={onChange}
           workspaceId={workspaceId}
