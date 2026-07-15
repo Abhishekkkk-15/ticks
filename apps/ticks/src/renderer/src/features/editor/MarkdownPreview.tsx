@@ -1,6 +1,7 @@
 import ReactMarkdown, { defaultUrlTransform } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
+import rehypeRaw from 'rehype-raw'
 import DrawingEmbed from '../drawings/DrawingEmbed'
 import MermaidChart from './MermaidChart'
 import { useSettings } from '../settings/SettingsContext'
@@ -47,7 +48,7 @@ function MarkdownPreview({
     <div className={`${proseClass} prose h-full max-w-none overflow-auto px-6 py-4`}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeHighlight, rehypeCheckboxPositions]}
+        rehypePlugins={[rehypeRaw, rehypeHighlight, rehypeCheckboxPositions]}
         urlTransform={(url) =>
           url.startsWith(DRAWING_SCHEME) || url.startsWith(NOTE_SCHEME)
             ? url
