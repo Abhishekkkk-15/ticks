@@ -47,7 +47,7 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
     return res.status(err.status).json({ detail: err.message || err.detail || String(err) });
   }
   console.error(`[backend] Unhandled error on ${req.method} ${req.path}:`, err);
-  res.status(500).json({ detail: 'Internal server error' });
+  res.status(500).json({ detail: err.message || String(err), stack: err.stack });
 });
 
 app.listen(settings.port, settings.host, () => {
