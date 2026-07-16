@@ -140,9 +140,14 @@ function App(): React.JSX.Element {
   }, [settings?.dropbox_connected, settings?.dropbox_auto_sync])
 
   const openNote = useCallback((workspaceId: string, note: Note) => {
-    setTabs((prev) =>
-      prev.some((t) => t.note.id === note.id) ? prev : [...prev, { workspaceId, note }]
-    )
+    setTabs((prev) => {
+      const exists = prev.some((t) => t.note.id === note.id)
+      if (exists) {
+        // Update the note data in case it changed (e.g. title or background content changes)
+        return prev.map((t) => (t.note.id === note.id ? { ...t, note: { ...t.note, ...note } } : t))
+      }
+      return [...prev, { workspaceId, note }]
+    })
     setActiveTabId(note.id)
     setView('notes')
   }, [])
@@ -159,8 +164,24 @@ function App(): React.JSX.Element {
         console.error(e)
       }
     }
+    
+    function handleContentUpdated(event: Event): void {
+      const customEvent = event as CustomEvent<{ noteId: string; content: string }>
+      setTabs((prev) =>
+        prev.map((tab) =>
+          tab.note.id === customEvent.detail.noteId
+            ? { ...tab, note: { ...tab.note, content: customEvent.detail.content } }
+            : tab
+        )
+      )
+    }
+
     window.addEventListener('note:open', handleOpenNoteEvent)
-    return () => window.removeEventListener('note:open', handleOpenNoteEvent)
+    window.addEventListener('note:content-updated', handleContentUpdated)
+    return () => {
+      window.removeEventListener('note:open', handleOpenNoteEvent)
+      window.removeEventListener('note:content-updated', handleContentUpdated)
+    }
   }, [openNote])
 
   useEffect(() => {
