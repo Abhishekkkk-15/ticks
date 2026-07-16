@@ -1,6 +1,6 @@
-import { ViewPlugin, Decoration, DecorationSet, EditorView, ViewUpdate, WidgetType } from '@codemirror/view'
+import { Decoration, DecorationSet, EditorView, WidgetType } from '@codemirror/view'
 import { syntaxTree } from '@codemirror/language'
-import { RangeSetBuilder } from '@codemirror/state'
+import { RangeSetBuilder, StateField, EditorState } from '@codemirror/state'
 
 // The decoration that hides markdown syntax tokens
 const hideDecoration = Decoration.replace({})
@@ -57,8 +57,7 @@ class ImageWidget extends WidgetType {
 class CheckboxWidget extends WidgetType {
   constructor(
     readonly checked: boolean,
-    readonly pos: number,
-    readonly view: EditorView
+    readonly pos: number
   ) {
     super()
   }
@@ -67,29 +66,21 @@ class CheckboxWidget extends WidgetType {
     return this.checked === other.checked && this.pos === other.pos
   }
 
-  toDOM() {
+  toDOM(view: EditorView) {
     const wrap = document.createElement('span')
-    wrap.className = 'cm-checkbox-widget'
-    const input = document.createElement('input')
-    input.type = 'checkbox'
-    input.checked = this.checked
-    input.className = 'h-3.5 w-3.5 rounded border-neutral-700 bg-neutral-900 text-violet-500 focus:ring-violet-500 focus:ring-offset-neutral-950'
-    input.style.cursor = 'pointer'
-    input.style.marginRight = '8px'
-    input.style.verticalAlign = 'middle'
-    
-    input.onmousedown = (e) => {
-      e.preventDefault() // Prevent grabbing focus from editor
-    }
-    input.onclick = (e) => {
+    const checkbox = document.createElement('input')
+    checkbox.type = 'checkbox'
+    checkbox.checked = this.checked
+    checkbox.className = 'mr-2 cursor-pointer rounded border-neutral-600 bg-neutral-800 accent-amber-500'
+    checkbox.onmousedown = (e) => {
       e.preventDefault()
       const newText = this.checked ? '[ ]' : '[x]'
-      this.view.dispatch({
+      view.dispatch({
         changes: { from: this.pos, to: this.pos + 3, insert: newText }
       })
     }
     
-    wrap.appendChild(input)
+    wrap.appendChild(checkbox)
     return wrap
   }
 }
@@ -106,6 +97,8 @@ class TableWidget extends WidgetType {
   toDOM() {
     const wrap = document.createElement('div')
     wrap.className = 'cm-table-widget overflow-x-auto my-4'
+    wrap.style.display = 'inline-block'
+    wrap.style.width = '100%'
     const table = document.createElement('table')
     table.style.width = 'max-content'
     table.style.minWidth = '100%'
@@ -162,7 +155,7 @@ class QuoteWidget extends WidgetType {
   toDOM() {
     const span = document.createElement('span')
     span.className = 'cm-quote-widget'
-    span.style.borderLeft = '4px solid var(--color-violet-500)'
+    span.style.borderLeft = '4px solid var(--color-neutral-500)'
     span.style.paddingRight = '12px'
     span.style.marginLeft = '4px'
     span.style.display = 'inline-block'
@@ -172,119 +165,139 @@ class QuoteWidget extends WidgetType {
   }
 }
 
-export const livePreviewPlugin = ViewPlugin.fromClass(class {
-  decorations: DecorationSet
-
-  constructor(view: EditorView) {
-    this.decorations = this.buildDecorations(view)
+class HTMLWidget extends WidgetType {
+  constructor(readonly html: string) {
+    super()
   }
+  eq(other: HTMLWidget) {
+    return this.html === other.html
+  }
+  toDOM() {
+    const div = document.createElement('div')
+    div.className = 'cm-html-widget overflow-x-auto my-4'
+    div.style.display = 'inline-block'
+    div.style.width = '100%'
+    div.innerHTML = this.html
+    return div
+  }
+}
 
-  update(update: ViewUpdate) {
-    if (update.docChanged || update.viewportChanged || update.selectionSet) {
-      this.decorations = this.buildDecorations(update.view)
+function buildDecorations(state: EditorState) {
+  const builder = new RangeSetBuilder<Decoration>()
+  const activeLines = new Set<number>()
+  for (const range of state.selection.ranges) {
+    const startLine = state.doc.lineAt(range.from).number
+    const endLine = state.doc.lineAt(range.to).number
+    for (let i = startLine; i <= endLine; i++) {
+      activeLines.add(i)
     }
   }
 
-  buildDecorations(view: EditorView) {
-    const builder = new RangeSetBuilder<Decoration>()
-    
-    // Determine which lines contain a cursor/selection so we can show syntax there
-    const activeLines = new Set<number>()
-    for (const range of view.state.selection.ranges) {
-      const startLine = view.state.doc.lineAt(range.from).number
-      const endLine = view.state.doc.lineAt(range.to).number
-      for (let i = startLine; i <= endLine; i++) {
-        activeLines.add(i)
-      }
-    }
-
-    // Iterate through the syntax tree in the visible viewport
-    for (const { from, to } of view.visibleRanges) {
-      syntaxTree(view.state).iterate({
-        from,
-        to,
-        enter: (node) => {
-          // If the node is one of our syntax markers...
-          if (MARKER_NODES.has(node.name)) {
-            // Check if it's on an active line
-            const line = view.state.doc.lineAt(node.from).number
-            if (!activeLines.has(line)) {
-              // Hide the syntax marker
-              builder.add(node.from, node.to, hideDecoration)
-            }
-          } else if (node.name === 'ListMark') {
-            const line = view.state.doc.lineAt(node.from).number
-            if (!activeLines.has(line)) {
-              // Only replace bullet marks, not numbers. We can check the text.
-              const text = view.state.sliceDoc(node.from, node.to)
-              if (text === '-' || text === '*' || text === '+') {
-                const widget = Decoration.replace({ widget: new BulletWidget() })
-                builder.add(node.from, node.to, widget)
-              }
-            }
-          } else if (node.name === 'QuoteMark') {
-            const line = view.state.doc.lineAt(node.from).number
-            if (!activeLines.has(line)) {
-              const widget = Decoration.replace({ widget: new QuoteWidget() })
-              builder.add(node.from, node.to, widget)
-            }
-          } else if (node.name === 'Image') {
-            const line = view.state.doc.lineAt(node.from).number
-            if (!activeLines.has(line)) {
-              // Extract the URL and Alt text
-              const imageText = view.state.sliceDoc(node.from, node.to)
-              // Basic regex to pull out ![alt](url)
-              const match = imageText.match(/^!\[(.*?)\]\((.*?)\)$/)
-              if (match) {
-                const altText = match[1]
-                const url = match[2]
-                // Only replace if it's a standard URL or app scheme, skip drawings for now
-                if (!url.startsWith('drawing://')) {
-                  const widget = Decoration.replace({
-                    widget: new ImageWidget(url, altText),
-                    block: false
-                  })
-                  builder.add(node.from, node.to, widget)
-                  return false
-                }
-              }
-            }
-          } else if (node.name === 'TaskMarker') {
-            const line = view.state.doc.lineAt(node.from).number
-            if (!activeLines.has(line)) {
-              const text = view.state.sliceDoc(node.from, node.to)
-              const checked = text.includes('x') || text.includes('X')
+  syntaxTree(state).iterate({
+    from: 0,
+    to: state.doc.length,
+    enter: (node) => {
+      if (MARKER_NODES.has(node.name)) {
+        const line = state.doc.lineAt(node.from).number
+        if (!activeLines.has(line)) {
+          builder.add(node.from, node.to, hideDecoration)
+        }
+      } else if (node.name === 'ListMark') {
+        const line = state.doc.lineAt(node.from).number
+        if (!activeLines.has(line)) {
+          const text = state.sliceDoc(node.from, node.to)
+          if (text === '-' || text === '*' || text === '+') {
+            const widget = Decoration.replace({ widget: new BulletWidget() })
+            builder.add(node.from, node.to, widget)
+          }
+        }
+      } else if (node.name === 'QuoteMark') {
+        const line = state.doc.lineAt(node.from).number
+        if (!activeLines.has(line)) {
+          const widget = Decoration.replace({ widget: new QuoteWidget() })
+          builder.add(node.from, node.to, widget)
+        }
+      } else if (node.name === 'Image') {
+        const line = state.doc.lineAt(node.from).number
+        if (!activeLines.has(line)) {
+          const imageText = state.sliceDoc(node.from, node.to)
+          const match = imageText.match(/^!\[(.*?)\]\((.*?)\)$/)
+          if (match) {
+            const altText = match[1]
+            const url = match[2]
+            if (!url.startsWith('drawing://')) {
               const widget = Decoration.replace({
-                widget: new CheckboxWidget(checked, node.from, view),
-                block: false
-              })
-              builder.add(node.from, node.to, widget)
-              return false
-            }
-          } else if (node.name === 'Table') {
-            let isActive = false
-            const startLine = view.state.doc.lineAt(node.from).number
-            const endLine = view.state.doc.lineAt(node.to).number
-            for (let i = startLine; i <= endLine; i++) {
-              if (activeLines.has(i)) isActive = true
-            }
-            if (!isActive) {
-              const text = view.state.sliceDoc(node.from, node.to)
-              const widget = Decoration.replace({
-                widget: new TableWidget(text),
-                block: true
+                widget: new ImageWidget(url, altText)
               })
               builder.add(node.from, node.to, widget)
               return false
             }
           }
-          return true
         }
-      })
+      } else if (node.name === 'TaskMarker') {
+        const line = state.doc.lineAt(node.from).number
+        if (!activeLines.has(line)) {
+          const text = state.sliceDoc(node.from, node.to)
+          const checked = text.includes('x') || text.includes('X')
+          const widget = Decoration.replace({
+            widget: new CheckboxWidget(checked, node.from)
+          })
+          builder.add(node.from, node.to, widget)
+          return false
+        }
+      } else if (node.name === 'Table') {
+        let isActive = false
+        const startLine = state.doc.lineAt(node.from).number
+        const endLine = state.doc.lineAt(node.to).number
+        for (let i = startLine; i <= endLine; i++) {
+          if (activeLines.has(i)) isActive = true
+        }
+        if (!isActive) {
+          const from = state.doc.line(startLine).from
+          const to = state.doc.line(endLine).to
+          const text = state.sliceDoc(from, to)
+          const widget = Decoration.replace({
+            widget: new TableWidget(text),
+            block: true
+          })
+          builder.add(from, to, widget)
+          return false
+        }
+      } else if (node.name === 'HTMLBlock') {
+        let isActive = false
+        const startLine = state.doc.lineAt(node.from).number
+        const endLine = state.doc.lineAt(node.to).number
+        for (let i = startLine; i <= endLine; i++) {
+          if (activeLines.has(i)) isActive = true
+        }
+        if (!isActive) {
+          const from = state.doc.line(startLine).from
+          const to = state.doc.line(endLine).to
+          const text = state.sliceDoc(from, to)
+          const widget = Decoration.replace({
+            widget: new HTMLWidget(text),
+            block: true
+          })
+          builder.add(from, to, widget)
+          return false
+        }
+      }
+      return true
     }
-    
-    return builder.finish()
-  }
-}, {
-  decorations: v => v.decorations
+  })
+  
+  return builder.finish()
+}
+
+export const livePreviewPlugin = StateField.define<DecorationSet>({
+  create(state) {
+    return buildDecorations(state)
+  },
+  update(decos, tr) {
+    if (tr.docChanged || tr.selection) {
+      return buildDecorations(tr.state)
+    }
+    return decos
+  },
+  provide: f => EditorView.decorations.from(f)
 })
