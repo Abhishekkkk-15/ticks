@@ -5,6 +5,8 @@ import type { ReactCodeMirrorRef } from '@uiw/react-codemirror'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { languages } from '@codemirror/language-data'
 import { startCompletion, type CompletionContext } from '@codemirror/autocomplete'
+import { syntaxHighlighting, HighlightStyle } from '@codemirror/language'
+import { tags as t } from '@lezer/highlight'
 import { keymap } from '@codemirror/view'
 import { moveLineUp, moveLineDown, copyLineUp, copyLineDown, toggleComment } from '@codemirror/commands'
 import { searchKeymap, selectNextOccurrence, selectSelectionMatches } from '@codemirror/search'
@@ -13,6 +15,7 @@ import { markdownKeymapExtension } from './markdownShortcuts'
 import { useSettings } from '../settings/SettingsContext'
 import { isLightTheme } from '../settings/themeUtils'
 import { getClipboardImageFile, uploadPastedImage } from '../notes/pasteImage'
+import { livePreviewPlugin } from './livePreview'
 
 export interface EditorSelection {
   text: string
@@ -77,6 +80,27 @@ const chromeTheme = EditorView.theme({
   '.cm-activeLine': { backgroundColor: 'var(--color-neutral-800)' },
   '.cm-activeLineGutter': { backgroundColor: 'transparent' }
 })
+
+const livePreviewHighlighting = syntaxHighlighting(
+  HighlightStyle.define([
+    { tag: t.heading1, fontSize: '2.1em', fontWeight: 'bold' },
+    { tag: t.heading2, fontSize: '1.6em', fontWeight: 'bold' },
+    { tag: t.heading3, fontSize: '1.3em', fontWeight: 'bold' },
+    { tag: t.heading4, fontSize: '1.1em', fontWeight: 'bold' },
+    { tag: t.heading5, fontSize: '1em', fontWeight: 'bold' },
+    { tag: t.heading6, fontSize: '0.9em', fontWeight: 'bold' },
+    { tag: t.strong, fontWeight: 'bold' },
+    { tag: t.emphasis, fontStyle: 'italic' },
+    { tag: t.strikethrough, textDecoration: 'line-through' },
+    { 
+      tag: t.monospace,
+      backgroundColor: 'var(--color-neutral-800)',
+      borderRadius: '4px',
+      padding: '2px 4px',
+      fontFamily: 'monospace'
+    }
+  ])
+)
 
 function MarkdownEditor({
   value,
@@ -305,9 +329,10 @@ function MarkdownEditor({
       domEventHandlers,
       vscodeKeymapExtension,
       autoTriggerExtension,
-      minimapExtension
+      minimapExtension,
+      ...(settings?.live_preview ? [livePreviewPlugin, livePreviewHighlighting] : [])
     ]
-  }, [fontTheme, autocompleteExtension, domEventHandlers, vscodeKeymapExtension, autoTriggerExtension, minimapExtension])
+  }, [fontTheme, autocompleteExtension, domEventHandlers, vscodeKeymapExtension, autoTriggerExtension, minimapExtension, settings?.live_preview])
 
   function handleUpdate(viewUpdate: MinimalViewUpdate): void {
     if (!onSelectionChange || !viewUpdate.selectionSet) return

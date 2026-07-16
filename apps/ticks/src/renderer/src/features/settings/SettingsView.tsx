@@ -558,6 +558,26 @@ function SettingsView(): React.JSX.Element {
               </div>
             </section>
 
+            {/* Live Preview */}
+            <section className="space-y-2">
+              <label className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={settings.live_preview || false}
+                  onChange={(e) => updateSettings({ live_preview: e.target.checked })}
+                  className="h-4 w-4 rounded border-neutral-700 bg-neutral-900 text-neutral-300 focus:ring-neutral-500 focus:ring-offset-neutral-950"
+                />
+                <div>
+                  <span className="block text-sm font-medium text-neutral-200">
+                    Enable Live Preview Mode (Experimental)
+                  </span>
+                  <span className="block text-xs text-neutral-500">
+                    Styles markdown headers and hides syntax when your cursor is not on the active line.
+                  </span>
+                </div>
+              </label>
+            </section>
+
             {/* Mini-Tray Size */}
             <section className="space-y-2">
               <label htmlFor="miniTraySize" className="block text-sm font-medium text-neutral-200">
