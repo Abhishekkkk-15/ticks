@@ -1,17 +1,14 @@
 import { Copy, Minus, Square, X } from 'lucide-react'
 import { useIsMaximized } from '../../lib/useIsMaximized'
-import { useSettings } from '../../features/settings/SettingsContext'
 
 const DRAG_REGION = { WebkitAppRegion: 'drag' } as React.CSSProperties
 const NO_DRAG_REGION = { WebkitAppRegion: 'no-drag' } as React.CSSProperties
 
 function TitleBar(): React.JSX.Element | null {
   const isMaximized = useIsMaximized()
-  const { settings } = useSettings()
-
   if (window.api.platform === 'darwin') return null
 
-  const showCustomControls = window.api.platform !== 'win32' || !settings?.windows_native_snapping
+  const showCustomControls = true
 
   return (
     <div

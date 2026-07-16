@@ -584,48 +584,6 @@ function SettingsView(): React.JSX.Element {
               </div>
             </section>
 
-            {/* Windows Native Snapping */}
-            {window.api.platform === 'win32' && (
-              <section className="space-y-2">
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-neutral-900 ${
-                      settings.windows_native_snapping ? 'bg-blue-600' : 'bg-neutral-700'
-                    }`}
-                    onClick={() =>
-                      updateSettings({
-                        windows_native_snapping: !settings.windows_native_snapping
-                      })
-                    }
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault()
-                        updateSettings({
-                          windows_native_snapping: !settings.windows_native_snapping
-                        })
-                      }
-                    }}
-                    role="switch"
-                    aria-checked={settings.windows_native_snapping}
-                    tabIndex={0}
-                  >
-                    <span
-                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                        settings.windows_native_snapping ? 'translate-x-4' : 'translate-x-0.5'
-                      }`}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-neutral-200">
-                      Native Windows Mode
-                    </label>
-                    <p className="text-xs text-neutral-500 mt-0.5">
-                      Enable native titlebar for Window Snapping (Win+Arrow) and native rounded corners. App restart required.
-                    </p>
-                  </div>
-                </div>
-              </section>
-            )}
           </div>
         )}
 

@@ -34,12 +34,6 @@ function readSetting(key: string, fallback: string): string {
   return typeof value === 'string' && value ? value : fallback
 }
 
-function readBooleanSetting(key: string, fallback: boolean): boolean {
-  const data = readSettingsFile()
-  const value = data?.[key]
-  return typeof value === 'boolean' ? value : fallback
-}
-
 function getGlobalCaptureShortcut(): string {
   return readKeyboardShortcut('global_capture', 'Ctrl+Alt+Shift+C')
 }
@@ -409,8 +403,6 @@ let mainWindow: BrowserWindow | null = null
 
 function createWindow(): void {
   const savedState = loadWindowState()
-  const nativeSnapping = readBooleanSetting('windows_native_snapping', false)
-  const isWindowsNative = process.platform === 'win32' && nativeSnapping
 
   // Create the browser window.
   const win = new BrowserWindow({
@@ -427,16 +419,6 @@ function createWindow(): void {
     frame: process.platform === 'darwin',
     transparent: process.platform === 'linux',
     ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset' as const } : {}),
-    ...(isWindowsNative
-      ? {
-          titleBarStyle: 'hidden' as const,
-          titleBarOverlay: {
-            color: '#0a0a0a',
-            symbolColor: '#a3a3a3',
-            height: 32
-          }
-        }
-      : {}),
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),

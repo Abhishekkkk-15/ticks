@@ -5,6 +5,7 @@ import { getSettingsInfo, updateSettings, getDropboxToken, setDropboxToken, getD
 import { settings } from '../config.js';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 
 let pkceVerifier: string | null = null;
 const REDIRECT_URI = `http://localhost:${settings.port}/api/sync/dropbox/callback`;
