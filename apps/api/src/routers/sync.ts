@@ -51,6 +51,7 @@ syncRouter.get('/status', (req, res) => {
   const settings = getSettingsInfo();
   res.json({
     dropbox_connected: settings.dropbox_connected,
-    dropbox_auto_sync: settings.dropbox_auto_sync
+    dropbox_auto_sync: settings.dropbox_auto_sync,
+    sync_on_close: settings.sync_on_close
   });
 });

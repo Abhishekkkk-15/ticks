@@ -444,9 +444,22 @@ function createWindow(): void {
   }
   win.on('resize', scheduleSaveState)
   win.on('move', scheduleSaveState)
-  win.on('close', () => {
+  
+  let hasRequestedClosingSync = false
+  win.on('close', (event) => {
     clearTimeout(saveStateTimer)
     saveWindowState(win)
+    
+    if (!hasRequestedClosingSync && !isQuitting) {
+      event.preventDefault()
+      hasRequestedClosingSync = true
+      win.webContents.send('window:closing-sync-requested')
+      // Fallback: If renderer hangs or sync fails, force quit after 30 seconds
+      setTimeout(() => {
+        isQuitting = true
+        app.quit()
+      }, 30000)
+    }
   })
 
   win.on('ready-to-show', () => {
@@ -551,6 +564,10 @@ if (!gotSingleInstanceLock) {
     })
     ipcMain.on('window:close', (event) => {
       BrowserWindow.fromWebContents(event.sender)?.close()
+    })
+    ipcMain.on('window:quit', () => {
+      isQuitting = true
+      app.quit()
     })
     ipcMain.handle('window:is-maximized', (event) => {
       return BrowserWindow.fromWebContents(event.sender)?.isMaximized() ?? false

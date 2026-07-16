@@ -45,8 +45,32 @@ function App(): React.JSX.Element {
     }
     return undefined
   }, [backendStatus])
-
   const workspacesApi = useWorkspaces()
+  const [closingSyncStatus, setClosingSyncStatus] = useState<'idle' | 'syncing'>('idle')
+
+  useEffect(() => {
+    if (!window.api?.onClosingSyncRequested) return
+    return window.api.onClosingSyncRequested(() => {
+      import('./features/settings/api').then(async ({ getSettings }) => {
+        try {
+          const currentSettings = await getSettings()
+          if (currentSettings.sync_on_close && currentSettings.dropbox_connected) {
+            setClosingSyncStatus('syncing')
+            const { apiFetch } = await import('./lib/api')
+            await apiFetch('/api/sync/dropbox/trigger', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ mode: 'smart' })
+            }).catch(console.error)
+          }
+        } catch (err) {
+          console.error('[Sync on Close] Failed to check settings or sync:', err)
+        } finally {
+          window.api.quitApp()
+        }
+      })
+    })
+  }, [])
   const [selectedWorkspace, setSelectedWorkspace] = useState<Workspace | null>(null)
   const [tabs, setTabs] = useState<OpenTab[]>([])
   const [activeTabId, setActiveTabId] = useState<string | null>(null)
@@ -715,7 +739,7 @@ function App(): React.JSX.Element {
       </div>
 
       <AnimatePresence>
-        {backendStatus !== 'connected' && (
+        {(backendStatus !== 'connected' || closingSyncStatus === 'syncing') && (
           <motion.div
             initial={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -744,6 +768,9 @@ function App(): React.JSX.Element {
                 transition={{ duration: 16, repeat: Infinity, ease: 'linear' }}
                 className="absolute inset-0 rounded-full border border-dashed border-neutral-800/60"
               />
+
+              {/* Inner dark circle */}
+              <div className="absolute inset-4 rounded-full bg-neutral-900/80 backdrop-blur-xl" />
 
               {/* Symmetrical cozy notepad SVG */}
               <svg

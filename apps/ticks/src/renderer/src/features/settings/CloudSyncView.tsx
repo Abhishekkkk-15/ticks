@@ -110,6 +110,17 @@ export default function CloudSyncView(): React.JSX.Element {
               <span className="text-sm text-neutral-300">Auto-sync periodically</span>
             </label>
 
+            <label className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                checked={settings.sync_on_close}
+                onChange={(e) => updateSettings({ sync_on_close: e.target.checked })}
+                className="h-4 w-4 rounded border-neutral-700 bg-neutral-900 text-amber-500 focus:ring-amber-500 focus:ring-offset-neutral-950"
+              />
+              <span className="text-sm text-neutral-300">Sync when app closes</span>
+            </label>
+
+
             <div className="pt-2 flex flex-col gap-3">
               <div className="flex flex-wrap items-center gap-3">
                 <button

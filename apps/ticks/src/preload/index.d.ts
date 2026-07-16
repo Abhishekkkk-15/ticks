@@ -15,6 +15,8 @@ interface Api {
   pickResourceFile: () => Promise<{ name: string; data: Uint8Array } | null>
   notifySettingsUpdated: () => void
   onCaptureText: (callback: (text: string) => void) => () => void
+  onClosingSyncRequested: (callback: () => void) => () => void
+  quitApp: () => void
   platform: NodeJS.Platform
   windowControls: {
     minimize: () => void

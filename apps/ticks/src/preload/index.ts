@@ -23,6 +23,14 @@ const api = {
       ipcRenderer.off('shortcut:capture-text', listener)
     }
   },
+  onClosingSyncRequested: (callback: () => void): (() => void) => {
+    const listener = (): void => callback()
+    ipcRenderer.on('window:closing-sync-requested', listener)
+    return (): void => {
+      ipcRenderer.off('window:closing-sync-requested', listener)
+    }
+  },
+  quitApp: (): void => ipcRenderer.send('window:quit'),
   platform: process.platform,
   windowControls: {
     minimize: (): void => ipcRenderer.send('window:minimize'),

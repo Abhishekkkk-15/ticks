@@ -50,6 +50,7 @@ const DEFAULT_DATA = {
   dropbox_app_key: null as string | null,
   dropbox_refresh_token: null as string | null,
   dropbox_auto_sync: false,
+  sync_on_close: false,
   dropbox_sync_cursor: null as string | null,
   live_preview: false
 };
@@ -121,6 +122,7 @@ export function getSettingsInfo(): SettingsInfo {
     dropbox_app_key: data.dropbox_app_key,
     dropbox_connected: !!data.dropbox_refresh_token,
     dropbox_auto_sync: !!data.dropbox_auto_sync,
+    sync_on_close: !!data.sync_on_close,
     live_preview: !!data.live_preview
   };
 }
