@@ -129,6 +129,7 @@ function App(): React.JSX.Element {
       import('./lib/api').then(({ apiFetch }) => {
         apiFetch('/api/sync/dropbox/trigger', { 
           method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ mode: 'smart' })
         }).catch((err) => {
           console.error('[Dropbox Auto-Sync] failed:', err)

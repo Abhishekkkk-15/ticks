@@ -37,6 +37,7 @@ export default function CloudSyncView(): React.JSX.Element {
     try {
       const res = await apiFetch<{ message: string }>('/api/sync/dropbox/trigger', { 
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mode })
       })
       setSyncMessage(res.message || 'Sync successful!')
