@@ -127,6 +127,7 @@ function getLocalFilesState(dir: string, baseDir: string, state: Record<string, 
         getLocalFilesState(fullPath, baseDir, state);
       }
     } else {
+      if (file === 'dropbox-sync-state.json') continue; // Do not sync the local sync state
       const relPath = path.relative(baseDir, fullPath).replace(/\\/g, '/');
       state[relPath] = { mtimeMs: stat.mtimeMs };
     }
@@ -138,11 +139,17 @@ export async function triggerSync(options: { mode: 'pull' | 'push' | 'smart' } =
   try {
     const dbx = getDropboxClient();
     const cursor = getDropboxCursor();
-    const root = settings.workspacesRoot;
+    const root = path.join(os.homedir(), 'AILearningWorkspace'); // Sync entire workspace including settings
+    const REMOTE_PREFIX = '/Ticks';
     let rootRecreated = false;
     if (!fs.existsSync(root)) {
       fs.mkdirSync(root, { recursive: true });
       rootRecreated = true;
+    }
+
+    // Ensure workspaces subdirectory exists
+    if (!fs.existsSync(settings.workspacesRoot)) {
+      fs.mkdirSync(settings.workspacesRoot, { recursive: true });
     }
 
     const syncState = loadSyncState();
@@ -171,15 +178,27 @@ export async function triggerSync(options: { mode: 'pull' | 'push' | 'smart' } =
           try {
             response = await dbx.filesListFolderContinue({ cursor: currentCursor });
           } catch (e: any) {
-            response = await dbx.filesListFolder({ path: '', recursive: true });
+            try {
+              response = await dbx.filesListFolder({ path: REMOTE_PREFIX, recursive: true });
+            } catch (err: any) {
+              response = { result: { entries: [], cursor: '', has_more: false } };
+            }
           }
         } else {
-          response = await dbx.filesListFolder({ path: '', recursive: true });
+          try {
+            response = await dbx.filesListFolder({ path: REMOTE_PREFIX, recursive: true });
+          } catch (err: any) {
+            response = { result: { entries: [], cursor: '', has_more: false } };
+          }
         }
 
         for (const entry of response.result.entries) {
-          const relativePath = entry.path_display?.replace(/^\//, ''); // remove leading slash
-          if (!relativePath || !entry.path_display) continue;
+          if (!entry.path_display) continue;
+          // Strip the REMOTE_PREFIX to get the relative path
+          const relativePath = entry.path_display.replace(new RegExp(`^${REMOTE_PREFIX}/`, 'i'), '');
+          if (relativePath === entry.path_display) continue; // Skip if it doesn't match prefix
+          if (relativePath === 'dropbox-sync-state.json') continue; // Ignore if it exists remotely
+          
           const localPath = path.join(root, relativePath);
 
           if (entry['.tag'] === 'file') {
@@ -233,7 +252,7 @@ export async function triggerSync(options: { mode: 'pull' | 'push' | 'smart' } =
       for (const relPath of Object.keys(syncState.files)) {
         if (!localFilesState[relPath]) {
           try {
-            await dbx.filesDeleteV2({ path: '/' + relPath });
+            await dbx.filesDeleteV2({ path: `${REMOTE_PREFIX}/${relPath}` });
             localDeletesProcessed++;
           } catch (e: any) {
             // Ignore not found errors if it was already deleted remotely
@@ -252,7 +271,7 @@ export async function triggerSync(options: { mode: 'pull' | 'push' | 'smart' } =
 
         if (options.mode === 'push' || !savedLocal || currentLocal.mtimeMs > savedLocal.mtimeMs) {
           const localPath = path.join(root, relPath);
-          const remotePath = '/' + relPath;
+          const remotePath = `${REMOTE_PREFIX}/${relPath}`;
           
           uploadPromises.push((async () => {
             const content = fs.readFileSync(localPath);
@@ -279,8 +298,12 @@ export async function triggerSync(options: { mode: 'pull' | 'push' | 'smart' } =
     }
 
     // Update cursor so we only pull delta next time
-    const finalResponse = await dbx.filesListFolderGetLatestCursor({ path: '', recursive: true });
-    setDropboxCursor(finalResponse.result.cursor);
+    try {
+      const finalResponse = await dbx.filesListFolderGetLatestCursor({ path: REMOTE_PREFIX, recursive: true });
+      setDropboxCursor(finalResponse.result.cursor);
+    } catch (e) {
+      // If folder doesn't exist yet, we just ignore cursor
+    }
     saveSyncState(syncState);
 
     return { 
