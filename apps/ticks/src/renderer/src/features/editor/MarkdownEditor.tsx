@@ -3,6 +3,7 @@ import type { Ref } from 'react'
 import CodeMirror, { EditorView } from '@uiw/react-codemirror'
 import type { ReactCodeMirrorRef } from '@uiw/react-codemirror'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
+import { GFM } from '@lezer/markdown'
 import { languages } from '@codemirror/language-data'
 import { startCompletion, type CompletionContext } from '@codemirror/autocomplete'
 import { syntaxHighlighting, HighlightStyle } from '@codemirror/language'
@@ -44,7 +45,7 @@ interface MarkdownEditorProps {
 }
 
 const baseExtensions = [
-  markdown({ codeLanguages: languages }),
+  markdown({ codeLanguages: languages, extensions: [GFM] }),
   markdownKeymapExtension,
   // Alt+Click adds a new cursor instead of moving the single cursor
   EditorView.clickAddsSelectionRange.of((e) => e.altKey),

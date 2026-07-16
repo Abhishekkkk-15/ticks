@@ -141,6 +141,22 @@ class TableWidget extends WidgetType {
   }
 }
 
+class BulletWidget extends WidgetType {
+  toDOM() {
+    const span = document.createElement('span')
+    span.className = 'mr-2 inline-block h-1.5 w-1.5 rounded-full bg-neutral-400 align-middle'
+    return span
+  }
+}
+
+class QuoteWidget extends WidgetType {
+  toDOM() {
+    const span = document.createElement('span')
+    span.className = 'mr-3 inline-block h-4 border-l-4 border-violet-500/50 align-middle'
+    return span
+  }
+}
+
 export const livePreviewPlugin = ViewPlugin.fromClass(class {
   decorations: DecorationSet
 
@@ -181,6 +197,22 @@ export const livePreviewPlugin = ViewPlugin.fromClass(class {
               // Hide the syntax marker
               builder.add(node.from, node.to, hideDecoration)
             }
+          } else if (node.name === 'ListMark') {
+            const line = view.state.doc.lineAt(node.from).number
+            if (!activeLines.has(line)) {
+              // Only replace bullet marks, not numbers. We can check the text.
+              const text = view.state.sliceDoc(node.from, node.to)
+              if (text === '-' || text === '*' || text === '+') {
+                const widget = Decoration.replace({ widget: new BulletWidget() })
+                builder.add(node.from, node.to, widget)
+              }
+            }
+          } else if (node.name === 'QuoteMark') {
+            const line = view.state.doc.lineAt(node.from).number
+            if (!activeLines.has(line)) {
+              const widget = Decoration.replace({ widget: new QuoteWidget() })
+              builder.add(node.from, node.to, widget)
+            }
           } else if (node.name === 'Image') {
             const line = view.state.doc.lineAt(node.from).number
             if (!activeLines.has(line)) {
@@ -198,6 +230,7 @@ export const livePreviewPlugin = ViewPlugin.fromClass(class {
                     block: false
                   })
                   builder.add(node.from, node.to, widget)
+                  return false
                 }
               }
             }
@@ -211,6 +244,7 @@ export const livePreviewPlugin = ViewPlugin.fromClass(class {
                 block: false
               })
               builder.add(node.from, node.to, widget)
+              return false
             }
           } else if (node.name === 'Table') {
             let isActive = false
@@ -226,8 +260,10 @@ export const livePreviewPlugin = ViewPlugin.fromClass(class {
                 block: true
               })
               builder.add(node.from, node.to, widget)
+              return false
             }
           }
+          return true
         }
       })
     }
