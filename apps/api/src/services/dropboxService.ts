@@ -134,129 +134,148 @@ function getLocalFilesState(dir: string, baseDir: string, state: Record<string, 
   return state;
 }
 
-export async function triggerSync(): Promise<{ success: boolean; message: string }> {
+export async function triggerSync(options: { mode: 'pull' | 'push' | 'smart' } = { mode: 'smart' }): Promise<{ success: boolean; message: string }> {
   try {
     const dbx = getDropboxClient();
     const cursor = getDropboxCursor();
     const root = settings.workspacesRoot;
+    let rootRecreated = false;
     if (!fs.existsSync(root)) {
       fs.mkdirSync(root, { recursive: true });
+      rootRecreated = true;
     }
 
     const syncState = loadSyncState();
+    
+    // Safety net: if local root is empty or was deleted, and mode is smart, we should pull to be safe.
+    let forceFullPull = false;
     const localFilesState = getLocalFilesState(root, root);
+    if (options.mode === 'smart' && rootRecreated) {
+      syncState.files = {};
+      setDropboxCursor('');
+      forceFullPull = true;
+    }
+
     let remoteFilesProcessed = 0;
     let localFilesProcessed = 0;
     let localDeletesProcessed = 0;
 
     // 1. Download Remote Changes
-    let hasMore = true;
-    let currentCursor = cursor;
+    if (options.mode === 'pull' || options.mode === 'smart') {
+      let hasMore = true;
+      let currentCursor = (options.mode === 'pull' || forceFullPull) ? '' : cursor;
 
-    while (hasMore) {
-      let response;
-      if (currentCursor) {
-        try {
-          response = await dbx.filesListFolderContinue({ cursor: currentCursor });
-        } catch (e: any) {
+      while (hasMore) {
+        let response;
+        if (currentCursor) {
+          try {
+            response = await dbx.filesListFolderContinue({ cursor: currentCursor });
+          } catch (e: any) {
+            response = await dbx.filesListFolder({ path: '', recursive: true });
+          }
+        } else {
           response = await dbx.filesListFolder({ path: '', recursive: true });
         }
-      } else {
-        response = await dbx.filesListFolder({ path: '', recursive: true });
-      }
 
-      for (const entry of response.result.entries) {
-        const relativePath = entry.path_display?.replace(/^\//, ''); // remove leading slash
-        if (!relativePath || !entry.path_display) continue;
-        const localPath = path.join(root, relativePath);
+        for (const entry of response.result.entries) {
+          const relativePath = entry.path_display?.replace(/^\//, ''); // remove leading slash
+          if (!relativePath || !entry.path_display) continue;
+          const localPath = path.join(root, relativePath);
 
-        if (entry['.tag'] === 'file') {
-          fs.mkdirSync(path.dirname(localPath), { recursive: true });
-          
-          let targetPath = localPath;
-          let targetRelPath = relativePath;
-          
-          // Conflict Detection
-          const currentLocal = localFilesState[relativePath];
-          const savedLocal = syncState.files[relativePath];
-          
-          // If local file was modified since last sync, create a Conflicted Copy
-          if (currentLocal && (!savedLocal || currentLocal.mtimeMs > savedLocal.mtimeMs)) {
-            const ext = path.extname(localPath);
-            const base = path.basename(localPath, ext);
-            const dir = path.dirname(localPath);
-            targetPath = path.join(dir, `${base} (Conflicted Copy)${ext}`);
-            targetRelPath = path.relative(root, targetPath).replace(/\\/g, '/');
-          }
+          if (entry['.tag'] === 'file') {
+            fs.mkdirSync(path.dirname(localPath), { recursive: true });
+            
+            let targetPath = localPath;
+            let targetRelPath = relativePath;
+            
+            if (options.mode === 'smart') {
+              // Conflict Detection
+              const currentLocal = localFilesState[relativePath];
+              const savedLocal = syncState.files[relativePath];
+              
+              // If local file was modified since last sync, create a Conflicted Copy
+              if (currentLocal && (!savedLocal || currentLocal.mtimeMs > savedLocal.mtimeMs)) {
+                const ext = path.extname(localPath);
+                const base = path.basename(localPath, ext);
+                const dir = path.dirname(localPath);
+                targetPath = path.join(dir, `${base} (Conflicted Copy)${ext}`);
+                targetRelPath = path.relative(root, targetPath).replace(/\\/g, '/');
+              }
+            }
 
-          // Download the file
-          const fileData = await dbx.filesDownload({ path: entry.path_display });
-          const content = (fileData.result as any).fileBinary;
-          
-          if (content) {
-            fs.writeFileSync(targetPath, content);
-            const newStat = fs.statSync(targetPath);
-            syncState.files[targetRelPath] = { mtimeMs: newStat.mtimeMs, rev: entry.rev };
-            localFilesState[targetRelPath] = { mtimeMs: newStat.mtimeMs }; // Update local scan so we don't immediately upload it
-            remoteFilesProcessed++;
+            // Download the file
+            const fileData = await dbx.filesDownload({ path: entry.path_display });
+            const content = (fileData.result as any).fileBinary;
+            
+            if (content) {
+              fs.writeFileSync(targetPath, content);
+              const newStat = fs.statSync(targetPath);
+              syncState.files[targetRelPath] = { mtimeMs: newStat.mtimeMs, rev: entry.rev };
+              localFilesState[targetRelPath] = { mtimeMs: newStat.mtimeMs }; // Update local scan so we don't immediately upload it
+              remoteFilesProcessed++;
+            }
+          } else if (entry['.tag'] === 'deleted') {
+            if (fs.existsSync(localPath)) {
+              fs.rmSync(localPath);
+            }
+            delete syncState.files[relativePath];
+            delete localFilesState[relativePath];
           }
-        } else if (entry['.tag'] === 'deleted') {
-          if (fs.existsSync(localPath)) {
-            fs.rmSync(localPath);
-          }
-          delete syncState.files[relativePath];
-          delete localFilesState[relativePath];
         }
+        
+        currentCursor = response.result.cursor;
+        hasMore = response.result.has_more;
       }
-      
-      currentCursor = response.result.cursor;
-      hasMore = response.result.has_more;
     }
 
     // 2. Push Local Deletions
-    for (const relPath of Object.keys(syncState.files)) {
-      if (!localFilesState[relPath]) {
-        try {
-          await dbx.filesDeleteV2({ path: '/' + relPath });
-          localDeletesProcessed++;
-        } catch (e: any) {
-          // Ignore not found errors if it was already deleted remotely
+    if (options.mode === 'push' || options.mode === 'smart') {
+      for (const relPath of Object.keys(syncState.files)) {
+        if (!localFilesState[relPath]) {
+          try {
+            await dbx.filesDeleteV2({ path: '/' + relPath });
+            localDeletesProcessed++;
+          } catch (e: any) {
+            // Ignore not found errors if it was already deleted remotely
+          }
+          delete syncState.files[relPath];
         }
-        delete syncState.files[relPath];
       }
     }
 
     // 3. Push Local Changes (Batched)
-    const uploadPromises: Promise<void>[] = [];
-    for (const relPath of Object.keys(localFilesState)) {
-      const currentLocal = localFilesState[relPath];
-      const savedLocal = syncState.files[relPath];
+    if (options.mode === 'push' || options.mode === 'smart') {
+      const uploadPromises: Promise<void>[] = [];
+      for (const relPath of Object.keys(localFilesState)) {
+        const currentLocal = localFilesState[relPath];
+        const savedLocal = syncState.files[relPath];
 
-      if (!savedLocal || currentLocal.mtimeMs > savedLocal.mtimeMs) {
-        const localPath = path.join(root, relPath);
-        const remotePath = '/' + relPath;
-        
-        uploadPromises.push((async () => {
-          const content = fs.readFileSync(localPath);
-          const uploadRes = await dbx.filesUpload({
-            path: remotePath,
-            contents: content,
-            mode: { '.tag': 'overwrite' }
-          });
-          syncState.files[relPath] = { mtimeMs: currentLocal.mtimeMs, rev: uploadRes.result.rev };
-          localFilesProcessed++;
-        })());
+        if (options.mode === 'push' || !savedLocal || currentLocal.mtimeMs > savedLocal.mtimeMs) {
+          const localPath = path.join(root, relPath);
+          const remotePath = '/' + relPath;
+          
+          uploadPromises.push((async () => {
+            const content = fs.readFileSync(localPath);
+            const uploadRes = await dbx.filesUpload({
+              path: remotePath,
+              contents: content,
+              mode: { '.tag': 'overwrite' }
+            });
+            syncState.files[relPath] = { mtimeMs: currentLocal.mtimeMs, rev: uploadRes.result.rev };
+            localFilesProcessed++;
+          })());
 
-        // Concurrency limit of 5
-        if (uploadPromises.length >= 5) {
-          await Promise.all(uploadPromises);
-          uploadPromises.length = 0;
+          // Concurrency limit of 5
+          if (uploadPromises.length >= 5) {
+            await Promise.all(uploadPromises);
+            uploadPromises.length = 0;
+          }
         }
       }
-    }
-    
-    if (uploadPromises.length > 0) {
-      await Promise.all(uploadPromises);
+      
+      if (uploadPromises.length > 0) {
+        await Promise.all(uploadPromises);
+      }
     }
 
     // Update cursor so we only pull delta next time

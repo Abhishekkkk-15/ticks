@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Cloud, Check, Loader2, RefreshCw } from 'lucide-react'
+import { Cloud, Check, Loader2, RefreshCw, DownloadCloud, UploadCloud } from 'lucide-react'
 import { useSettings } from './SettingsContext'
 import { apiFetch } from '../../lib/api'
 
@@ -31,11 +31,14 @@ export default function CloudSyncView(): React.JSX.Element {
     }
   }
 
-  async function handleSync() {
+  async function handleSync(mode: 'pull' | 'push' | 'smart') {
     setSyncing(true)
-    setSyncMessage('Syncing...')
+    setSyncMessage(mode === 'pull' ? 'Pulling...' : mode === 'push' ? 'Pushing...' : 'Syncing...')
     try {
-      const res = await apiFetch<{ message: string }>('/api/sync/dropbox/trigger', { method: 'POST' })
+      const res = await apiFetch<{ message: string }>('/api/sync/dropbox/trigger', { 
+        method: 'POST',
+        body: JSON.stringify({ mode })
+      })
       setSyncMessage(res.message || 'Sync successful!')
     } catch (e: any) {
       setSyncMessage(`Sync failed: ${e.message}`)
@@ -106,15 +109,35 @@ export default function CloudSyncView(): React.JSX.Element {
               <span className="text-sm text-neutral-300">Auto-sync periodically</span>
             </label>
 
-            <div className="pt-2 flex items-center gap-4">
-              <button
-                onClick={handleSync}
-                disabled={syncing}
-                className="flex items-center gap-2 rounded-md bg-neutral-800 px-4 py-2 text-sm font-medium text-neutral-200 transition-colors hover:bg-neutral-700 disabled:opacity-50"
-              >
-                <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
-                {syncing ? 'Syncing...' : 'Sync Now'}
-              </button>
+            <div className="pt-2 flex flex-col gap-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  onClick={() => handleSync('smart')}
+                  disabled={syncing}
+                  className="flex items-center gap-2 rounded-md bg-neutral-800 px-4 py-2 text-sm font-medium text-neutral-200 transition-colors hover:bg-neutral-700 disabled:opacity-50"
+                >
+                  <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
+                  Smart Sync
+                </button>
+                <button
+                  onClick={() => handleSync('pull')}
+                  disabled={syncing}
+                  className="flex items-center gap-2 rounded-md bg-neutral-800 px-4 py-2 text-sm font-medium text-neutral-200 transition-colors hover:bg-neutral-700 disabled:opacity-50"
+                  title="Download all files from Dropbox, overwriting local files"
+                >
+                  <DownloadCloud size={16} />
+                  Pull from Cloud
+                </button>
+                <button
+                  onClick={() => handleSync('push')}
+                  disabled={syncing}
+                  className="flex items-center gap-2 rounded-md bg-neutral-800 px-4 py-2 text-sm font-medium text-neutral-200 transition-colors hover:bg-neutral-700 disabled:opacity-50"
+                  title="Upload all local files to Dropbox, overwriting remote files"
+                >
+                  <UploadCloud size={16} />
+                  Push to Cloud
+                </button>
+              </div>
               
               {syncMessage && (
                 <span className="text-xs text-neutral-400">{syncMessage}</span>

@@ -127,7 +127,10 @@ function App(): React.JSX.Element {
     if (!settings?.dropbox_connected || !settings?.dropbox_auto_sync) return
     const interval = setInterval(() => {
       import('./lib/api').then(({ apiFetch }) => {
-        apiFetch('/api/sync/dropbox/trigger', { method: 'POST' }).catch((err) => {
+        apiFetch('/api/sync/dropbox/trigger', { 
+          method: 'POST',
+          body: JSON.stringify({ mode: 'smart' })
+        }).catch((err) => {
           console.error('[Dropbox Auto-Sync] failed:', err)
         })
       })

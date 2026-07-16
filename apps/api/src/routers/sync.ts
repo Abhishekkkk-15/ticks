@@ -38,7 +38,8 @@ syncRouter.get('/dropbox/callback', async (req, res) => {
 });
 
 syncRouter.post('/dropbox/trigger', async (req, res) => {
-  const result = await triggerSync();
+  const mode = req.body?.mode || 'smart';
+  const result = await triggerSync({ mode });
   if (result.success) {
     res.json(result);
   } else {
