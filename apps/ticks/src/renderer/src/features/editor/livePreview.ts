@@ -105,10 +105,13 @@ class TableWidget extends WidgetType {
 
   toDOM() {
     const wrap = document.createElement('div')
-    wrap.className = 'cm-table-widget prose prose-invert prose-sm max-w-none my-4 overflow-x-auto'
+    wrap.className = 'cm-table-widget overflow-x-auto my-4'
     const table = document.createElement('table')
     table.style.width = 'max-content'
     table.style.minWidth = '100%'
+    table.style.borderCollapse = 'collapse'
+    table.style.fontSize = '0.875rem' // text-sm
+    
     const lines = this.text.trim().split('\n')
     let isHead = true
     const thead = document.createElement('thead')
@@ -131,6 +134,12 @@ class TableWidget extends WidgetType {
       for (const cellText of cells) {
         const cell = document.createElement(isHead ? 'th' : 'td')
         cell.textContent = cellText
+        cell.style.borderBottom = '1px solid var(--color-neutral-700)'
+        cell.style.padding = '8px 16px'
+        if (isHead) {
+          cell.style.fontWeight = '600'
+          cell.style.textAlign = 'left'
+        }
         tr.appendChild(cell)
       }
       if (isHead) thead.appendChild(tr)
@@ -152,7 +161,13 @@ class BulletWidget extends WidgetType {
 class QuoteWidget extends WidgetType {
   toDOM() {
     const span = document.createElement('span')
-    span.className = 'mr-3 inline-block h-4 border-l-4 border-violet-500/50 align-middle'
+    span.className = 'cm-quote-widget'
+    span.style.borderLeft = '4px solid var(--color-violet-500)'
+    span.style.paddingRight = '12px'
+    span.style.marginLeft = '4px'
+    span.style.display = 'inline-block'
+    span.style.height = '1.2em'
+    span.style.verticalAlign = 'middle'
     return span
   }
 }
