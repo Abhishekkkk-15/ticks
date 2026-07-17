@@ -362,6 +362,18 @@ function NoteEditor({
   const handleContextMenuAction = useCallback(
     (action: string, selectedText: string) => {
       if (action.startsWith('highlight')) {
+        if (action === 'highlight-remove') {
+          if (selectedText && selectedText.trim() !== '') {
+            const escapedText = selectedText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+            const regex = new RegExp(`<mark[^>]*>\\s*${escapedText}\\s*</mark>`, 'g')
+            const newContent = content.replace(regex, selectedText)
+            if (newContent !== content) {
+              onChange(newContent)
+            }
+          }
+          return
+        }
+
         const highlightAction = formatActions.find((a) => a.id === action)
         if (highlightAction) {
           const view = codeMirrorRef.current?.view
