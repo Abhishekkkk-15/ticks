@@ -363,10 +363,22 @@ function NoteEditor({
     (action: string, selectedText: string) => {
       if (action.startsWith('highlight')) {
         const createFuzzyRegexInner = (text: string) => {
-          const escapedWords = text.trim().split(/\s+/).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+          const chars = text.trim().split('')
           let regexInnerStr = '([*_~\\[\\(\\"\']*)'
-          regexInnerStr += escapedWords.join('(?:\\s|[*_~`\\[\\]()<>"\'!.,?;:])+')
-          regexInnerStr += '([*_~\\]\\)\\"\'!.,?;:]*)'
+          
+          for (let i = 0; i < chars.length; i++) {
+            const c = chars[i]
+            if (/\s/.test(c)) {
+              regexInnerStr += '(?:\\s|[*_~`\\[\\]()<>"\\\'!.,?;:])+'
+            } else {
+              regexInnerStr += c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+              if (i < chars.length - 1 && !/\s/.test(chars[i+1])) {
+                 regexInnerStr += '(?:[*_~`\\[\\]()<>"\\\'!.,?;:]*)'
+              }
+            }
+          }
+          
+          regexInnerStr += '([*_~\\]\\)\\"\\\'!.,?;:]*)'
           return regexInnerStr
         }
 
@@ -396,8 +408,24 @@ function NoteEditor({
             const closeTag = '</mark>'
             
             const regexInnerStr = createFuzzyRegexInner(selectedText)
-            const regex = new RegExp(regexInnerStr)
-            const newContent = content.replace(regex, (match) => {
+            const regex = new RegExp(regexInnerStr, 'g')
+            
+            let replaced = false
+            const newContent = content.replace(regex, (...args) => {
+              const match = args[0]
+              const wholeStr = args[args.length - 1]
+              const offset = args[args.length - 2]
+              
+              if (replaced) return match
+              
+              const before = wholeStr.slice(Math.max(0, offset - 30), offset)
+              const after = wholeStr.slice(offset + match.length, offset + match.length + 10)
+              
+              if (before.match(/<mark[^>]*>\s*$/) && after.match(/^\s*<\/mark>/)) {
+                return match
+              }
+              
+              replaced = true
               return `${openTag}${match}${closeTag}`
             })
             
