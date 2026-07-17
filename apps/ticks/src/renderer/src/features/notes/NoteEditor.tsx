@@ -359,17 +359,35 @@ function NoteEditor({
     setContextMenu({ x, y })
   }
 
-  const handleContextMenuAction = useCallback((action: string) => {
-    if (action === 'highlight') {
-      const highlightAction = formatActions.find((a) => a.id === 'highlight')
-      if (highlightAction && codeMirrorRef.current?.view) {
-        highlightAction.run(codeMirrorRef.current.view)
+  const handleContextMenuAction = useCallback(
+    (action: string, selectedText: string) => {
+      if (action.startsWith('highlight')) {
+        const highlightAction = formatActions.find((a) => a.id === action)
+        if (highlightAction) {
+          const view = codeMirrorRef.current?.view
+          if (view && view.state.selection.main.from !== view.state.selection.main.to) {
+            highlightAction.run(view)
+          } else if (selectedText && selectedText.trim() !== '') {
+            const openTag = action === 'highlight-sketch' 
+              ? '<mark class="sketch-highlight">' 
+              : action === 'highlight-error' 
+                ? '<mark class="error-highlight">' 
+                : '<mark>'
+            const closeTag = '</mark>'
+            const replacement = `${openTag}${selectedText}${closeTag}`
+            const newContent = content.replace(selectedText, replacement)
+            if (newContent !== content) {
+              handleContentChange(newContent)
+            }
+          }
+        }
+        return
       }
-      return
-    }
-    setActivePanel('ai')
-    setAutoTriggerAction(action)
-  }, [])
+      setActivePanel('ai')
+      setAutoTriggerAction(action)
+    },
+    [content, handleContentChange]
+  )
 
   const handleCloseContextMenu = useCallback(() => {
     setContextMenu(null)

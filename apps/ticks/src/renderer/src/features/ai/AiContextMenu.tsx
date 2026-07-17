@@ -10,7 +10,7 @@ export interface AiContextMenuPosition {
 export interface AiContextMenuProps {
   position: AiContextMenuPosition | null
   selectedText: string
-  onAction: (action: string) => void
+  onAction: (action: string, text: string) => void
   onClose: () => void
 }
 
@@ -20,7 +20,9 @@ const QUICK_ACTIONS = [
   { id: 'expand', label: 'Expand', icon: Zap },
   { id: 'format', label: 'Format with AI', icon: WandSparkles },
   { id: 'checklist', label: 'To checklist', icon: CheckSquare },
-  { id: 'highlight', label: 'Highlight text', icon: Highlighter }
+  { id: 'highlight', label: 'Highlight text', icon: Highlighter },
+  { id: 'highlight-sketch', label: 'Sketch highlight', icon: Highlighter },
+  { id: 'highlight-error', label: 'Error highlight', icon: Highlighter }
 ]
 
 function AiContextMenu({
@@ -91,7 +93,7 @@ function AiContextMenu({
                   onMouseDown={(e) => {
                     e.preventDefault() // prevent editor blur / deselect
                     e.stopPropagation()
-                    onAction(action.id)
+                    onAction(action.id, selectedText)
                     onClose()
                   }}
                 >

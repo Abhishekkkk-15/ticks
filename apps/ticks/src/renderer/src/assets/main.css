@@ -263,3 +263,29 @@ body {
 .focus-mode .hide-in-focus {
   display: none !important;
 }
+
+/* Custom Highlighter Styles */
+mark {
+  background-color: rgba(245, 158, 11, 0.4);
+  color: inherit;
+  padding: 0 4px;
+  border-radius: 4px;
+}
+
+mark.sketch-highlight {
+  background-color: rgba(245, 158, 11, 0.15);
+  background-image: linear-gradient(-4deg, rgba(245, 158, 11, 0.1) 0%, rgba(245, 158, 11, 0.4) 50%, rgba(245, 158, 11, 0.1) 100%);
+  padding: 2px 6px;
+  border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+  border: 1px solid rgba(245, 158, 11, 0.6);
+  color: inherit;
+}
+
+mark.error-highlight {
+  background-color: rgba(239, 68, 68, 0.15);
+  background-image: linear-gradient(-4deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.4) 50%, rgba(239, 68, 68, 0.1) 100%);
+  padding: 2px 6px;
+  border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+  border: 1px solid rgba(239, 68, 68, 0.6);
+  color: inherit;
+}

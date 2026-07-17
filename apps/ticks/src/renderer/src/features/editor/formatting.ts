@@ -202,6 +202,8 @@ export const formatActions: FormatAction[] = [
   { id: 'italic', label: 'Italic', shortcut: 'Ctrl+I', run: wrapInline('*') },
   { id: 'strikethrough', label: 'Strikethrough', shortcut: 'Ctrl+Shift+X', run: wrapInline('~~') },
   { id: 'highlight', label: 'Highlight', shortcut: 'Ctrl+Shift+H', run: wrapTags('<mark>', '</mark>') },
+  { id: 'highlight-sketch', label: 'Sketch highlight', run: wrapTags('<mark class="sketch-highlight">', '</mark>') },
+  { id: 'highlight-error', label: 'Error highlight', run: wrapTags('<mark class="error-highlight">', '</mark>') },
   { id: 'code', label: 'Inline code', shortcut: 'Ctrl+Shift+M', run: wrapInline('`') },
   { id: 'h1', label: 'Heading 1', shortcut: 'Ctrl+1', run: toggleHeading(1) },
   { id: 'h2', label: 'Heading 2', shortcut: 'Ctrl+2', run: toggleHeading(2) },
