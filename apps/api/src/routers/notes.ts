@@ -9,6 +9,7 @@ import {
   renameNote,
   updateContent,
   setFlags,
+  setComments,
   setFolder,
   setTags,
   duplicateNote,
@@ -140,6 +141,16 @@ router.patch('/workspaces/:workspace_id/notes/:note_id/flags', (req, res, next) 
       req.body.favorite,
       req.body.pinned
     );
+    res.json(note);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PATCH /workspaces/:workspace_id/notes/:note_id/comments
+router.patch('/workspaces/:workspace_id/notes/:note_id/comments', (req, res, next) => {
+  try {
+    const note = setComments(req.params.workspace_id, req.params.note_id, req.body.comments);
     res.json(note);
   } catch (err) {
     next(err);

@@ -1,3 +1,4 @@
+import React from 'react'
 import ReactMarkdown, { defaultUrlTransform } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
@@ -12,6 +13,8 @@ interface MarkdownPreviewProps {
   workspaceId: string
   noteId: string
   onChange?: (value: string) => void
+  showComments?: boolean
+  onCommentClick?: (commentId: string, event: React.MouseEvent) => void
 }
 
 const DRAWING_SCHEME = 'drawing://'
@@ -38,14 +41,29 @@ function MarkdownPreview({
   content,
   workspaceId,
   noteId,
-  onChange
+  onChange,
+  showComments = true,
+  onCommentClick
 }: MarkdownPreviewProps): React.JSX.Element {
   const { settings } = useSettings()
   const isLight = isLightTheme(settings?.theme)
   const proseClass = isLight ? 'prose' : 'prose-invert'
 
+  const handleContainerClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement
+    if (target.classList.contains('tick-comment')) {
+      const commentId = target.getAttribute('data-comment-id')
+      if (commentId && onCommentClick) {
+        onCommentClick(commentId, e)
+      }
+    }
+  }
+
   return (
-    <div className={`${proseClass} prose h-full max-w-none overflow-auto px-6 py-4`}>
+    <div 
+      className={`${proseClass} prose h-full max-w-none overflow-auto px-6 py-4 ${showComments ? 'show-comments' : 'hide-comments'}`}
+      onClick={handleContainerClick}
+    >
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeRaw, rehypeHighlight, rehypeCheckboxPositions]}
@@ -95,6 +113,17 @@ function MarkdownPreview({
               )
             }
             return <input type={type} checked={checked} disabled={disabled} {...props} />
+          },
+          mark: ({ className, children, ...props }) => {
+            const hasContent = React.Children.toArray(children).some(
+              (child) => typeof child !== 'string' || child.trim() !== ''
+            )
+            if (!hasContent) return null
+            return (
+              <mark className={className} {...props}>
+                {children}
+              </mark>
+            )
           },
           img: ({ src, alt }) => {
             if (typeof src === 'string' && src.startsWith(DRAWING_SCHEME)) {

@@ -73,7 +73,9 @@ export function useNoteEditor(workspaceId: string, noteId: string): UseNoteEdito
         const data = await getNote(workspaceId, noteId)
         if (cancelled) return
         setNote(data)
-        setContent(data.content)
+        // Strip empty mark tags on initial load to clean up any leftover artifacts
+        const cleanedContent = data.content.replace(/<mark[^>]*>[\s\n\u200B\u00A0]*(?:<br\s*\/?>)?[\s\n\u200B\u00A0]*<\/mark>/gi, '')
+        setContent(cleanedContent)
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load note')
       } finally {

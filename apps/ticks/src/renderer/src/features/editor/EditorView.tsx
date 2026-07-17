@@ -18,6 +18,8 @@ interface EditorViewProps {
   notes?: { id: string; title: string }[]
   onPaste?: (event: ClipboardEvent) => void
   editorRef?: React.RefObject<ReactCodeMirrorRef | null>
+  showComments?: boolean
+  onCommentClick?: (commentId: string, event: React.MouseEvent) => void
 }
 
 const modes: { id: EditorMode; label: string }[] = [
@@ -33,7 +35,9 @@ function EditorView({
   onSelectionChange,
   notes = [],
   onPaste,
-  editorRef: externalEditorRef
+  editorRef: externalEditorRef,
+  showComments,
+  onCommentClick
 }: EditorViewProps): React.JSX.Element {
   const { settings } = useSettings()
   const [mode, setMode] = useState<EditorMode>('edit')
@@ -168,7 +172,14 @@ function EditorView({
           </div>
         ) : (
           <div className="h-full w-full">
-            <MarkdownPreview content={value} onChange={onChange} workspaceId={workspaceId} noteId={noteId} />
+            <MarkdownPreview 
+              content={value} 
+              onChange={onChange} 
+              workspaceId={workspaceId} 
+              noteId={noteId} 
+              showComments={showComments} 
+              onCommentClick={onCommentClick} 
+            />
           </div>
         )}
       </div>

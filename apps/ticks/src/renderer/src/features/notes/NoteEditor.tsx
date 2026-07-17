@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Copy,
   Download,
-  Image,
   ImagePlus,
   Paperclip,
   Pencil,
@@ -12,6 +11,9 @@ import {
   Star,
   Tag,
   Trash2,
+  MessageSquare,
+  Eye,
+  EyeOff,
   X,
   Check,
   FileCode,
@@ -21,7 +23,7 @@ import EditorView from '../editor/EditorView'
 import type { EditorSelection } from '../editor/MarkdownEditor'
 import { useNoteEditor } from './useNoteEditor'
 import type { SaveStatus } from './useNoteEditor'
-import { deleteNote, duplicateNote, renameNote, setNoteFlags, listNotes } from './api'
+import { deleteNote, duplicateNote, renameNote, setNoteFlags, setNoteComments, listNotes } from './api'
 import { exportNoteContent } from './exportUtils'
 import ResourcesPanel from '../resources/ResourcesPanel'
 import NoteDrawingsPanel from '../drawings/NoteDrawingsPanel'
@@ -62,6 +64,26 @@ const TOOLBAR_BTN = 'rounded-md p-1.5 transition-colors'
 const TOOLBAR_BTN_IDLE = 'text-neutral-500 hover:bg-neutral-800 hover:text-neutral-300'
 const TOOLBAR_BTN_ACTIVE = 'bg-neutral-800 text-neutral-100'
 
+const createFuzzyRegexInner = (text: string) => {
+  const chars = text.trim().split('')
+  let regexInnerStr = '([*_~\\[\\(\\"\']*)'
+  
+  for (let i = 0; i < chars.length; i++) {
+    const c = chars[i]
+    if (/\s/.test(c)) {
+      regexInnerStr += '(?:\\s|[*_~`\\[\\]()<>"\\\'!.,?;:])+'
+    } else {
+      regexInnerStr += c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      if (i < chars.length - 1 && !/\s/.test(chars[i+1])) {
+         regexInnerStr += '(?:[*_~`\\[\\]()<>"\\\'!.,?;:]*)'
+      }
+    }
+  }
+  
+  regexInnerStr += '([*_~\\]\\)\\"\\\'!.,?;:]*)'
+  return regexInnerStr
+}
+
 function NoteEditor({
   workspaceId,
   noteId,
@@ -99,7 +121,25 @@ function NoteEditor({
   const [barsVisible, setBarsVisible] = useState(true)
   const [notesList, setNotesList] = useState<{ id: string; title: string }[]>([])
   const codeMirrorRef = useRef<ReactCodeMirrorRef>(null)
+  
+  const [commentDraft, setCommentDraft] = useState<{ text: string, selectionText: string, position: AiContextMenuPosition } | null>(null)
+  const [showComments, setShowComments] = useState(true)
+  const [viewingCommentId, setViewingCommentId] = useState<{ id: string, position: AiContextMenuPosition } | null>(null)
+  const commentDraftRef = useRef<HTMLDivElement>(null)
+  const viewingCommentRef = useRef<HTMLDivElement>(null)
 
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (commentDraftRef.current && !commentDraftRef.current.contains(event.target as Node)) {
+        setCommentDraft(null)
+      }
+      if (viewingCommentRef.current && !viewingCommentRef.current.contains(event.target as Node)) {
+        setViewingCommentId(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
   useEffect(() => {
     function handleToggle(): void {
       setBarsVisible((visible) => !visible)
@@ -361,27 +401,19 @@ function NoteEditor({
 
   const handleContextMenuAction = useCallback(
     (action: string, selectedText: string) => {
-      if (action.startsWith('highlight')) {
-        const createFuzzyRegexInner = (text: string) => {
-          const chars = text.trim().split('')
-          let regexInnerStr = '([*_~\\[\\(\\"\']*)'
-          
-          for (let i = 0; i < chars.length; i++) {
-            const c = chars[i]
-            if (/\s/.test(c)) {
-              regexInnerStr += '(?:\\s|[*_~`\\[\\]()<>"\\\'!.,?;:])+'
-            } else {
-              regexInnerStr += c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-              if (i < chars.length - 1 && !/\s/.test(chars[i+1])) {
-                 regexInnerStr += '(?:[*_~`\\[\\]()<>"\\\'!.,?;:]*)'
-              }
-            }
-          }
-          
-          regexInnerStr += '([*_~\\]\\)\\"\\\'!.,?;:]*)'
-          return regexInnerStr
+      if (action === 'comment-add') {
+        if (selectedText && selectedText.trim() !== '') {
+          setCommentDraft({
+            text: '',
+            selectionText: selectedText,
+            position: contextMenu || { x: window.innerWidth / 2, y: window.innerHeight / 2 }
+          })
+          setContextMenu(null)
         }
+        return
+      }
 
+      if (action.startsWith('highlight')) {
         if (action === 'highlight-remove') {
           if (selectedText && selectedText.trim() !== '') {
             const regexInnerStr = createFuzzyRegexInner(selectedText)
@@ -393,7 +425,6 @@ function NoteEditor({
           }
           return
         }
-
         const highlightAction = formatActions.find((a) => a.id === action)
         if (highlightAction) {
           const view = codeMirrorRef.current?.view
@@ -457,6 +488,62 @@ function NoteEditor({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  const handleSaveComment = async () => {
+    if (!commentDraft || !meta) return
+    const commentId = crypto.randomUUID()
+    const newComment = {
+      id: commentId,
+      text: commentDraft.text,
+      created_at: new Date().toISOString(),
+      resolved: false
+    }
+    
+    // Update metadata via API
+    const updatedComments = [...(meta.comments || []), newComment]
+    try {
+      const updatedNote = await setNoteComments(workspaceId, noteId, updatedComments)
+      setMeta(updatedNote)
+      
+      // Update markdown content with highlight
+      const regexInnerStr = createFuzzyRegexInner(commentDraft.selectionText)
+      const regex = new RegExp(regexInnerStr, 'g')
+      
+      let replaced = false
+      const newContent = content.replace(regex, (...args) => {
+        const match = args[0]
+        const wholeStr = args[args.length - 1]
+        const offset = args[args.length - 2]
+        if (replaced) return match
+        const before = wholeStr.slice(Math.max(0, offset - 30), offset)
+        const after = wholeStr.slice(offset + match.length, offset + match.length + 10)
+        if (before.match(/<mark[^>]*>\s*$/) && after.match(/^\s*<\/mark>/)) {
+          return match
+        }
+        replaced = true
+        return `<mark class="tick-comment" data-comment-id="${commentId}">${match}</mark>`
+      })
+      
+      if (newContent !== content) {
+        onChange(newContent)
+      }
+      setCommentDraft(null)
+    } catch (err) {
+      console.error('Failed to save comment:', err)
+    }
+  }
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!meta) return
+    const updatedComments = (meta.comments || []).filter(c => c.id !== commentId)
+    try {
+      const updatedNote = await setNoteComments(workspaceId, noteId, updatedComments)
+      setMeta(updatedNote)
+      setViewingCommentId(null)
+    } catch (err) {
+      console.error('Failed to delete comment:', err)
+    }
+  }
+
   function handleApplyReview(mode: 'append' | 'replace'): void {
     if (!pendingReview || !meta) return
     const { result, chainLabel, workflowName, selectionRange } = pendingReview
@@ -484,6 +571,21 @@ function NoteEditor({
     setPendingReview(null)
   }
 
+
+  const handleCommentClick = useCallback((commentId: string, event: React.MouseEvent) => {
+    event.stopPropagation()
+    const rect = (event.target as HTMLElement).getBoundingClientRect()
+    setViewingCommentId({
+      id: commentId,
+      position: { x: rect.left, y: rect.bottom + 5 }
+    })
+  }, [])
+
+  const handleContentChange = useCallback((newVal: string) => {
+    // Strip empty mark tags
+    const cleaned = newVal.replace(/<mark[^>]*>[\s\n\u200B\u00A0]*(?:<br\s*\/?>)?[\s\n\u200B\u00A0]*<\/mark>/gi, '')
+    onChange(cleaned)
+  }, [onChange])
 
   if (loading) {
     return (
@@ -523,8 +625,11 @@ function NoteEditor({
         ) : (
           <button
             type="button"
-            onClick={() => setRenaming(true)}
-            className="min-w-0 flex-1 truncate text-left text-sm font-medium text-neutral-200 hover:text-neutral-100"
+            onClick={() => {
+              setTitleDraft(meta.title)
+              setRenaming(true)
+            }}
+            className="flex-1 truncate rounded-md px-2 py-1 text-left text-sm font-medium text-neutral-200 hover:bg-neutral-800 focus:outline-none"
           >
             {meta.title}
           </button>
@@ -558,6 +663,14 @@ function NoteEditor({
           </button>
           <button
             type="button"
+            onClick={() => setShowComments(!showComments)}
+            title={showComments ? "Hide Comments" : "Show Comments"}
+            className={`${TOOLBAR_BTN} ${showComments ? 'text-blue-400 bg-blue-500/10' : TOOLBAR_BTN_IDLE}`}
+          >
+            {showComments ? <Eye size={16} /> : <EyeOff size={16} />}
+          </button>
+          <button
+            type="button"
             onClick={handleDuplicate}
             title="Duplicate"
             className={`${TOOLBAR_BTN} ${TOOLBAR_BTN_IDLE}`}
@@ -579,8 +692,8 @@ function NoteEditor({
                   initial={{ opacity: 0, y: 4, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 4, scale: 0.95 }}
-                  transition={{ duration: 0.1 }}
-                  className="absolute right-0 top-full mt-1 w-48 rounded-md border border-neutral-800 bg-neutral-900 p-1 shadow-lg z-50"
+                  transition={{ duration: 0.15, ease: 'easeOut' }}
+                  className="absolute right-0 top-full z-50 mt-1 w-48 rounded-md border border-neutral-700 bg-neutral-800 py-1 shadow-lg"
                 >
                   <button
                     onClick={() => {
@@ -635,27 +748,11 @@ function NoteEditor({
           />
           <button
             type="button"
-            onClick={() => setActivePanel(activePanel === 'ai' ? null : 'ai')}
-            title="AI"
-            className={`${TOOLBAR_BTN} ${activePanel === 'ai' ? TOOLBAR_BTN_ACTIVE : TOOLBAR_BTN_IDLE}`}
-          >
-            <Sparkles size={16} />
-          </button>
-          <button
-            type="button"
             onClick={() => setActivePanel(activePanel === 'organize' ? null : 'organize')}
-            title="Organize (folder & tags)"
+            title="Organize / Tags"
             className={`${TOOLBAR_BTN} ${activePanel === 'organize' ? TOOLBAR_BTN_ACTIVE : TOOLBAR_BTN_IDLE}`}
           >
             <Tag size={16} />
-          </button>
-          <button
-            type="button"
-            onClick={() => setActivePanel(activePanel === 'resources' ? null : 'resources')}
-            title="Resources"
-            className={`${TOOLBAR_BTN} ${activePanel === 'resources' ? TOOLBAR_BTN_ACTIVE : TOOLBAR_BTN_IDLE}`}
-          >
-            <Paperclip size={16} />
           </button>
           <button
             type="button"
@@ -663,13 +760,30 @@ function NoteEditor({
             title="Drawings"
             className={`${TOOLBAR_BTN} ${activePanel === 'drawings' ? TOOLBAR_BTN_ACTIVE : TOOLBAR_BTN_IDLE}`}
           >
-            <Image size={16} />
+            <Pencil size={16} />
           </button>
           <button
             type="button"
-            onClick={handleDelete}
+            onClick={() => setActivePanel(activePanel === 'resources' ? null : 'resources')}
+            title="Resources & Media"
+            className={`${TOOLBAR_BTN} ${activePanel === 'resources' ? TOOLBAR_BTN_ACTIVE : TOOLBAR_BTN_IDLE}`}
+          >
+            <Paperclip size={16} />
+          </button>
+          <div className="mx-1 h-4 w-px bg-neutral-800" />
+          <button
+            type="button"
+            onClick={() => setActivePanel(activePanel === 'ai' ? null : 'ai')}
+            title="AI Tools"
+            className={`${TOOLBAR_BTN} ${activePanel === 'ai' ? 'bg-violet-500/20 text-violet-300' : 'text-violet-400/70 hover:bg-violet-500/10 hover:text-violet-300'}`}
+          >
+            <Sparkles size={16} />
+          </button>
+          <button
+            type="button"
+            onClick={onDeleted}
             title="Delete"
-            className={`${TOOLBAR_BTN} text-neutral-500 hover:bg-red-500/10 hover:text-red-400`}
+            className="rounded-md p-1.5 text-neutral-500 transition-colors hover:bg-red-500/10 hover:text-red-400"
           >
             <Trash2 size={16} />
           </button>
@@ -741,12 +855,14 @@ function NoteEditor({
         <EditorView
           editorRef={codeMirrorRef}
           value={content}
-          onChange={onChange}
+          onChange={handleContentChange}
           workspaceId={workspaceId}
           noteId={meta.id}
           onSelectionChange={setSelection}
           notes={notesList}
           onPaste={handlePaste}
+          showComments={showComments}
+          onCommentClick={handleCommentClick}
         />
       </div>
 
@@ -834,6 +950,92 @@ function NoteEditor({
                 Replace Note
               </button>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {commentDraft && (
+          <motion.div
+            ref={commentDraftRef}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            style={{ 
+              position: 'fixed', 
+              left: commentDraft.position.x, 
+              top: commentDraft.position.y,
+              zIndex: 100 
+            }}
+            className="w-64 rounded-xl border border-neutral-800 bg-neutral-900 p-3 shadow-2xl backdrop-blur-md"
+          >
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-xs font-semibold text-neutral-300 flex items-center gap-1"><MessageSquare size={12} /> New Comment</span>
+              <button onClick={() => setCommentDraft(null)} className="text-neutral-500 hover:text-neutral-300">
+                <X size={14} />
+              </button>
+            </div>
+            <textarea
+              autoFocus
+              value={commentDraft.text}
+              onChange={(e) => setCommentDraft({ ...commentDraft, text: e.target.value })}
+              className="w-full resize-none rounded-md border border-neutral-800 bg-neutral-950 p-2 text-sm text-neutral-200 outline-none focus:border-blue-500/50"
+              rows={3}
+              placeholder="Write a comment..."
+            />
+            <div className="mt-2 flex justify-end">
+              <button
+                onClick={handleSaveComment}
+                disabled={!commentDraft.text.trim()}
+                className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500 disabled:opacity-50"
+              >
+                Save
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {viewingCommentId && meta?.comments && (
+          <motion.div
+            ref={viewingCommentRef}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            style={{ 
+              position: 'fixed', 
+              left: viewingCommentId.position.x, 
+              top: viewingCommentId.position.y,
+              zIndex: 100 
+            }}
+            className="w-64 rounded-xl border border-neutral-800 bg-neutral-900 p-3 shadow-2xl backdrop-blur-md"
+          >
+            {(() => {
+              const comment = meta.comments.find(c => c.id === viewingCommentId.id)
+              if (!comment) return (
+                <div className="flex justify-between items-center text-sm text-neutral-500">
+                  Comment not found.
+                  <button onClick={() => setViewingCommentId(null)}><X size={14}/></button>
+                </div>
+              )
+              return (
+                <>
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-xs font-semibold text-neutral-400">Comment</span>
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => handleDeleteComment(comment.id)} className="text-neutral-500 hover:text-red-400 p-1" title="Delete comment">
+                        <Trash2 size={12} />
+                      </button>
+                      <button onClick={() => setViewingCommentId(null)} className="text-neutral-500 hover:text-neutral-300 p-1">
+                        <X size={14} />
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-sm text-neutral-200 whitespace-pre-wrap break-words max-h-48 overflow-y-auto pr-1">
+                    {comment.text}
+                  </p>
+                </>
+              )
+            })()}
           </motion.div>
         )}
       </AnimatePresence>

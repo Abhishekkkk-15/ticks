@@ -34,6 +34,17 @@ export interface NoteTagsUpdate {
   tags: string[]
 }
 
+export interface NoteCommentsUpdate {
+  comments: NoteComment[]
+}
+
+export interface NoteComment {
+  id: string
+  text: string
+  created_at: string
+  resolved: boolean
+}
+
 export interface Note {
   id: string
   title: string
@@ -46,6 +57,7 @@ export interface Note {
   trashed: boolean
   trashed_at: string | null
   opened_at: string | null
+  comments?: NoteComment[]
 }
 
 export interface NoteDetail extends Note {

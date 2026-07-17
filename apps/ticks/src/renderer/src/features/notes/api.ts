@@ -100,12 +100,24 @@ export function updateNoteContent(
 export function setNoteFlags(
   workspaceId: string,
   noteId: string,
-  flags: { favorite?: boolean; pinned?: boolean }
+  updates: { favorite?: boolean | null; pinned?: boolean | null }
 ): Promise<Note> {
   return apiFetch<Note>(`/workspaces/${workspaceId}/notes/${noteId}/flags`, {
     method: 'PATCH',
     headers: JSON_HEADERS,
-    body: JSON.stringify(flags)
+    body: JSON.stringify(updates)
+  })
+}
+
+export function setNoteComments(
+  workspaceId: string,
+  noteId: string,
+  comments: any[]
+): Promise<Note> {
+  return apiFetch<Note>(`/workspaces/${workspaceId}/notes/${noteId}/comments`, {
+    method: 'PATCH',
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ comments })
   })
 }
 

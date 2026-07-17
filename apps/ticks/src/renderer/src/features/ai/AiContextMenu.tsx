@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { AlignLeft, BookOpen, CheckSquare, Sparkles, WandSparkles, Zap, Highlighter, Eraser } from 'lucide-react'
+import { AlignLeft, BookOpen, CheckSquare, Sparkles, WandSparkles, Zap, Highlighter, Eraser, MessageSquare } from 'lucide-react'
 
 export interface AiContextMenuPosition {
   x: number
@@ -24,7 +24,8 @@ const QUICK_ACTIONS = [
   { id: 'highlight', label: 'Highlight text', icon: Highlighter },
   { id: 'highlight-sketch', label: 'Sketch highlight', icon: Highlighter },
   { id: 'highlight-error', label: 'Error highlight', icon: Highlighter },
-  { id: 'highlight-remove', label: 'Remove highlight', icon: Eraser }
+  { id: 'highlight-remove', label: 'Remove highlight', icon: Eraser },
+  { id: 'comment-add', label: 'Add comment', icon: MessageSquare }
 ]
 
 function AiContextMenu({
@@ -86,7 +87,7 @@ function AiContextMenu({
 
           {/* Actions */}
           <div className="p-1">
-            {QUICK_ACTIONS.filter((a) => !hideAi || a.id.startsWith('highlight')).map((action) => {
+            {QUICK_ACTIONS.filter((a) => !hideAi || a.id.startsWith('highlight') || a.id.startsWith('comment')).map((action) => {
               const Icon = action.icon
               return (
                 <button

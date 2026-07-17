@@ -249,12 +249,17 @@ export function setFlags(workspaceId: string, noteId: string, favorite: boolean 
   const workspaceDir = getWorkspaceDir(workspaceId);
   const entries = readAllNotes(workspaceDir);
   const entry = findNote(entries, noteId);
-  if (favorite !== undefined && favorite !== null) {
-    entry.favorite = favorite;
-  }
-  if (pinned !== undefined && pinned !== null) {
-    entry.pinned = pinned;
-  }
+  if (favorite !== undefined && favorite !== null) entry.favorite = favorite;
+  if (pinned !== undefined && pinned !== null) entry.pinned = pinned;
+  writeAllNotes(workspaceDir, entries);
+  return entry;
+}
+
+export function setComments(workspaceId: string, noteId: string, comments: any[]): Note {
+  const workspaceDir = getWorkspaceDir(workspaceId);
+  const entries = readAllNotes(workspaceDir);
+  const entry = findNote(entries, noteId);
+  entry.comments = comments;
   writeAllNotes(workspaceDir, entries);
   return entry;
 }
