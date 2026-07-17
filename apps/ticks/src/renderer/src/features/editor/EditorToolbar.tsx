@@ -23,6 +23,8 @@ const icons: Record<string, React.ComponentType<{ size?: number }>> = {
   italic: Italic,
   strikethrough: Strikethrough,
   highlight: Highlighter,
+  'highlight-sketch': Highlighter,
+  'highlight-error': Highlighter,
   code: Code,
   h1: Heading1,
   h2: Heading2,
