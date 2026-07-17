@@ -42,7 +42,6 @@ export interface SettingsInfo {
   mcp_permitted_tools: string[]
   dropbox_app_key: string | null
   dropbox_connected: boolean
-  dropbox_auto_sync: boolean
   sync_on_close: boolean
   live_preview: boolean
 }
@@ -63,7 +62,6 @@ export interface SettingsUpdate {
   mcp_permitted_tools?: string[]
   dropbox_app_key?: string | null
   dropbox_refresh_token?: string | null
-  dropbox_auto_sync?: boolean
   sync_on_close?: boolean
   live_preview?: boolean
 }

@@ -100,15 +100,7 @@ export default function CloudSyncView(): React.JSX.Element {
               Connected to Dropbox
             </div>
 
-            <label className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                checked={settings.dropbox_auto_sync}
-                onChange={(e) => updateSettings({ dropbox_auto_sync: e.target.checked })}
-                className="h-4 w-4 rounded border-neutral-700 bg-neutral-900 text-amber-500 focus:ring-amber-500 focus:ring-offset-neutral-950"
-              />
-              <span className="text-sm text-neutral-300">Auto-sync periodically</span>
-            </label>
+
 
             <label className="flex items-center gap-3">
               <input
