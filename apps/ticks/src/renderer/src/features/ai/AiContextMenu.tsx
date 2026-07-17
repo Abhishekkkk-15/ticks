@@ -10,6 +10,7 @@ export interface AiContextMenuPosition {
 export interface AiContextMenuProps {
   position: AiContextMenuPosition | null
   selectedText: string
+  hideAi?: boolean
   onAction: (action: string, text: string) => void
   onClose: () => void
 }
@@ -28,6 +29,7 @@ const QUICK_ACTIONS = [
 function AiContextMenu({
   position,
   selectedText,
+  hideAi,
   onAction,
   onClose
 }: AiContextMenuProps): React.JSX.Element | null {
@@ -75,15 +77,15 @@ function AiContextMenu({
         >
           {/* Header */}
           <div className="flex items-center gap-2 border-b border-neutral-800 px-3 py-2">
-            <Sparkles size={12} className="text-violet-400" />
+            {!hideAi && <Sparkles size={12} className="text-violet-400" />}
             <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
-              AI Actions
+              {hideAi ? 'Actions' : 'AI Actions'}
             </span>
           </div>
 
           {/* Actions */}
           <div className="p-1">
-            {QUICK_ACTIONS.map((action) => {
+            {QUICK_ACTIONS.filter((a) => !hideAi || a.id.startsWith('highlight')).map((action) => {
               const Icon = action.icon
               return (
                 <button

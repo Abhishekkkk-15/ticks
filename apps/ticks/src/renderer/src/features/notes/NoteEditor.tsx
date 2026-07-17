@@ -715,6 +715,7 @@ function NoteEditor({
       <AiContextMenu
         position={contextMenu}
         selectedText={selection?.text ?? window.getSelection()?.toString() ?? ''}
+        hideAi={!codeMirrorRef.current?.view}
         onAction={handleContextMenuAction}
         onClose={handleCloseContextMenu}
       />
