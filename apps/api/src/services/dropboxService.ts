@@ -306,6 +306,7 @@ export async function triggerSync(options: { mode: 'pull' | 'push' | 'smart' } =
       // If folder doesn't exist yet, we just ignore cursor
     }
     saveSyncState(syncState);
+    updateSettings({ dropbox_last_synced_at: new Date().toISOString() });
 
     return { 
       success: true, 

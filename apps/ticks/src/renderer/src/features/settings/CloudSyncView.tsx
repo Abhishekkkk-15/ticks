@@ -41,6 +41,7 @@ export default function CloudSyncView(): React.JSX.Element {
         body: JSON.stringify({ mode })
       })
       setSyncMessage(res.message || 'Sync successful!')
+      updateSettings({ dropbox_last_synced_at: new Date().toISOString() })
     } catch (e: any) {
       setSyncMessage(`Sync failed: ${e.message}`)
     } finally {
@@ -95,9 +96,21 @@ export default function CloudSyncView(): React.JSX.Element {
           </button>
         ) : (
           <div className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4 space-y-4">
-            <div className="flex items-center gap-2 text-emerald-400 text-sm font-medium">
-              <Check size={16} />
-              Connected to Dropbox
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-emerald-400 text-sm font-medium">
+                <Check size={16} />
+                Connected to Dropbox
+              </div>
+              {settings.dropbox_last_synced_at && (
+                <div className="text-xs text-neutral-500">
+                  Last synced: {new Date(settings.dropbox_last_synced_at).toLocaleString(undefined, { 
+                    month: 'short', 
+                    day: 'numeric', 
+                    hour: 'numeric', 
+                    minute: '2-digit' 
+                  })}
+                </div>
+              )}
             </div>
 
 

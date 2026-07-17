@@ -49,6 +49,7 @@ const DEFAULT_DATA = {
   ] as string[],
   dropbox_app_key: null as string | null,
   dropbox_refresh_token: null as string | null,
+  dropbox_last_synced_at: null as string | null,
   sync_on_close: false,
   dropbox_sync_cursor: null as string | null,
   live_preview: false
@@ -120,6 +121,7 @@ export function getSettingsInfo(): SettingsInfo {
     mcp_permitted_tools: data.mcp_permitted_tools || [],
     dropbox_app_key: data.dropbox_app_key,
     dropbox_connected: !!data.dropbox_refresh_token,
+    dropbox_last_synced_at: data.dropbox_last_synced_at || null,
     sync_on_close: !!data.sync_on_close,
     live_preview: !!data.live_preview
   };
