@@ -377,7 +377,7 @@ function NoteEditor({
             const replacement = `${openTag}${selectedText}${closeTag}`
             const newContent = content.replace(selectedText, replacement)
             if (newContent !== content) {
-              handleContentChange(newContent)
+              onChange(newContent)
             }
           }
         }
@@ -386,7 +386,7 @@ function NoteEditor({
       setActivePanel('ai')
       setAutoTriggerAction(action)
     },
-    [content, handleContentChange]
+    [content, onChange]
   )
 
   const handleCloseContextMenu = useCallback(() => {
