@@ -362,11 +362,19 @@ function NoteEditor({
   const handleContextMenuAction = useCallback(
     (action: string, selectedText: string) => {
       if (action.startsWith('highlight')) {
+        const createFuzzyRegexInner = (text: string) => {
+          const escapedWords = text.trim().split(/\s+/).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+          let regexInnerStr = '([*_~\\[\\(\\"\']*)'
+          regexInnerStr += escapedWords.join('(?:\\s|[*_~`\\[\\]()<>"\'!.,?;:])+')
+          regexInnerStr += '([*_~\\]\\)\\"\'!.,?;:]*)'
+          return regexInnerStr
+        }
+
         if (action === 'highlight-remove') {
           if (selectedText && selectedText.trim() !== '') {
-            const escapedText = selectedText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-            const regex = new RegExp(`<mark[^>]*>\\s*${escapedText}\\s*</mark>`, 'g')
-            const newContent = content.replace(regex, selectedText)
+            const regexInnerStr = createFuzzyRegexInner(selectedText)
+            const regex = new RegExp(`<mark[^>]*>\\s*(${regexInnerStr})\\s*<\\/mark>`, 'g')
+            const newContent = content.replace(regex, '$1')
             if (newContent !== content) {
               onChange(newContent)
             }
@@ -386,8 +394,13 @@ function NoteEditor({
                 ? '<mark class="error-highlight">' 
                 : '<mark>'
             const closeTag = '</mark>'
-            const replacement = `${openTag}${selectedText}${closeTag}`
-            const newContent = content.replace(selectedText, replacement)
+            
+            const regexInnerStr = createFuzzyRegexInner(selectedText)
+            const regex = new RegExp(regexInnerStr)
+            const newContent = content.replace(regex, (match) => {
+              return `${openTag}${match}${closeTag}`
+            })
+            
             if (newContent !== content) {
               onChange(newContent)
             }
