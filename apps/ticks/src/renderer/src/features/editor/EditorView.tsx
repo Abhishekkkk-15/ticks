@@ -20,6 +20,7 @@ interface EditorViewProps {
   editorRef?: React.RefObject<ReactCodeMirrorRef | null>
   showComments?: boolean
   onCommentClick?: (commentId: string, event: React.MouseEvent) => void
+  initialSelection?: EditorSelection | null
 }
 
 const modes: { id: EditorMode; label: string }[] = [
@@ -37,7 +38,8 @@ function EditorView({
   onPaste,
   editorRef: externalEditorRef,
   showComments,
-  onCommentClick
+  onCommentClick,
+  initialSelection
 }: EditorViewProps): React.JSX.Element {
   const { settings } = useSettings()
   const [mode, setMode] = useState<EditorMode>('edit')
@@ -168,6 +170,7 @@ function EditorView({
               noteId={noteId}
               onPaste={onPaste}
               showMinimap={minimapVisible}
+              initialSelection={initialSelection}
             />
           </div>
         ) : (

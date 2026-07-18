@@ -863,6 +863,7 @@ function NoteEditor({
           onPaste={handlePaste}
           showComments={showComments}
           onCommentClick={handleCommentClick}
+          initialSelection={selection}
         />
       </div>
 

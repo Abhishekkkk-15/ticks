@@ -42,6 +42,7 @@ interface MarkdownEditorProps {
   noteId?: string
   onPaste?: (event: ClipboardEvent) => void
   showMinimap?: boolean
+  initialSelection?: EditorSelection | null
 }
 
 const baseExtensions = [
@@ -112,7 +113,8 @@ function MarkdownEditor({
   workspaceId,
   noteId,
   onPaste,
-  showMinimap = true
+  showMinimap = true,
+  initialSelection
 }: MarkdownEditorProps): React.JSX.Element {
   const { settings } = useSettings()
 
@@ -350,6 +352,7 @@ function MarkdownEditor({
       theme={isLightTheme(settings?.theme) ? 'light' : 'dark'}
       height="100%"
       extensions={extensions}
+      selection={initialSelection ? { anchor: initialSelection.from, head: initialSelection.to } : undefined}
       basicSetup={{
         foldGutter: false,
         dropCursor: true,
