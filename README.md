@@ -72,8 +72,3 @@ pnpm build
 ```
 *This bundles the app and creates a production-ready executable (like an `.exe` for Windows or `.dmg` for Mac) using `electron-builder`.*
 
----
-
-<div align="center">
-  <i>Built with ❤️ for learners and hackers.</i>
-</div>
