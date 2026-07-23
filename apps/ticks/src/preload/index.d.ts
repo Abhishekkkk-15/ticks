@@ -13,6 +13,8 @@ interface Api {
   exportPdf: (defaultName: string, content: string) => Promise<boolean>
   importNote: () => Promise<{ title: string; content: string } | null>
   pickResourceFile: () => Promise<{ name: string; data: Uint8Array } | null>
+  /** Opens a local path with the OS default app. Returns empty string on success, or an error message. */
+  openPath: (filePath: string) => Promise<string>
   notifySettingsUpdated: () => void
   onCaptureText: (callback: (text: string) => void) => () => void
   onClosingSyncRequested: (callback: () => void) => () => void

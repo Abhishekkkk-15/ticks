@@ -1,11 +1,22 @@
 import { useState } from 'react'
-import { ExternalLink, FileText, Globe, Trash2, Upload } from 'lucide-react'
+import {
+  Columns2,
+  ExternalLink,
+  FileText,
+  Globe,
+  Maximize2,
+  Trash2,
+  Upload
+} from 'lucide-react'
 import { useResources } from './useResources'
-import type { ResourceType } from './types'
+import { isLocalFileResource, type PreviewMode } from './resourcePreview'
+import type { Resource, ResourceType } from './types'
 
 interface ResourcesPanelProps {
   workspaceId: string
   noteId: string
+  onOpenPreview?: (resource: Resource, mode: PreviewMode) => void
+  onResourceRemoved?: (resourceId: string) => void
 }
 
 const TYPE_ICONS: Record<ResourceType, typeof Globe> = {
@@ -33,7 +44,12 @@ function inferTypeFromFilename(name: string): ResourceType {
   return 'file'
 }
 
-function ResourcesPanel({ workspaceId, noteId }: ResourcesPanelProps): React.JSX.Element {
+function ResourcesPanel({
+  workspaceId,
+  noteId,
+  onOpenPreview,
+  onResourceRemoved
+}: ResourcesPanelProps): React.JSX.Element {
   const { resources, loading, error, addUrl, addFile, remove } = useResources(workspaceId, noteId)
   const [urlType, setUrlType] = useState<ResourceType>('website')
   const [url, setUrl] = useState('')
@@ -79,10 +95,16 @@ function ResourcesPanel({ workspaceId, noteId }: ResourcesPanelProps): React.JSX
         <ul className="mb-2 space-y-1">
           {resources.map((resource) => {
             const Icon = TYPE_ICONS[resource.type]
+            const local = isLocalFileResource(resource)
             return (
               <li
                 key={resource.id}
-                className="group flex items-center gap-2 rounded-md px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
+                className={`group flex items-center gap-2 rounded-md px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800 ${
+                  local && onOpenPreview ? 'cursor-pointer' : ''
+                }`}
+                onClick={() => {
+                  if (local && onOpenPreview) onOpenPreview(resource, 'split')
+                }}
               >
                 <span className="flex min-w-0 flex-1 items-center gap-1.5">
                   <Icon size={13} className="shrink-0" />
@@ -98,13 +120,49 @@ function ResourcesPanel({ workspaceId, noteId }: ResourcesPanelProps): React.JSX
                     rel="noreferrer"
                     className="shrink-0 text-neutral-500 hover:text-neutral-300"
                     aria-label={`Open ${resource.title}`}
+                    onClick={(event) => event.stopPropagation()}
                   >
                     <ExternalLink size={12} />
                   </a>
                 )}
+                {local && onOpenPreview && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        onOpenPreview(resource, 'split')
+                      }}
+                      aria-label={`Preview ${resource.title} in split view`}
+                      title="Split preview"
+                      className="shrink-0 text-neutral-500 hover:text-neutral-300"
+                    >
+                      <Columns2 size={12} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        onOpenPreview(resource, 'fullscreen')
+                      }}
+                      aria-label={`Preview ${resource.title} fullscreen`}
+                      title="Fullscreen preview"
+                      className="shrink-0 text-neutral-500 hover:text-neutral-300"
+                    >
+                      <Maximize2 size={12} />
+                    </button>
+                  </>
+                )}
                 <button
                   type="button"
-                  onClick={() => remove(resource.id)}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    void remove(resource.id)
+                      .then(() => onResourceRemoved?.(resource.id))
+                      .catch(() => {
+                        // error already surfaced via useResources
+                      })
+                  }}
                   aria-label={`Remove ${resource.title}`}
                   className="hidden shrink-0 text-neutral-500 hover:text-red-400 group-hover:inline"
                 >

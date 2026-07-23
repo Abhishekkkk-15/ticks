@@ -48,3 +48,13 @@ export function deleteResource(
     method: 'DELETE'
   })
 }
+
+export function getResourceLocalPath(
+  workspaceId: string,
+  noteId: string,
+  resourceId: string
+): Promise<{ path: string }> {
+  return apiFetch<{ path: string }>(
+    `/workspaces/${workspaceId}/notes/${noteId}/resources/${resourceId}/file-path`
+  )
+}

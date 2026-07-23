@@ -76,6 +76,23 @@ router.get('/workspaces/:workspace_id/notes/:note_id/resources/:resource_id/file
   }
 });
 
+// GET /workspaces/:workspace_id/notes/:note_id/resources/:resource_id/file-path
+// Returns absolute local path for OS open (localhost API only).
+router.get(
+  '/workspaces/:workspace_id/notes/:note_id/resources/:resource_id/file-path',
+  (req, res, next) => {
+    try {
+      const filePath = getResourceFilePath(req.params.workspace_id, req.params.resource_id);
+      if (!filePath) {
+        throw { status: 404, message: 'Resource file not found' };
+      }
+      res.json({ path: filePath });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
 // DELETE /workspaces/:workspace_id/notes/:note_id/resources/:resource_id
 router.delete('/workspaces/:workspace_id/notes/:note_id/resources/:resource_id', (req, res, next) => {
   try {

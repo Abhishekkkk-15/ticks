@@ -546,6 +546,12 @@ if (!gotSingleInstanceLock) {
     )
     ipcMain.handle('file:import-note', () => importNoteFile())
     ipcMain.handle('file:pick-resource', () => pickResourceFile())
+    ipcMain.handle('shell:open-path', async (_event, filePath: string) => {
+      if (typeof filePath !== 'string' || !filePath.trim()) {
+        return 'Invalid file path'
+      }
+      return shell.openPath(filePath)
+    })
 
     ipcMain.on('settings:updated', () => {
       registerGlobalCapture()

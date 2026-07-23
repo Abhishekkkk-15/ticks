@@ -102,6 +102,7 @@ export function useResources(workspaceId: string, noteId: string): UseResourcesR
         await refresh()
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to delete resource')
+        throw err
       }
     },
     [workspaceId, noteId, refresh]

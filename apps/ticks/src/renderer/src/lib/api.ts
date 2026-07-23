@@ -1,6 +1,6 @@
 let cachedBaseUrl: string | null = null
 
-async function getApiBaseUrl(): Promise<string> {
+export async function getApiBaseUrl(): Promise<string> {
   if (!cachedBaseUrl) {
     cachedBaseUrl = await window.api.getApiBaseUrl()
   }

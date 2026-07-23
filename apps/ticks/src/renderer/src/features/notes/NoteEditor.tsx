@@ -26,6 +26,9 @@ import type { SaveStatus } from './useNoteEditor'
 import { deleteNote, duplicateNote, renameNote, setNoteFlags, setNoteComments, listNotes } from './api'
 import { exportNoteContent } from './exportUtils'
 import ResourcesPanel from '../resources/ResourcesPanel'
+import ResourcePreview from '../resources/ResourcePreview'
+import type { PreviewMode } from '../resources/resourcePreview'
+import type { Resource } from '../resources/types'
 import NoteDrawingsPanel from '../drawings/NoteDrawingsPanel'
 import NoteOrganizePanel from './NoteOrganizePanel'
 import AiPanel from '../ai/AiPanel'
@@ -110,6 +113,8 @@ function NoteEditor({
   const [activePanel, setActivePanel] = useState<
     'resources' | 'drawings' | 'organize' | 'ai' | null
   >(null)
+  const [previewResource, setPreviewResource] = useState<Resource | null>(null)
+  const [previewMode, setPreviewMode] = useState<PreviewMode>('split')
   const [selection, setSelection] = useState<EditorSelection | null>(null)
   const [contextMenu, setContextMenu] = useState<AiContextMenuPosition | null>(null)
   const [exportMenuOpen, setExportMenuOpen] = useState(false)
@@ -164,6 +169,7 @@ function NoteEditor({
     setTitleDraft(note.title)
     setRenaming(false)
     setPendingReview(null)
+    setPreviewResource(null)
   }
 
   useEffect(() => {
@@ -827,7 +833,17 @@ function NoteEditor({
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden border-b border-neutral-800"
           >
-            <ResourcesPanel workspaceId={workspaceId} noteId={meta.id} />
+            <ResourcesPanel
+              workspaceId={workspaceId}
+              noteId={meta.id}
+              onOpenPreview={(resource, mode) => {
+                setPreviewResource(resource)
+                setPreviewMode(mode)
+              }}
+              onResourceRemoved={(resourceId) => {
+                setPreviewResource((prev) => (prev?.id === resourceId ? null : prev))
+              }}
+            />
           </motion.div>
         )}
         {activePanel === 'drawings' && (
@@ -848,23 +864,51 @@ function NoteEditor({
 
       <div
         ref={editorAreaRef}
-        className="min-h-0 flex-1"
+        className={`min-h-0 flex-1 ${previewResource ? 'flex' : ''}`}
         onContextMenu={handleContextMenu}
         onPaste={handlePaste}
       >
-        <EditorView
-          editorRef={codeMirrorRef}
-          value={content}
-          onChange={handleContentChange}
-          workspaceId={workspaceId}
-          noteId={meta.id}
-          onSelectionChange={setSelection}
-          notes={notesList}
-          onPaste={handlePaste}
-          showComments={showComments}
-          onCommentClick={handleCommentClick}
-          initialSelection={selection}
-        />
+        {!(previewResource && previewMode === 'fullscreen') && (
+          <div
+            className={
+              previewResource && previewMode === 'split'
+                ? 'min-h-0 min-w-0 flex-1 border-r border-neutral-800'
+                : 'h-full min-h-0'
+            }
+          >
+            <EditorView
+              editorRef={codeMirrorRef}
+              value={content}
+              onChange={handleContentChange}
+              workspaceId={workspaceId}
+              noteId={meta.id}
+              onSelectionChange={setSelection}
+              notes={notesList}
+              onPaste={handlePaste}
+              showComments={showComments}
+              onCommentClick={handleCommentClick}
+              initialSelection={selection}
+            />
+          </div>
+        )}
+        {previewResource && (
+          <div
+            className={
+              previewMode === 'fullscreen'
+                ? 'h-full min-h-0 w-full'
+                : 'min-h-0 min-w-[280px] flex-1'
+            }
+          >
+            <ResourcePreview
+              workspaceId={workspaceId}
+              noteId={meta.id}
+              resource={previewResource}
+              mode={previewMode}
+              onModeChange={setPreviewMode}
+              onClose={() => setPreviewResource(null)}
+            />
+          </div>
+        )}
       </div>
 
       {/* Bottom Status Bar */}

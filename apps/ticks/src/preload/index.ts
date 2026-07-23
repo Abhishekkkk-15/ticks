@@ -15,6 +15,7 @@ const api = {
     ipcRenderer.invoke('file:import-note'),
   pickResourceFile: (): Promise<{ name: string; data: Uint8Array } | null> =>
     ipcRenderer.invoke('file:pick-resource'),
+  openPath: (filePath: string): Promise<string> => ipcRenderer.invoke('shell:open-path', filePath),
   notifySettingsUpdated: (): void => ipcRenderer.send('settings:updated'),
   onCaptureText: (callback: (text: string) => void): (() => void) => {
     const listener = (_event: unknown, text: string): void => callback(text)
