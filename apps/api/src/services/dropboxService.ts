@@ -136,6 +136,41 @@ function getLocalFilesState(dir: string, baseDir: string, state: Record<string, 
   return state;
 }
 
+function removeLocalPath(localPath: string): void {
+  if (!fs.existsSync(localPath)) return;
+  fs.rmSync(localPath, { recursive: true, force: true });
+}
+
+/** Remove empty directories bottom-up, never deleting rootDir or .git trees. */
+function pruneEmptyDirectories(dir: string, rootDir: string): void {
+  if (!fs.existsSync(dir)) return;
+  let entries: string[];
+  try {
+    entries = fs.readdirSync(dir);
+  } catch {
+    return;
+  }
+  for (const name of entries) {
+    if (name === '.git') continue;
+    const fullPath = path.join(dir, name);
+    try {
+      if (fs.statSync(fullPath).isDirectory()) {
+        pruneEmptyDirectories(fullPath, rootDir);
+      }
+    } catch {
+      // Path may have been removed concurrently
+    }
+  }
+  if (path.resolve(dir) === path.resolve(rootDir)) return;
+  try {
+    if (fs.readdirSync(dir).length === 0) {
+      fs.rmdirSync(dir);
+    }
+  } catch {
+    // Ignore non-empty or already-removed dirs
+  }
+}
+
 /** Prevents overlapping Smart/Push/Pull runs from racing on cursor and sync state. */
 let syncInProgress = false;
 
@@ -182,11 +217,14 @@ export async function triggerSync(options: { mode: 'pull' | 'push' | 'smart' } =
     let remoteFilesProcessed = 0;
     let localFilesProcessed = 0;
     let localDeletesProcessed = 0;
+    let remoteDeletesApplied = 0;
 
     // 1. Download Remote Changes
     if (options.mode === 'pull' || options.mode === 'smart') {
       let hasMore = true;
-      let currentCursor = (options.mode === 'pull' || forceFullPull) ? '' : cursor;
+      const isFullRemoteList = options.mode === 'pull' || forceFullPull;
+      let currentCursor = isFullRemoteList ? '' : cursor;
+      const remotePresentFiles = new Set<string>();
 
       while (hasMore) {
         let response;
@@ -218,6 +256,9 @@ export async function triggerSync(options: { mode: 'pull' | 'push' | 'smart' } =
           const localPath = path.join(root, relativePath);
 
           if (entry['.tag'] === 'file') {
+            if (isFullRemoteList) {
+              remotePresentFiles.add(relativePath);
+            }
             fs.mkdirSync(path.dirname(localPath), { recursive: true });
             
             let targetPath = localPath;
@@ -249,17 +290,35 @@ export async function triggerSync(options: { mode: 'pull' | 'push' | 'smart' } =
               localFilesState[targetRelPath] = { mtimeMs: newStat.mtimeMs }; // Update local scan so we don't immediately upload it
               remoteFilesProcessed++;
             }
+          } else if (entry['.tag'] === 'folder') {
+            fs.mkdirSync(localPath, { recursive: true });
           } else if (entry['.tag'] === 'deleted') {
-            if (fs.existsSync(localPath)) {
-              fs.rmSync(localPath);
-            }
+            removeLocalPath(localPath);
             delete syncState.files[relativePath];
             delete localFilesState[relativePath];
+            remoteDeletesApplied++;
           }
         }
         
         currentCursor = response.result.cursor;
         hasMore = response.result.has_more;
+      }
+
+      // Full listings omit deleted entries — mirror by removing local files absent remotely.
+      if (isFullRemoteList) {
+        for (const relPath of Object.keys(localFilesState)) {
+          if (remotePresentFiles.has(relPath)) continue;
+          removeLocalPath(path.join(root, relPath));
+          delete syncState.files[relPath];
+          delete localFilesState[relPath];
+          remoteDeletesApplied++;
+        }
+        for (const relPath of Object.keys(syncState.files)) {
+          if (!remotePresentFiles.has(relPath)) {
+            delete syncState.files[relPath];
+          }
+        }
+        pruneEmptyDirectories(root, root);
       }
     }
 
@@ -325,7 +384,7 @@ export async function triggerSync(options: { mode: 'pull' | 'push' | 'smart' } =
 
     return { 
       success: true, 
-      message: `Sync complete. Downloaded: ${remoteFilesProcessed}, Uploaded: ${localFilesProcessed}, Deleted remote: ${localDeletesProcessed}` 
+      message: `Sync complete. Downloaded: ${remoteFilesProcessed}, Uploaded: ${localFilesProcessed}, Deleted remote: ${localDeletesProcessed}, Deleted local: ${remoteDeletesApplied}` 
     };
 
   } catch (error: any) {
