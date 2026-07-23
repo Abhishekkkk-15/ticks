@@ -6,7 +6,10 @@ import {
   FileWarning,
   Loader2,
   Maximize2,
-  X
+  RotateCcw,
+  X,
+  ZoomIn,
+  ZoomOut
 } from 'lucide-react'
 import { getResourceLocalPath } from './api'
 import PdfPreview from './PdfPreview'
@@ -27,6 +30,15 @@ interface ResourcePreviewProps {
   onClose: () => void
 }
 
+const ZOOM_MIN = 0.5
+const ZOOM_MAX = 3
+const ZOOM_STEP = 0.25
+const ZOOM_DEFAULT = 1
+
+function clampZoom(value: number): number {
+  return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(value * 100) / 100))
+}
+
 function ResourcePreview({
   workspaceId,
   noteId,
@@ -36,11 +48,17 @@ function ResourcePreview({
   onClose
 }: ResourcePreviewProps): React.JSX.Element {
   const kind = getPreviewKind(resource.source)
+  const zoomable = kind === 'image' || kind === 'pdf' || kind === 'text'
   const [fileUrl, setFileUrl] = useState<string | null>(null)
   const [textContent, setTextContent] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [openingExternally, setOpeningExternally] = useState(false)
+  const [zoom, setZoom] = useState(ZOOM_DEFAULT)
+
+  useEffect(() => {
+    setZoom(ZOOM_DEFAULT)
+  }, [resource.id])
 
   useEffect(() => {
     let cancelled = false
@@ -80,11 +98,25 @@ function ResourcePreview({
       if (event.key === 'Escape') {
         event.preventDefault()
         onClose()
+        return
+      }
+      if (!zoomable) return
+      const mod = event.ctrlKey || event.metaKey
+      if (!mod) return
+      if (event.key === '=' || event.key === '+') {
+        event.preventDefault()
+        setZoom((z) => clampZoom(z + ZOOM_STEP))
+      } else if (event.key === '-') {
+        event.preventDefault()
+        setZoom((z) => clampZoom(z - ZOOM_STEP))
+      } else if (event.key === '0') {
+        event.preventDefault()
+        setZoom(ZOOM_DEFAULT)
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onClose])
+  }, [onClose, zoomable])
 
   async function handleOpenExternally(): Promise<void> {
     setOpeningExternally(true)
@@ -102,6 +134,8 @@ function ResourcePreview({
     }
   }
 
+  const zoomPercent = Math.round(zoom * 100)
+
   return (
     <div className="flex h-full min-h-0 flex-col border-l border-neutral-800 bg-neutral-950">
       <div className="flex shrink-0 items-center gap-2 border-b border-neutral-800 px-3 py-2">
@@ -112,6 +146,51 @@ function ResourcePreview({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-0.5">
+          {zoomable && (
+            <>
+              <button
+                type="button"
+                onClick={() => setZoom((z) => clampZoom(z - ZOOM_STEP))}
+                disabled={zoom <= ZOOM_MIN}
+                title="Zoom out (Ctrl+-)"
+                aria-label="Zoom out"
+                className="rounded-md p-1.5 text-neutral-500 hover:bg-neutral-800 hover:text-neutral-300 disabled:opacity-40"
+              >
+                <ZoomOut size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setZoom(ZOOM_DEFAULT)}
+                title="Reset zoom (Ctrl+0)"
+                aria-label={`Zoom ${zoomPercent} percent, click to reset`}
+                className="min-w-11 rounded-md px-1.5 py-1 text-[10px] tabular-nums text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200"
+              >
+                {zoomPercent}%
+              </button>
+              <button
+                type="button"
+                onClick={() => setZoom((z) => clampZoom(z + ZOOM_STEP))}
+                disabled={zoom >= ZOOM_MAX}
+                title="Zoom in (Ctrl+=)"
+                aria-label="Zoom in"
+                className="rounded-md p-1.5 text-neutral-500 hover:bg-neutral-800 hover:text-neutral-300 disabled:opacity-40"
+              >
+                <ZoomIn size={14} />
+              </button>
+              {zoom !== ZOOM_DEFAULT && (
+                <button
+                  type="button"
+                  onClick={() => setZoom(ZOOM_DEFAULT)}
+                  title="Reset zoom"
+                  aria-label="Reset zoom"
+                  className="rounded-md p-1.5 text-neutral-500 hover:bg-neutral-800 hover:text-neutral-300"
+                >
+                  <RotateCcw size={13} />
+                </button>
+              )}
+              <div className="mx-1 h-4 w-px bg-neutral-800" />
+            </>
+          )}
           <button
             type="button"
             onClick={() => onModeChange('split')}
@@ -150,7 +229,15 @@ function ResourcePreview({
         </div>
       </div>
 
-      <div className="relative min-h-0 flex-1 overflow-hidden">
+      <div
+        className="relative min-h-0 flex-1 overflow-hidden"
+        onWheel={(event) => {
+          if (!zoomable || !(event.ctrlKey || event.metaKey)) return
+          event.preventDefault()
+          const delta = event.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP
+          setZoom((z) => clampZoom(z + delta))
+        }}
+      >
         {loading ? (
           <div className="flex h-full items-center justify-center gap-2 text-xs text-neutral-500">
             <Loader2 size={14} className="animate-spin" />
@@ -162,17 +249,23 @@ function ResourcePreview({
             <p className="text-xs text-red-400">{error}</p>
           </div>
         ) : kind === 'image' && fileUrl ? (
-          <div className="flex h-full items-center justify-center overflow-auto p-4">
-            <img
-              src={fileUrl}
-              alt={resource.title}
-              className="max-h-full max-w-full object-contain"
-            />
+          <div className="h-full overflow-auto p-4">
+            <div className="flex min-h-full items-center justify-center">
+              <img
+                src={fileUrl}
+                alt={resource.title}
+                className="object-contain"
+                style={{ zoom }}
+              />
+            </div>
           </div>
         ) : kind === 'pdf' && fileUrl ? (
-          <PdfPreview fileUrl={fileUrl} title={resource.title} />
+          <PdfPreview fileUrl={fileUrl} title={resource.title} zoom={zoom} />
         ) : kind === 'text' && textContent !== null ? (
-          <pre className="h-full overflow-auto p-4 font-mono text-xs leading-relaxed whitespace-pre-wrap text-neutral-300">
+          <pre
+            className="h-full overflow-auto p-4 font-mono leading-relaxed whitespace-pre-wrap text-neutral-300"
+            style={{ fontSize: `${12 * zoom}px` }}
+          >
             {textContent}
           </pre>
         ) : (
