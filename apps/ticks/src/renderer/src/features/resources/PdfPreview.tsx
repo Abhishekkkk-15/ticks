@@ -72,15 +72,18 @@ function PdfPreview({ fileUrl, title, zoom = 1 }: PdfPreviewProps): React.JSX.El
     const pdf = pdfRef.current
     if (!container || !pdf || loading || error) return
 
+    const mount = container
+    const pdfDoc = pdf
+
     async function renderPages(): Promise<void> {
       setRendering(true)
-      container.replaceChildren()
+      mount.replaceChildren()
 
       try {
-        const width = container.clientWidth || 640
-        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        const width = mount.clientWidth || 640
+        for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
           if (cancelled) break
-          const page = await pdf.getPage(pageNum)
+          const page = await pdfDoc.getPage(pageNum)
           const unscaled = page.getViewport({ scale: 1 })
           const fitScale = Math.max(0.5, (width - 24) / unscaled.width)
           const scale = fitScale * zoom
@@ -102,7 +105,7 @@ function PdfPreview({ fileUrl, title, zoom = 1 }: PdfPreviewProps): React.JSX.El
             page.cleanup()
             break
           }
-          container.appendChild(canvas)
+          mount.appendChild(canvas)
           page.cleanup()
         }
       } catch (err) {
