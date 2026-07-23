@@ -9,6 +9,7 @@ import {
   X
 } from 'lucide-react'
 import { getResourceLocalPath } from './api'
+import PdfPreview from './PdfPreview'
 import {
   getPreviewKind,
   resourceFileUrl,
@@ -169,7 +170,7 @@ function ResourcePreview({
             />
           </div>
         ) : kind === 'pdf' && fileUrl ? (
-          <iframe title={resource.title} src={fileUrl} className="h-full w-full border-0 bg-white" />
+          <PdfPreview fileUrl={fileUrl} title={resource.title} />
         ) : kind === 'text' && textContent !== null ? (
           <pre className="h-full overflow-auto p-4 font-mono text-xs leading-relaxed whitespace-pre-wrap text-neutral-300">
             {textContent}

@@ -46,6 +46,7 @@
     "lucide-react": "^1.23.0",
     "marked": "^18.0.6",
     "mermaid": "^11.16.0",
+    "pdfjs-dist": "^4.10.38",
     "react-markdown": "^10.1.0",
     "rehype-highlight": "^7.0.2",
     "rehype-raw": "^7.0.0",

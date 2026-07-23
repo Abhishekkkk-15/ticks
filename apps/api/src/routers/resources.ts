@@ -70,7 +70,11 @@ router.get('/workspaces/:workspace_id/notes/:note_id/resources/:resource_id/file
       throw { status: 404, message: 'Resource file not found' };
     }
     // Express res.sendFile automatically sets the appropriate mime-type headers
-    res.sendFile(filePath);
+    res.sendFile(filePath, {
+      headers: {
+        'Content-Disposition': 'inline'
+      }
+    });
   } catch (err) {
     next(err);
   }
