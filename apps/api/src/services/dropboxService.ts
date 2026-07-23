@@ -136,7 +136,22 @@ function getLocalFilesState(dir: string, baseDir: string, state: Record<string, 
   return state;
 }
 
+/** Prevents overlapping Smart/Push/Pull runs from racing on cursor and sync state. */
+let syncInProgress = false;
+
+export function isDropboxSyncInProgress(): boolean {
+  return syncInProgress;
+}
+
 export async function triggerSync(options: { mode: 'pull' | 'push' | 'smart' } = { mode: 'smart' }): Promise<{ success: boolean; message: string }> {
+  if (syncInProgress) {
+    return {
+      success: false,
+      message: 'A Dropbox sync is already in progress. Please wait for it to finish.'
+    };
+  }
+
+  syncInProgress = true;
   try {
     const dbx = getDropboxClient();
     const cursor = getDropboxCursor();
@@ -316,5 +331,7 @@ export async function triggerSync(options: { mode: 'pull' | 'push' | 'smart' } =
   } catch (error: any) {
     console.error('Dropbox Sync Error:', error);
     return { success: false, message: error.message || 'Unknown sync error' };
+  } finally {
+    syncInProgress = false;
   }
 }

@@ -1,5 +1,10 @@
 import { Router } from 'express';
-import { getDropboxAuthUrl, handleDropboxCallback, triggerSync } from '../services/dropboxService.js';
+import {
+  getDropboxAuthUrl,
+  handleDropboxCallback,
+  isDropboxSyncInProgress,
+  triggerSync
+} from '../services/dropboxService.js';
 import { getSettingsInfo, updateSettings } from '../services/settingsService.js';
 
 export const syncRouter = Router();
@@ -38,10 +43,20 @@ syncRouter.get('/dropbox/callback', async (req, res) => {
 });
 
 syncRouter.post('/dropbox/trigger', async (req, res) => {
+  if (isDropboxSyncInProgress()) {
+    res.status(409).json({
+      success: false,
+      message: 'A Dropbox sync is already in progress. Please wait for it to finish.'
+    });
+    return;
+  }
+
   const mode = req.body?.mode || 'smart';
   const result = await triggerSync({ mode });
   if (result.success) {
     res.json(result);
+  } else if (result.message.includes('already in progress')) {
+    res.status(409).json(result);
   } else {
     res.status(500).json(result);
   }
