@@ -174,11 +174,68 @@ function pruneEmptyDirectories(dir: string, rootDir: string): void {
 /** Prevents overlapping Smart/Push/Pull runs from racing on cursor and sync state. */
 let syncInProgress = false;
 
+export type SyncPhase = 'idle' | 'download' | 'upload' | 'delete' | 'done' | 'error';
+
+export interface DropboxSyncProgress {
+  running: boolean;
+  mode: 'pull' | 'push' | 'smart' | null;
+  phase: SyncPhase;
+  currentFile: string | null;
+  downloaded: number;
+  uploaded: number;
+  deletedRemote: number;
+  deletedLocal: number;
+  errors: string[];
+  message: string;
+}
+
+const idleProgress = (): DropboxSyncProgress => ({
+  running: false,
+  mode: null,
+  phase: 'idle',
+  currentFile: null,
+  downloaded: 0,
+  uploaded: 0,
+  deletedRemote: 0,
+  deletedLocal: 0,
+  errors: [],
+  message: ''
+});
+
+let syncProgress: DropboxSyncProgress = idleProgress();
+
+function resetSyncProgress(mode: 'pull' | 'push' | 'smart'): void {
+  syncProgress = {
+    ...idleProgress(),
+    running: true,
+    mode,
+    phase: 'download',
+    message: 'Starting sync…'
+  };
+}
+
+function patchSyncProgress(patch: Partial<DropboxSyncProgress>): void {
+  syncProgress = { ...syncProgress, ...patch };
+}
+
+function pushSyncError(error: string): void {
+  const errors = [...syncProgress.errors, error].slice(-50);
+  syncProgress = { ...syncProgress, errors };
+}
+
 export function isDropboxSyncInProgress(): boolean {
   return syncInProgress;
 }
 
-export async function triggerSync(options: { mode: 'pull' | 'push' | 'smart' } = { mode: 'smart' }): Promise<{ success: boolean; message: string }> {
+export function getDropboxSyncProgress(): DropboxSyncProgress {
+  return { ...syncProgress, errors: [...syncProgress.errors] };
+}
+
+export async function triggerSync(options: { mode: 'pull' | 'push' | 'smart' } = { mode: 'smart' }): Promise<{
+  success: boolean;
+  message: string;
+  errors?: string[];
+}> {
   if (syncInProgress) {
     return {
       success: false,
@@ -187,6 +244,7 @@ export async function triggerSync(options: { mode: 'pull' | 'push' | 'smart' } =
   }
 
   syncInProgress = true;
+  resetSyncProgress(options.mode);
   try {
     const dbx = getDropboxClient();
     const cursor = getDropboxCursor();
@@ -221,6 +279,7 @@ export async function triggerSync(options: { mode: 'pull' | 'push' | 'smart' } =
 
     // 1. Download Remote Changes
     if (options.mode === 'pull' || options.mode === 'smart') {
+      patchSyncProgress({ phase: 'download', message: 'Downloading remote changes…' });
       let hasMore = true;
       const isFullRemoteList = options.mode === 'pull' || forceFullPull;
       let currentCursor = isFullRemoteList ? '' : cursor;
@@ -259,44 +318,67 @@ export async function triggerSync(options: { mode: 'pull' | 'push' | 'smart' } =
             if (isFullRemoteList) {
               remotePresentFiles.add(relativePath);
             }
-            fs.mkdirSync(path.dirname(localPath), { recursive: true });
-            
-            let targetPath = localPath;
-            let targetRelPath = relativePath;
-            
-            if (options.mode === 'smart') {
-              // Conflict Detection
-              const currentLocal = localFilesState[relativePath];
-              const savedLocal = syncState.files[relativePath];
+            patchSyncProgress({
+              currentFile: relativePath,
+              message: `Downloading ${relativePath}`
+            });
+            try {
+              fs.mkdirSync(path.dirname(localPath), { recursive: true });
               
-              // If local file was modified since last sync, create a Conflicted Copy
-              if (currentLocal && (!savedLocal || currentLocal.mtimeMs > savedLocal.mtimeMs)) {
-                const ext = path.extname(localPath);
-                const base = path.basename(localPath, ext);
-                const dir = path.dirname(localPath);
-                targetPath = path.join(dir, `${base} (Conflicted Copy)${ext}`);
-                targetRelPath = path.relative(root, targetPath).replace(/\\/g, '/');
+              let targetPath = localPath;
+              let targetRelPath = relativePath;
+              
+              if (options.mode === 'smart') {
+                // Conflict Detection
+                const currentLocal = localFilesState[relativePath];
+                const savedLocal = syncState.files[relativePath];
+                
+                // If local file was modified since last sync, create a Conflicted Copy
+                if (currentLocal && (!savedLocal || currentLocal.mtimeMs > savedLocal.mtimeMs)) {
+                  const ext = path.extname(localPath);
+                  const base = path.basename(localPath, ext);
+                  const dir = path.dirname(localPath);
+                  targetPath = path.join(dir, `${base} (Conflicted Copy)${ext}`);
+                  targetRelPath = path.relative(root, targetPath).replace(/\\/g, '/');
+                }
               }
-            }
 
-            // Download the file
-            const fileData = await dbx.filesDownload({ path: entry.path_display });
-            const content = (fileData.result as any).fileBinary;
-            
-            if (content) {
-              fs.writeFileSync(targetPath, content);
-              const newStat = fs.statSync(targetPath);
-              syncState.files[targetRelPath] = { mtimeMs: newStat.mtimeMs, rev: entry.rev };
-              localFilesState[targetRelPath] = { mtimeMs: newStat.mtimeMs }; // Update local scan so we don't immediately upload it
-              remoteFilesProcessed++;
+              // Download the file
+              const fileData = await dbx.filesDownload({ path: entry.path_display });
+              const content = (fileData.result as any).fileBinary;
+              
+              if (content) {
+                fs.writeFileSync(targetPath, content);
+                const newStat = fs.statSync(targetPath);
+                syncState.files[targetRelPath] = { mtimeMs: newStat.mtimeMs, rev: entry.rev };
+                localFilesState[targetRelPath] = { mtimeMs: newStat.mtimeMs }; // Update local scan so we don't immediately upload it
+                remoteFilesProcessed++;
+                patchSyncProgress({ downloaded: remoteFilesProcessed });
+              }
+            } catch (err: any) {
+              pushSyncError(`Download failed for ${relativePath}: ${err.message || err}`);
             }
           } else if (entry['.tag'] === 'folder') {
-            fs.mkdirSync(localPath, { recursive: true });
+            try {
+              fs.mkdirSync(localPath, { recursive: true });
+            } catch (err: any) {
+              pushSyncError(`Failed to create folder ${relativePath}: ${err.message || err}`);
+            }
           } else if (entry['.tag'] === 'deleted') {
-            removeLocalPath(localPath);
-            delete syncState.files[relativePath];
-            delete localFilesState[relativePath];
-            remoteDeletesApplied++;
+            patchSyncProgress({
+              phase: 'delete',
+              currentFile: relativePath,
+              message: `Deleting local ${relativePath}`
+            });
+            try {
+              removeLocalPath(localPath);
+              delete syncState.files[relativePath];
+              delete localFilesState[relativePath];
+              remoteDeletesApplied++;
+              patchSyncProgress({ deletedLocal: remoteDeletesApplied });
+            } catch (err: any) {
+              pushSyncError(`Local delete failed for ${relativePath}: ${err.message || err}`);
+            }
           }
         }
         
@@ -306,12 +388,22 @@ export async function triggerSync(options: { mode: 'pull' | 'push' | 'smart' } =
 
       // Full listings omit deleted entries — mirror by removing local files absent remotely.
       if (isFullRemoteList) {
+        patchSyncProgress({ phase: 'delete', message: 'Mirroring remote deletions…' });
         for (const relPath of Object.keys(localFilesState)) {
           if (remotePresentFiles.has(relPath)) continue;
-          removeLocalPath(path.join(root, relPath));
-          delete syncState.files[relPath];
-          delete localFilesState[relPath];
-          remoteDeletesApplied++;
+          patchSyncProgress({
+            currentFile: relPath,
+            message: `Deleting local ${relPath}`
+          });
+          try {
+            removeLocalPath(path.join(root, relPath));
+            delete syncState.files[relPath];
+            delete localFilesState[relPath];
+            remoteDeletesApplied++;
+            patchSyncProgress({ deletedLocal: remoteDeletesApplied });
+          } catch (err: any) {
+            pushSyncError(`Local delete failed for ${relPath}: ${err.message || err}`);
+          }
         }
         for (const relPath of Object.keys(syncState.files)) {
           if (!remotePresentFiles.has(relPath)) {
@@ -324,13 +416,23 @@ export async function triggerSync(options: { mode: 'pull' | 'push' | 'smart' } =
 
     // 2. Push Local Deletions
     if (options.mode === 'push' || options.mode === 'smart') {
+      patchSyncProgress({ phase: 'delete', message: 'Pushing local deletions…' });
       for (const relPath of Object.keys(syncState.files)) {
         if (!localFilesState[relPath]) {
+          patchSyncProgress({
+            currentFile: relPath,
+            message: `Deleting remote ${relPath}`
+          });
           try {
             await dbx.filesDeleteV2({ path: `${REMOTE_PREFIX}/${relPath}` });
             localDeletesProcessed++;
+            patchSyncProgress({ deletedRemote: localDeletesProcessed });
           } catch (e: any) {
+            const msg = e?.error?.error_summary || e?.message || String(e);
             // Ignore not found errors if it was already deleted remotely
+            if (!/not_found|path_lookup/i.test(msg)) {
+              pushSyncError(`Remote delete failed for ${relPath}: ${msg}`);
+            }
           }
           delete syncState.files[relPath];
         }
@@ -339,6 +441,7 @@ export async function triggerSync(options: { mode: 'pull' | 'push' | 'smart' } =
 
     // 3. Push Local Changes (Batched)
     if (options.mode === 'push' || options.mode === 'smart') {
+      patchSyncProgress({ phase: 'upload', message: 'Uploading local changes…' });
       const uploadPromises: Promise<void>[] = [];
       for (const relPath of Object.keys(localFilesState)) {
         const currentLocal = localFilesState[relPath];
@@ -349,14 +452,23 @@ export async function triggerSync(options: { mode: 'pull' | 'push' | 'smart' } =
           const remotePath = `${REMOTE_PREFIX}/${relPath}`;
           
           uploadPromises.push((async () => {
-            const content = fs.readFileSync(localPath);
-            const uploadRes = await dbx.filesUpload({
-              path: remotePath,
-              contents: content,
-              mode: { '.tag': 'overwrite' }
+            patchSyncProgress({
+              currentFile: relPath,
+              message: `Uploading ${relPath}`
             });
-            syncState.files[relPath] = { mtimeMs: currentLocal.mtimeMs, rev: uploadRes.result.rev };
-            localFilesProcessed++;
+            try {
+              const content = fs.readFileSync(localPath);
+              const uploadRes = await dbx.filesUpload({
+                path: remotePath,
+                contents: content,
+                mode: { '.tag': 'overwrite' }
+              });
+              syncState.files[relPath] = { mtimeMs: currentLocal.mtimeMs, rev: uploadRes.result.rev };
+              localFilesProcessed++;
+              patchSyncProgress({ uploaded: localFilesProcessed });
+            } catch (err: any) {
+              pushSyncError(`Upload failed for ${relPath}: ${err.message || err}`);
+            }
           })());
 
           // Concurrency limit of 5
@@ -382,15 +494,43 @@ export async function triggerSync(options: { mode: 'pull' | 'push' | 'smart' } =
     saveSyncState(syncState);
     updateSettings({ dropbox_last_synced_at: new Date().toISOString() });
 
-    return { 
-      success: true, 
-      message: `Sync complete. Downloaded: ${remoteFilesProcessed}, Uploaded: ${localFilesProcessed}, Deleted remote: ${localDeletesProcessed}, Deleted local: ${remoteDeletesApplied}` 
+    const errorCount = syncProgress.errors.length;
+    const summary =
+      `Sync complete. Downloaded: ${remoteFilesProcessed}, Uploaded: ${localFilesProcessed}, ` +
+      `Deleted remote: ${localDeletesProcessed}, Deleted local: ${remoteDeletesApplied}` +
+      (errorCount ? ` (${errorCount} file error${errorCount === 1 ? '' : 's'})` : '');
+
+    patchSyncProgress({
+      running: false,
+      phase: errorCount ? 'error' : 'done',
+      currentFile: null,
+      message: summary,
+      downloaded: remoteFilesProcessed,
+      uploaded: localFilesProcessed,
+      deletedRemote: localDeletesProcessed,
+      deletedLocal: remoteDeletesApplied
+    });
+
+    return {
+      success: true,
+      message: summary,
+      errors: [...syncProgress.errors]
     };
 
   } catch (error: any) {
     console.error('Dropbox Sync Error:', error);
-    return { success: false, message: error.message || 'Unknown sync error' };
+    const message = error.message || 'Unknown sync error';
+    patchSyncProgress({
+      running: false,
+      phase: 'error',
+      currentFile: null,
+      message
+    });
+    return { success: false, message, errors: [...syncProgress.errors] };
   } finally {
     syncInProgress = false;
+    if (syncProgress.running) {
+      patchSyncProgress({ running: false });
+    }
   }
 }

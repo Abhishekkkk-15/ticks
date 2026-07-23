@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   getDropboxAuthUrl,
+  getDropboxSyncProgress,
   handleDropboxCallback,
   isDropboxSyncInProgress,
   triggerSync
@@ -40,6 +41,10 @@ syncRouter.get('/dropbox/callback', async (req, res) => {
   } catch (error: any) {
     res.status(500).send(`Authentication failed: ${error.message}`);
   }
+});
+
+syncRouter.get('/dropbox/progress', (_req, res) => {
+  res.json(getDropboxSyncProgress());
 });
 
 syncRouter.post('/dropbox/trigger', async (req, res) => {

@@ -1,7 +1,20 @@
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Cloud, Check, Loader2, RefreshCw, DownloadCloud, UploadCloud } from 'lucide-react'
 import { useSettings } from './SettingsContext'
-import { apiFetch } from '../../lib/api'
+import { apiFetch, getApiBaseUrl } from '../../lib/api'
+
+interface SyncProgress {
+  running: boolean
+  mode: 'pull' | 'push' | 'smart' | null
+  phase: 'idle' | 'download' | 'upload' | 'delete' | 'done' | 'error'
+  currentFile: string | null
+  downloaded: number
+  uploaded: number
+  deletedRemote: number
+  deletedLocal: number
+  errors: string[]
+  message: string
+}
 
 export default function CloudSyncView(): React.JSX.Element {
   const { settings, updateSettings } = useSettings()
@@ -9,10 +22,37 @@ export default function CloudSyncView(): React.JSX.Element {
   const [connecting, setConnecting] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [syncMessage, setSyncMessage] = useState('')
+  const [progress, setProgress] = useState<SyncProgress | null>(null)
+  const [syncErrors, setSyncErrors] = useState<string[]>([])
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current)
+    }
+  }, [])
 
   if (!settings) return <div />
 
   const isConnected = settings.dropbox_connected
+
+  function stopProgressPolling(): void {
+    if (pollRef.current) {
+      clearInterval(pollRef.current)
+      pollRef.current = null
+    }
+  }
+
+  function startProgressPolling(): void {
+    stopProgressPolling()
+    pollRef.current = setInterval(() => {
+      void apiFetch<SyncProgress>('/api/sync/dropbox/progress')
+        .then((data) => setProgress(data))
+        .catch(() => {
+          // Best-effort while sync runs
+        })
+    }, 400)
+  }
 
   async function handleConnect() {
     if (!appKeyDraft.trim()) return
@@ -33,21 +73,44 @@ export default function CloudSyncView(): React.JSX.Element {
 
   async function handleSync(mode: 'pull' | 'push' | 'smart') {
     setSyncing(true)
+    setSyncErrors([])
+    setProgress(null)
     setSyncMessage(mode === 'pull' ? 'Pulling...' : mode === 'push' ? 'Pushing...' : 'Syncing...')
+    startProgressPolling()
     try {
-      const res = await apiFetch<{ message: string }>('/api/sync/dropbox/trigger', { 
+      const baseUrl = await getApiBaseUrl()
+      const response = await fetch(`${baseUrl}/api/sync/dropbox/trigger`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mode })
       })
-      setSyncMessage(res.message || 'Sync successful!')
+      const body = (await response.json().catch(() => null)) as {
+        success?: boolean
+        message?: string
+        errors?: string[]
+        detail?: string
+      } | null
+
+      if (!response.ok) {
+        throw new Error(body?.message || body?.detail || `Sync failed (${response.status})`)
+      }
+
+      setSyncMessage(body?.message || 'Sync successful!')
+      setSyncErrors(body?.errors ?? [])
       updateSettings({ dropbox_last_synced_at: new Date().toISOString() })
+      const finalProgress = await apiFetch<SyncProgress>('/api/sync/dropbox/progress').catch(() => null)
+      if (finalProgress) setProgress(finalProgress)
     } catch (e: any) {
       setSyncMessage(`Sync failed: ${e.message}`)
     } finally {
+      stopProgressPolling()
       setSyncing(false)
     }
   }
+
+  const countsLabel = progress
+    ? `↓ ${progress.downloaded}  ↑ ${progress.uploaded}  remote− ${progress.deletedRemote}  local− ${progress.deletedLocal}`
+    : null
 
   return (
     <div className="space-y-12">
@@ -156,8 +219,39 @@ export default function CloudSyncView(): React.JSX.Element {
                 </button>
               </div>
               
-              {syncMessage && (
-                <span className="text-xs text-neutral-400">{syncMessage}</span>
+              {(syncing || syncMessage) && (
+                <div className="space-y-1.5 rounded-md border border-neutral-800 bg-neutral-950/60 px-3 py-2">
+                  {syncing && progress?.currentFile && (
+                    <div className="truncate text-[11px] text-neutral-400" title={progress.currentFile}>
+                      {progress.message || progress.currentFile}
+                    </div>
+                  )}
+                  {syncing && countsLabel && (
+                    <div className="font-mono text-[10px] text-neutral-500">{countsLabel}</div>
+                  )}
+                  {syncMessage && (
+                    <div
+                      className={`text-xs ${
+                        syncMessage.startsWith('Sync failed')
+                          ? 'text-red-400'
+                          : syncErrors.length > 0
+                            ? 'text-amber-400'
+                            : 'text-neutral-400'
+                      }`}
+                    >
+                      {syncMessage}
+                    </div>
+                  )}
+                  {syncErrors.length > 0 && (
+                    <ul className="max-h-28 space-y-1 overflow-y-auto border-t border-neutral-800 pt-1.5">
+                      {syncErrors.map((error, index) => (
+                        <li key={`${index}-${error.slice(0, 24)}`} className="text-[11px] text-red-400/90">
+                          {error}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               )}
             </div>
           </div>
