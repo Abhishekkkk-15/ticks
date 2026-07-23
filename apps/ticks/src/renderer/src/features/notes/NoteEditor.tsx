@@ -27,7 +27,7 @@ import { deleteNote, duplicateNote, renameNote, setNoteFlags, setNoteComments, l
 import { exportNoteContent } from './exportUtils'
 import ResourcesPanel from '../resources/ResourcesPanel'
 import ResourcePreview from '../resources/ResourcePreview'
-import type { PreviewMode } from '../resources/resourcePreview'
+import type { PreviewMode } from '../resources/resourcePreviewUtils'
 import type { Resource } from '../resources/types'
 import NoteDrawingsPanel from '../drawings/NoteDrawingsPanel'
 import NoteOrganizePanel from './NoteOrganizePanel'

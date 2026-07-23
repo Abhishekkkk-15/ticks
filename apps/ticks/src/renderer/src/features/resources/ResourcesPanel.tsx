@@ -9,7 +9,7 @@ import {
   Upload
 } from 'lucide-react'
 import { useResources } from './useResources'
-import { isLocalFileResource, type PreviewMode } from './resourcePreview'
+import { isLocalFileResource, type PreviewMode } from './resourcePreviewUtils'
 import type { Resource, ResourceType } from './types'
 
 interface ResourcesPanelProps {

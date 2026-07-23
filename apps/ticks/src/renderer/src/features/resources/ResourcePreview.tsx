@@ -14,7 +14,7 @@ import {
   resourceFileUrl,
   type PreviewKind,
   type PreviewMode
-} from './resourcePreview'
+} from './resourcePreviewUtils'
 import type { Resource } from './types'
 
 interface ResourcePreviewProps {
