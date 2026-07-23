@@ -412,8 +412,8 @@ function createWindow(): void {
     ...(savedState.x !== undefined && savedState.y !== undefined
       ? { x: savedState.x, y: savedState.y }
       : {}),
-    minWidth: 800,
-    minHeight: 600,
+    minWidth: 200,
+    minHeight: 200,
     show: false,
     autoHideMenuBar: true,
     frame: process.platform === 'darwin',
